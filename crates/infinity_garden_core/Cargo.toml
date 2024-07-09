@@ -1,0 +1,13 @@
+[package]
+name = "infinity_garden_core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy.workspace = true
+enum-map.workspace = true
+rand.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
