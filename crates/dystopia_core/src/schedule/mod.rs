@@ -1,7 +1,7 @@
 use bevy::{
-    app::{App, FixedUpdate, Plugin, Startup, Update},
+    app::{App, FixedUpdate, Plugin, Startup},
     prelude::IntoSystemSetConfigs,
-    state::{app::AppExtStates, condition::in_state, state::OnEnter},
+    state::{app::AppExtStates, condition::in_state},
 };
 
 use crate::schedule::{
@@ -14,9 +14,9 @@ pub mod signal;
 pub mod state;
 pub mod system_set;
 
-pub struct InfGdnSchedulePlugin;
+pub struct DystopiaSchedulePlugin;
 
-impl Plugin for InfGdnSchedulePlugin {
+impl Plugin for DystopiaSchedulePlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<ProcessState>()
             .init_state::<AssetState>()

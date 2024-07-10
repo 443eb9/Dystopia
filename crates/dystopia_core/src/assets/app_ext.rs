@@ -14,13 +14,13 @@ use crate::{
     schedule::state::AssetState,
 };
 
-pub trait InfGdnAssetAppExt {
+pub trait DystopiaAssetAppExt {
     /// Add a config into the app. `R` is the processed config while `C` is the raw one, ehich
     /// is directly deserialized from the json file.
     fn add_config<R: Resource, C: RawConfig<R>>(&mut self);
 }
 
-impl InfGdnAssetAppExt for App {
+impl DystopiaAssetAppExt for App {
     fn add_config<R: Resource, C: RawConfig<R>>(&mut self) {
         self.init_asset::<C>()
             .init_asset_loader::<JsonLoader<C>>()

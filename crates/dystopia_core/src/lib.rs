@@ -7,16 +7,17 @@ pub mod cosmos;
 pub mod localization;
 pub mod math;
 pub mod schedule;
+pub mod sci;
 pub mod simulation;
 
-pub struct InfGdnCorePlugin;
+pub struct DystopiaCorePlugin;
 
-impl Plugin for InfGdnCorePlugin {
+impl Plugin for DystopiaCorePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            assets::InfGdnAssetsPlugin,
-            cosmos::InfGdnCosmosPlugin,
-            schedule::InfGdnSchedulePlugin,
+            assets::DystopiaAssetsPlugin,
+            cosmos::DystopiaCosmosPlugin,
+            schedule::DystopiaSchedulePlugin,
         ));
     }
 }

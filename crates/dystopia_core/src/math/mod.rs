@@ -2,6 +2,11 @@ use std::ops::Range;
 
 use rand::Rng;
 
+pub fn polar_to_cartesian(theta: f64, r: f64) -> (f64, f64) {
+    let (s, c) = theta.sin_cos();
+    (c * r, s * r)
+}
+
 pub fn reject_sampling(
     rng: &mut impl Rng,
     pdf: impl Fn(f64) -> f64,

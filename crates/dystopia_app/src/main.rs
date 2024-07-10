@@ -8,7 +8,9 @@ use bevy::{
     window::{PresentMode, Window, WindowPlugin},
     DefaultPlugins,
 };
-use dystopia_core::InfGdnCorePlugin;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_pancam::PanCamPlugin;
+use dystopia_core::DystopiaCorePlugin;
 
 mod debug;
 
@@ -25,14 +27,16 @@ fn main() {
                 })
                 .set(WindowPlugin {
                     primary_window: Some(Window {
-                        present_mode: PresentMode::AutoNoVsync,
-                        title: "Infinity Garden".to_string(),
+                        present_mode: PresentMode::AutoVsync,
+                        title: "Dystopia".to_string(),
                         ..Default::default()
                     }),
                     ..Default::default()
                 }),
-            InfGdnCorePlugin,
-            debug::InfGdnDebugPlugin,
+            DystopiaCorePlugin,
+            PanCamPlugin::default(),
+            debug::DystopiaDebugPlugin,
+            WorldInspectorPlugin::default(),
         ))
         .run();
 }

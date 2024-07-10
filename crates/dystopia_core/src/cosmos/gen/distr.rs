@@ -1,5 +1,12 @@
 use crate::cosmos::config::StarClass;
 
+/// The density of stars are related to the distance to center of galaxy.
+///
+/// Where `x` is the radius of galaxy.
+pub fn star_pos_distr(x: f64) -> impl Fn(f64) -> f64 {
+    move |sqr_d| 1. - (sqr_d / x).powi(5)
+}
+
 /// In units of solar mass.
 pub fn star_mass_pdf(x: f64) -> f64 {
     (1. / (500. * x)).min(1.)

@@ -18,9 +18,9 @@ pub mod app_ext;
 pub mod config;
 pub mod manifest;
 
-pub struct InfGdnAssetsPlugin;
+pub struct DystopiaAssetsPlugin;
 
-impl Plugin for InfGdnAssetsPlugin {
+impl Plugin for DystopiaAssetsPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
