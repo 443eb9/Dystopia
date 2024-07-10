@@ -18,6 +18,7 @@ impl Plugin for DystopiaCorePlugin {
             assets::DystopiaAssetsPlugin,
             cosmos::DystopiaCosmosPlugin,
             schedule::DystopiaSchedulePlugin,
+            simulation::DystopiaSimulationPlugin,
         ));
     }
 }

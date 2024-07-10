@@ -10,5 +10,5 @@ pub struct InitializationSignal {
     /// but for loading gardens from file system, we don't.
     /// 
     /// If true, means the initialization finished.
-    pub gardens_initialized: bool,
+    pub world_initialized: bool,
 }

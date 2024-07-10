@@ -7,13 +7,14 @@ use bevy::{
 };
 
 use crate::cosmos::{
-    celestial::{BodyIndex, Planet, Star},
+    celestial::{BodyIndex, Planet, Star, StarType},
     mesh::{GiantBodyMaterial, RockyBodyMaterial, StarMaterial},
 };
 
 #[derive(Bundle, Default)]
 pub struct StarBundle {
     pub star: Star,
+    pub star_ty: StarType,
     pub body_index: BodyIndex,
     pub mesh: Mesh2dHandle,
     pub material: Handle<StarMaterial>,

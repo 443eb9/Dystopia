@@ -1,3 +1,6 @@
+//! Physical laws and constants used in the game. These are scaled so don't use them
+//! in your homework :p
+
 use std::f64::consts::PI;
 
 pub const G: f64 = 6.67430e-11;
@@ -26,4 +29,8 @@ pub fn force_between_at_dist(mass_0: f64, mass_1: f64, distance: f64) -> f64 {
 
 pub fn dist_when_force_between(mass_0: f64, mass_1: f64, force: f64) -> f64 {
     (G * mass_0 * mass_1 / force).sqrt()
+}
+
+pub fn angular_vel_between(center_mass: f64, distance: f64) -> f64 {
+    (G * center_mass / distance).sqrt() * 1e-5
 }

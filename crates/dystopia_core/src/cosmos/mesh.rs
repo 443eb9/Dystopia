@@ -3,14 +3,8 @@ use bevy::{
     color::{ColorToComponents, LinearRgba},
     math::Vec4,
     reflect::TypePath,
-    render::{
-        mesh::MeshVertexBufferLayoutRef,
-        render_resource::{
-            AsBindGroup, RenderPipelineDescriptor, ShaderRef, ShaderType,
-            SpecializedMeshPipelineError,
-        },
-    },
-    sprite::{Material2d, Material2dKey},
+    render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
+    sprite::Material2d,
 };
 
 #[derive(ShaderType, Debug, Clone, Copy)]
@@ -35,14 +29,6 @@ impl From<&StarMaterial> for StarMaterialUniform {
 impl Material2d for StarMaterial {
     fn fragment_shader() -> ShaderRef {
         "shaders/bodies/star.wgsl".into()
-    }
-
-    fn specialize(
-        _descriptor: &mut RenderPipelineDescriptor,
-        _layout: &MeshVertexBufferLayoutRef,
-        _key: Material2dKey<Self>,
-    ) -> Result<(), SpecializedMeshPipelineError> {
-        Ok(())
     }
 }
 
@@ -69,14 +55,6 @@ impl Material2d for RockyBodyMaterial {
     fn fragment_shader() -> ShaderRef {
         "shaders/bodies/rocky_body.wgsl".into()
     }
-
-    fn specialize(
-        _descriptor: &mut RenderPipelineDescriptor,
-        _layout: &MeshVertexBufferLayoutRef,
-        _key: Material2dKey<Self>,
-    ) -> Result<(), SpecializedMeshPipelineError> {
-        Ok(())
-    }
 }
 
 #[derive(ShaderType, Debug, Clone, Copy)]
@@ -101,13 +79,5 @@ impl From<&GiantBodyMaterial> for GiantBodyMaterialUniform {
 impl Material2d for GiantBodyMaterial {
     fn fragment_shader() -> ShaderRef {
         "shaders/bodies/giant_body.wgsl".into()
-    }
-
-    fn specialize(
-        _descriptor: &mut RenderPipelineDescriptor,
-        _layout: &MeshVertexBufferLayoutRef,
-        _key: Material2dKey<Self>,
-    ) -> Result<(), SpecializedMeshPipelineError> {
-        Ok(())
     }
 }

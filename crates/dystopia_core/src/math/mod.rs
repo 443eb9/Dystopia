@@ -1,10 +1,11 @@
 use std::ops::Range;
 
+use bevy::math::DVec2;
 use rand::Rng;
 
-pub fn polar_to_cartesian(theta: f64, r: f64) -> (f64, f64) {
+pub fn polar_to_cartesian(theta: f64, r: f64) -> DVec2 {
     let (s, c) = theta.sin_cos();
-    (c * r, s * r)
+    DVec2::new(c * r, s * r)
 }
 
 pub fn reject_sampling(

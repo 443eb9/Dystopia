@@ -4,7 +4,7 @@
 //! contains the basic bodies info like positions, velocities etc.
 
 use bevy::{
-    app::{App, Plugin, Update},
+    app::{App, FixedUpdate, Plugin, Update},
     asset::AssetApp,
     prelude::IntoSystemConfigs,
     sprite::Material2dPlugin,
@@ -42,6 +42,10 @@ impl Plugin for DystopiaCosmosPlugin {
                 gen::generate_cosmos
                     .run_if(in_state(AssetState::Finish))
                     .run_if(in_state(GameState::Initialize)),
+            )
+            .add_systems(
+                FixedUpdate,
+                (sim::update_cosmos, sim::sync_bodies).run_if(in_state(GameState::Simulate)),
             )
             .add_config::<CosmosStarPropertiesConfig, RawCosmosStarPropertiesConfig>();
     }

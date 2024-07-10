@@ -9,6 +9,7 @@ dystopia_derive = { version = "0.1.0", path = "../dystopia_derive" }
 enum-map.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
+rayon.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
