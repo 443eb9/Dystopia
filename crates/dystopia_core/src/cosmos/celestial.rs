@@ -67,7 +67,7 @@ pub struct StarClass {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Orbit {
-    pub initial_theta: f64,
+    pub initial_progress: f64,
     pub center_id: usize,
     pub center: DVec2,
     pub radius: f64,

@@ -7,7 +7,7 @@ use bevy::{
 use bevy_pancam::PanCam;
 use dystopia_core::{
     cosmos::gen::CosmosGenerationSettings,
-    schedule::state::{AssetState, GameState},
+    schedule::state::{AssetState, GameState}, sci::unit::Length,
 };
 
 pub struct DystopiaDebugPlugin;
@@ -25,8 +25,8 @@ fn setup_debug(mut commands: Commands) {
 
 fn skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
     commands.insert_resource(CosmosGenerationSettings {
-        seed: 1,
-        galaxy_radius: 1_000_000.,
+        seed: 0,
+        galaxy_radius: Length::LightYear(1.),
         // num_stars: 60..69,
         num_stars: 1..2,
     });

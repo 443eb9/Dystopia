@@ -1,6 +1,6 @@
 /// The density of stars are related to the distance to center of galaxy.
 ///
-/// Where `x` is the radius of galaxy.
+/// Where `x` is the square radius of galaxy.
 pub fn star_pos_distr(x: f64) -> impl Fn(f64) -> f64 {
     move |sqr_d| 1. - (sqr_d / x).powi(5)
 }

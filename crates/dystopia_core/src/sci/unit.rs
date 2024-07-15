@@ -20,27 +20,22 @@ pub trait Unit<U> {
 #[derive(Unit, Debug, Clone, Copy)]
 #[precision(f64)]
 pub enum Length {
-    // #[conversion = 695_000_000.]
-    #[conversion = 695.]
+    #[conversion = 16.]
     SolarRadius(f64),
-    #[conversion = 9_460_730_472_580.8]
+    #[conversion = 9.460_730_472_580_8e6]
     LightYear(f64),
-    #[conversion = 149_597_870_700.]
+    #[conversion = 1.495_978_707e3]
     AstronomicalUnit(f64),
     #[si]
     Meter(f64),
-    /// The "meter" used for rendering. It scales the appearance of bodies,
-    /// but won't affect their actual sizes.
-    #[conversion = 1e-6]
-    RenderMeter(f64),
 }
 
 #[derive(Unit, Debug, Clone, Copy)]
 #[precision(f64)]
 pub enum Mass {
-    #[conversion = 1.988_4e30]
+    #[conversion = 1.988_4e8]
     SolarMass(f64),
-    #[conversion = 5.972e24]
+    #[conversion = 5.972e6]
     EarthMass(f64),
     #[si]
     Kilogram(f64),
@@ -49,7 +44,7 @@ pub enum Mass {
 #[derive(Unit, Debug, Clone, Copy)]
 #[precision(f64)]
 pub enum RadiantFlux {
-    #[conversion = 3.846e26]
+    #[conversion = 3.846e13]
     SolarLuminosity(f64),
     #[si]
     Watt(f64),

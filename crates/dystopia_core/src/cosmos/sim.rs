@@ -24,7 +24,8 @@ pub fn update_cosmos(mut cosmos: ResMut<Cosmos>, ticker: Res<Ticker>) {
                 return;
             }
 
-            let progress = (ticker.0 as f64 / orbit.sidereal_period as f64).fract();
+            let progress =
+                (ticker.0 as f64 / orbit.sidereal_period as f64 + orbit.initial_progress).fract();
             body.pos = orbit.center + math::polar_to_cartesian(progress * TAU, orbit.radius);
         });
 
