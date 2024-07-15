@@ -17,11 +17,11 @@ use crate::{
 pub trait DystopiaAssetAppExt {
     /// Add a config into the app. `R` is the processed config while `C` is the raw one, ehich
     /// is directly deserialized from the json file.
-    fn add_config<C: RawConfig>(&mut self);
+    fn add_config<C: RawConfig>(&mut self) -> &mut Self;
 }
 
 impl DystopiaAssetAppExt for App {
-    fn add_config<C: RawConfig>(&mut self) {
+    fn add_config<C: RawConfig>(&mut self) -> &mut Self {
         self.init_asset::<C>()
             .init_asset_loader::<JsonLoader<C>>()
             .add_systems(OnEnter(AssetState::Load), C::load)
@@ -37,5 +37,7 @@ impl DystopiaAssetAppExt for App {
             self.world_mut()
                 .insert_resource(Manifest::new([C::NAME.to_string()].into()))
         }
+
+        self
     }
 }

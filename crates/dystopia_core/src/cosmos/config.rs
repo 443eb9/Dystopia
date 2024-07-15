@@ -14,6 +14,17 @@ use crate::{assets::config::RawConfig, cosmos::celestial::StarClass, impl_ro_tup
 pub struct CosmosStarPropertiesConfig(Vec<StarProperties>);
 impl_ro_tuple_struct!(CosmosStarPropertiesConfig, Vec<StarProperties>);
 
+/// All possible names of a star.
+#[derive(Resource, Asset, TypePath, Clone, Deserialize)]
+pub struct CosmosStarNamesConfig(Vec<String>);
+impl_ro_tuple_struct!(CosmosStarNamesConfig, Vec<String>);
+
+impl RawConfig for CosmosStarNamesConfig {
+    type Processed = Self;
+
+    const NAME: &'static str = "star_names.json";
+}
+
 #[derive(Asset, TypePath, Clone, Serialize, Deserialize)]
 pub(super) struct RawCosmosStarPropertiesConfig(Vec<RawStarProperties>);
 

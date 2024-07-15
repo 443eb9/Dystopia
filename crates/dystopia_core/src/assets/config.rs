@@ -16,6 +16,12 @@ pub struct RawConfigHandle<C: RawConfig> {
     pub handle: Handle<C>,
 }
 
+/// The config waiting for being processed before inserted as [`Self::Processed`].
+/// Structs implements this trait should start with `Raw`, except:
+/// 
+/// It is also possible that [`Self::Processed`] is exactly [`Self`], which means
+/// the config don't need process, and the struct name don't need to start with
+/// `Raw`.
 pub trait RawConfig: Asset + Clone + DeserializeOwned + Sized {
     type Processed: Resource + From<Self>;
 
