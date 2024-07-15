@@ -1,5 +1,3 @@
-use crate::cosmos::config::StarClass;
-
 /// The density of stars are related to the distance to center of galaxy.
 ///
 /// Where `x` is the radius of galaxy.
@@ -21,8 +19,8 @@ pub fn moon_mass_pdf(x: f64) -> f64 {
     26f64.powf(-50. * x) + 21f64.powf(-1.5 * (x + 1.))
 }
 
-pub fn max_num_planets(class: StarClass) -> u32 {
-    let x = class.index as f32;
+pub fn max_num_planets(star_class_index: u32) -> u32 {
+    let x = star_class_index as f32;
     (8. / (1. + ((x - 33.) / 12.).exp()) + 3.).floor() as u32
 }
 

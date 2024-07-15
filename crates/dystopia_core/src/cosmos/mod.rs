@@ -14,7 +14,7 @@ use bevy::{
 use crate::{
     assets::app_ext::DystopiaAssetAppExt,
     cosmos::{
-        config::{CosmosStarPropertiesConfig, RawCosmosStarPropertiesConfig},
+        config::RawCosmosStarPropertiesConfig,
         mesh::{GiantBodyMaterial, RockyBodyMaterial, StarMaterial},
     },
     schedule::state::{AssetState, GameState},
@@ -47,6 +47,6 @@ impl Plugin for DystopiaCosmosPlugin {
                 FixedUpdate,
                 (sim::update_cosmos, sim::sync_bodies).run_if(in_state(GameState::Simulate)),
             )
-            .add_config::<CosmosStarPropertiesConfig, RawCosmosStarPropertiesConfig>();
+            .add_config::<RawCosmosStarPropertiesConfig>();
     }
 }

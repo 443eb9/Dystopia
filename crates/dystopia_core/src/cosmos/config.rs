@@ -6,40 +6,27 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{assets::config::RawConfig, cosmos::celestial::StarType};
+use crate::{assets::config::RawConfig, cosmos::celestial::StarClass, impl_ro_tuple_struct};
 
 /// All properties about a main sequence star. This vector is sorted descending by
 /// the mass of bodies.
 #[derive(Resource)]
-pub struct CosmosStarPropertiesConfig {
-    config: Vec<StarProperties>,
-}
+pub struct CosmosStarPropertiesConfig(Vec<StarProperties>);
+impl_ro_tuple_struct!(CosmosStarPropertiesConfig, Vec<StarProperties>);
 
-impl CosmosStarPropertiesConfig {
-    pub fn get(&self) -> &Vec<StarProperties> {
-        &self.config
-    }
-}
-
-#[derive(Asset, TypePath, Serialize, Deserialize)]
+#[derive(Asset, TypePath, Clone, Serialize, Deserialize)]
 pub(super) struct RawCosmosStarPropertiesConfig(Vec<RawStarProperties>);
 
-impl RawConfig<CosmosStarPropertiesConfig> for RawCosmosStarPropertiesConfig {
-    const NAME: &'static str = "star_properties.json";
+impl RawConfig for RawCosmosStarPropertiesConfig {
+    type Processed = CosmosStarPropertiesConfig;
 
-    fn process(&self) -> CosmosStarPropertiesConfig {
-        CosmosStarPropertiesConfig {
-            config: self.0.clone().into_iter().map(Into::into).collect(),
-        }
-    }
+    const NAME: &'static str = "star_properties.json";
 }
 
-/// Detailed class of a main sequence star.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub struct StarClass {
-    pub ty: StarType,
-    pub sub_ty: u32,
-    pub index: u32,
+impl From<RawCosmosStarPropertiesConfig> for CosmosStarPropertiesConfig {
+    fn from(value: RawCosmosStarPropertiesConfig) -> Self {
+        CosmosStarPropertiesConfig(value.0.into_iter().map(Into::into).collect())
+    }
 }
 
 /// Basic properties of a star defined in the config file.

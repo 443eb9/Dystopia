@@ -20,8 +20,8 @@ use rand_distr::Normal;
 use crate::{
     cosmos::{
         bundle::{GiantBodyBundle, RockyBodyBundle, StarBundle},
-        celestial::{BodyIndex, CelestialBodyData, Cosmos, Orbit},
-        config::{CosmosStarPropertiesConfig, StarClass},
+        celestial::{BodyIndex, CelestialBodyData, Cosmos, Orbit, StarClass},
+        config::CosmosStarPropertiesConfig,
         gen::distr::*,
         mesh::{GiantBodyMaterial, RockyBodyMaterial, StarMaterial},
     },
@@ -188,7 +188,7 @@ fn generate_stars(
 }
 
 fn generate_planets(rng: &mut impl Rng, star: &StarData, star_index: usize) -> Vec<PlanetData> {
-    let n = rng.gen_range(0..=max_num_planets(star.class));
+    let n = rng.gen_range(0..=max_num_planets(star.class.index));
 
     let masses = reject_sampling(
         rng,

@@ -9,6 +9,7 @@ pub mod math;
 pub mod schedule;
 pub mod sci;
 pub mod simulation;
+pub mod util;
 
 pub struct DystopiaCorePlugin;
 

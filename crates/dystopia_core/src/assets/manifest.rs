@@ -5,7 +5,10 @@ use bevy::{
     utils::HashSet,
 };
 
-use crate::{assets::config::RawConfig, schedule::state::{AssetState, ProcessState}};
+use crate::{
+    assets::config::RawConfig,
+    schedule::state::{AssetState, ProcessState},
+};
 
 #[derive(Resource)]
 pub struct Manifest {
@@ -21,11 +24,11 @@ impl Manifest {
         }
     }
 
-    pub fn finish<R: Resource, C: RawConfig<R>>(&mut self) {
+    pub fn finish<C: RawConfig>(&mut self) {
         self.to_load.remove(C::NAME);
     }
 
-    pub fn add<R: Resource, C: RawConfig<R>>(&mut self) {
+    pub fn add<C: RawConfig>(&mut self) {
         self.to_load.insert(C::NAME.to_string());
         self.total += 1;
     }
@@ -34,7 +37,7 @@ impl Manifest {
 pub fn check_if_manifest_finished(
     manifest: Res<Manifest>,
     mut asset_state: ResMut<NextState<AssetState>>,
-    mut process_state: ResMut<NextState<ProcessState>>
+    mut process_state: ResMut<NextState<ProcessState>>,
 ) {
     if manifest.to_load.is_empty() {
         asset_state.set(AssetState::Finish);

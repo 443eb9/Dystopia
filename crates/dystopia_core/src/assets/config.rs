@@ -1,24 +1,24 @@
 //! Configs about the game, generally some constants including units, some presets etc.
 
-use std::{marker::PhantomData, path::Path};
+use std::path::Path;
 
 use bevy::{
     asset::{Asset, AssetServer, Assets, Handle},
     log::info,
     prelude::{Commands, Res, ResMut, Resource, World},
-    utils::HashMap,
 };
 use serde::de::DeserializeOwned;
 
-use crate::assets::{manifest::Manifest, Id};
+use crate::assets::manifest::Manifest;
 
 #[derive(Resource)]
-pub struct RawConfigHandle<R: Resource, T: RawConfig<R>> {
-    pub handle: Handle<T>,
-    _marker: PhantomData<R>,
+pub struct RawConfigHandle<C: RawConfig> {
+    pub handle: Handle<C>,
 }
 
-pub trait RawConfig<R: Resource>: Asset + DeserializeOwned + Sized {
+pub trait RawConfig: Asset + Clone + DeserializeOwned + Sized {
+    type Processed: Resource + From<Self>;
+
     const NAME: &'static str;
 
     fn load(world: &mut World) {
@@ -28,31 +28,24 @@ pub trait RawConfig<R: Resource>: Asset + DeserializeOwned + Sized {
             .resource::<AssetServer>()
             .load::<Self>(Path::new("configs").join(Self::NAME));
 
-        world.insert_resource(RawConfigHandle {
-            handle,
-            _marker: PhantomData::default(),
-        });
+        world.insert_resource(RawConfigHandle { handle });
     }
 
-    fn process(&self) -> R;
+    fn process(&self) -> Self::Processed {
+        (*self).clone().into()
+    }
 }
 
-#[derive(Resource)]
-pub struct Config<K, V>(pub HashMap<Id<K>, V>);
-
-#[derive(Resource)]
-pub struct ConfigLiteral<K, V>(pub HashMap<K, V>);
-
-pub fn process_raw_config_when_finish_loading<R: Resource, C: RawConfig<R>>(
+pub fn process_raw_config_when_finish_loading<C: RawConfig>(
     mut command: Commands,
-    handle: Option<Res<RawConfigHandle<R, C>>>,
+    handle: Option<Res<RawConfigHandle<C>>>,
     assets: Res<Assets<C>>,
     mut manifest: ResMut<Manifest>,
 ) {
     if let Some(handle) = handle {
         if let Some(assets) = assets.get(&handle.handle) {
             command.insert_resource(assets.process());
-            manifest.finish::<R, C>();
+            manifest.finish::<C>();
         }
     }
 }

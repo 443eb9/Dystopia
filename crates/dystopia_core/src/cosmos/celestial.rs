@@ -57,6 +57,14 @@ pub enum StarType {
     M,
 }
 
+/// Detailed class of a main sequence star.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct StarClass {
+    pub ty: StarType,
+    pub sub_ty: u32,
+    pub index: u32,
+}
+
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Orbit {
     pub initial_theta: f64,
