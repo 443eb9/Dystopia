@@ -1,13 +1,9 @@
 use bevy::{
-    asset::Handle,
-    prelude::Bundle,
-    render::view::{InheritedVisibility, ViewVisibility, Visibility},
-    sprite::Mesh2dHandle,
-    transform::components::{GlobalTransform, Transform},
+    asset::Handle, core::Name, prelude::Bundle, render::view::{InheritedVisibility, ViewVisibility, Visibility}, sprite::Mesh2dHandle, transform::components::{GlobalTransform, Transform}
 };
 
 use crate::cosmos::{
-    celestial::{BodyIndex, Star, StarType},
+    celestial::{BodyIndex, BodyType, Star, StarType},
     mesh::{GiantBodyMaterial, RockyBodyMaterial, StarMaterial},
 };
 
@@ -15,6 +11,7 @@ use crate::cosmos::{
 pub struct StarBundle {
     pub star: Star,
     pub star_ty: StarType,
+    pub name: Name,
     pub body_index: BodyIndex,
     pub mesh: Mesh2dHandle,
     pub material: Handle<StarMaterial>,
@@ -27,6 +24,8 @@ pub struct StarBundle {
 
 #[derive(Bundle, Default)]
 pub struct RockyBodyBundle {
+    pub name: Name,
+    pub ty: BodyType,
     pub body_index: BodyIndex,
     pub mesh: Mesh2dHandle,
     pub material: Handle<RockyBodyMaterial>,
@@ -39,6 +38,8 @@ pub struct RockyBodyBundle {
 
 #[derive(Bundle, Default)]
 pub struct GiantBodyBundle {
+    pub name: Name,
+    pub ty: BodyType,
     pub body_index: BodyIndex,
     pub mesh: Mesh2dHandle,
     pub material: Handle<GiantBodyMaterial>,

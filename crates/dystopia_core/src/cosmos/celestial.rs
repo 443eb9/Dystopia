@@ -45,7 +45,7 @@ pub struct CelestialBodyData {
 }
 
 /// The type of a main sequence star.
-#[derive(Component, Debug, Default, Clone, Copy, Serialize, Deserialize)]
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum StarType {
     #[default]
     O,
@@ -63,6 +63,15 @@ pub struct StarClass {
     pub ty: StarType,
     pub sub_ty: u32,
     pub index: u32,
+}
+
+/// The type of a main sequence star.
+#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BodyType {
+    #[default]
+    Rocky,
+    GasGiant,
+    IceGiant,
 }
 
 #[derive(Debug, Default, Clone, Copy)]
