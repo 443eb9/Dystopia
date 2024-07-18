@@ -14,8 +14,9 @@ use bevy::{
 use crate::{
     assets::app_ext::DystopiaAssetAppExt,
     cosmos::{
+        celestial::ShowOrbits,
         config::{CosmosStarNamesConfig, RawCosmosStarPropertiesConfig},
-        mesh::{GiantBodyMaterial, RockyBodyMaterial, StarMaterial},
+        mesh::{GiantBodyMaterial, OrbitMaterial, RockyBodyMaterial, StarMaterial},
     },
     schedule::state::{AssetState, GameState},
 };
@@ -27,6 +28,9 @@ pub mod gen;
 pub mod mesh;
 pub mod sim;
 
+pub const ORBIT_MESH_SCALE: f32 = 1.1;
+pub const ORBIT_WIDTH: f32 = 1.5;
+
 pub struct DystopiaCosmosPlugin;
 
 impl Plugin for DystopiaCosmosPlugin {
@@ -34,9 +38,11 @@ impl Plugin for DystopiaCosmosPlugin {
         app.init_asset::<StarMaterial>()
             .init_asset::<RockyBodyMaterial>()
             .init_asset::<GiantBodyMaterial>()
+            .init_resource::<ShowOrbits>()
             .add_plugins(Material2dPlugin::<StarMaterial>::default())
             .add_plugins(Material2dPlugin::<RockyBodyMaterial>::default())
             .add_plugins(Material2dPlugin::<GiantBodyMaterial>::default())
+            .add_plugins(Material2dPlugin::<OrbitMaterial>::default())
             .add_systems(
                 Update,
                 gen::generate_cosmos
@@ -44,8 +50,18 @@ impl Plugin for DystopiaCosmosPlugin {
                     .run_if(in_state(GameState::Initialize)),
             )
             .add_systems(
+                Update,
+                sim::manage_orbit_visibility.run_if(in_state(GameState::Simulate)),
+            )
+            .add_systems(
                 FixedUpdate,
-                (sim::update_cosmos, sim::sync_bodies).run_if(in_state(GameState::Simulate)),
+                sim::update_cosmos.run_if(in_state(GameState::Simulate)),
+            )
+            .add_systems(
+                FixedUpdate,
+                (sim::sync_bodies, sim::sync_orbits)
+                    .run_if(in_state(GameState::Simulate))
+                    .after(sim::update_cosmos),
             )
             .add_config::<RawCosmosStarPropertiesConfig>()
             .add_config::<CosmosStarNamesConfig>();

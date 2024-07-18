@@ -5,14 +5,14 @@ use std::{
 };
 
 use bevy::{
-    asset::Assets,
+    asset::{Assets, Handle},
     color::LinearRgba,
     core::Name,
     log::info,
     math::{DVec2, FloatExt, Vec3, VectorSpace},
     prelude::{Commands, Rectangle, Res, ResMut, Resource},
     render::mesh::Mesh,
-    sprite::Mesh2dHandle,
+    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
     transform::components::Transform,
 };
 use indexmap::IndexSet;
@@ -23,11 +23,13 @@ use crate::{
     cosmos::{
         bundle::{GiantBodyBundle, RockyBodyBundle, StarBundle},
         celestial::{
-            BodyIndex, BodyType, CelestialBodyData, Cosmos, Moon, Orbit, Planet, StarClass,
+            BodyIndex, BodyType, CelestialBodyData, Cosmos, Moon, Orbit, OrbitIndex, Planet,
+            StarClass,
         },
         config::{CosmosStarNamesConfig, CosmosStarPropertiesConfig},
         gen::distr::*,
-        mesh::{GiantBodyMaterial, RockyBodyMaterial, StarMaterial},
+        mesh::{GiantBodyMaterial, OrbitMaterial, RockyBodyMaterial, StarMaterial},
+        ORBIT_MESH_SCALE, ORBIT_WIDTH,
     },
     math::reject_sampling,
     schedule::signal::InitializationSignal,
@@ -56,6 +58,7 @@ pub struct PlanetData {
     pub ty: BodyType,
     pub orbit: Orbit,
     pub effective_temp: f32,
+    pub color: LinearRgba,
     pub children: Vec<MoonData>,
 }
 
@@ -64,6 +67,7 @@ pub struct MoonData {
     pub body: CelestialBodyData,
     pub orbit: Orbit,
     pub effective_temp: f32,
+    pub color: LinearRgba,
 }
 
 #[derive(Debug, Default)]
@@ -90,6 +94,7 @@ pub fn generate_cosmos(
     mut star_materials: ResMut<Assets<StarMaterial>>,
     mut rocky_body_materials: ResMut<Assets<RockyBodyMaterial>>,
     mut giant_body_materials: ResMut<Assets<GiantBodyMaterial>>,
+    mut orbit_materials: ResMut<Assets<OrbitMaterial>>,
 ) {
     if signal.cosmos_initialized {
         return;
@@ -131,21 +136,23 @@ pub fn generate_cosmos(
 
     info!("Start generating orbits...");
 
-    let orbits = generate_orbits(&mut rng, &mut stars);
+    let (orbits, orbit_materials) = generate_orbits(&mut rng, &mut stars, &mut orbit_materials);
 
-    info!("Start spawning all bodies into game...");
+    info!("Start spawning all bodies and orbits into game...");
 
-    // Circles are implemented in shader, so we only need a square here.
-    let mesh = Mesh2dHandle(meshes.add(Rectangle::from_length(1.)));
+    // Shapes are implemented in shader, so we only need a square here.
+    let square_mesh = Mesh2dHandle(meshes.add(Rectangle::from_length(1.)));
 
     let (bodies, statistics) = spawn_bodies(
         &mut commands,
         stars,
-        mesh,
+        square_mesh.clone(),
         &mut star_materials,
         &mut rocky_body_materials,
         &mut giant_body_materials,
     );
+
+    spawn_orbits(&mut commands, square_mesh.clone(), &orbits, orbit_materials);
 
     commands.insert_resource(Cosmos { bodies, orbits });
     commands.insert_resource(GlobalRng(rng));
@@ -258,6 +265,7 @@ fn generate_planets(rng: &mut impl Rng, star: &StarData) -> Vec<PlanetData> {
             },
             orbit: Default::default(),
             effective_temp: 0.,
+            color: random_color(rng),
             ty,
             children: Vec::new(),
         });
@@ -270,7 +278,9 @@ fn generate_moon(rng: &mut impl Rng, planet: &PlanetData) -> Vec<MoonData> {
     let n = rng.gen_range(0..=max_num_moons(planet.body.mass));
 
     let masses = reject_sampling(rng, moon_mass_pdf, 0f64..1f64, 0f64..1f64, n, n * 2);
-    let density = (0..n).map(|_| rng.sample(Normal::<f64>::new(0.5, 0.25).unwrap()));
+    let density = (0..n)
+        .map(|_| rng.sample(Normal::<f64>::new(0.5, 0.25).unwrap()))
+        .collect::<Vec<_>>();
 
     let mut moons = Vec::with_capacity(n as usize);
 
@@ -286,6 +296,7 @@ fn generate_moon(rng: &mut impl Rng, planet: &PlanetData) -> Vec<MoonData> {
             },
             orbit: Default::default(),
             effective_temp: 0.,
+            color: random_color(rng),
         });
     }
 
@@ -458,8 +469,14 @@ fn scatter_bodies_in_range(
     cur_body as u32
 }
 
-fn generate_orbits(rng: &mut impl Rng, stars: &mut Vec<StarData>) -> Vec<Orbit> {
+fn generate_orbits(
+    rng: &mut impl Rng,
+    stars: &mut Vec<StarData>,
+    orbit_material_assets: &mut Assets<OrbitMaterial>,
+) -> (Vec<Orbit>, Vec<Option<Handle<OrbitMaterial>>>) {
+    // Estimate the number of orbits roughly equal to star.len() * 5
     let mut orbits = Vec::with_capacity(stars.len() * 5);
+    let mut orbit_materials = Vec::with_capacity(stars.len() * 5);
     let mut cur_body = 0;
 
     for star in stars {
@@ -468,6 +485,7 @@ fn generate_orbits(rng: &mut impl Rng, stars: &mut Vec<StarData>) -> Vec<Orbit> 
             radius: -1.,
             ..Default::default()
         });
+        orbit_materials.push(None);
 
         for planet in &mut star.children {
             let distance = planet.body.pos.length();
@@ -483,6 +501,11 @@ fn generate_orbits(rng: &mut impl Rng, stars: &mut Vec<StarData>) -> Vec<Orbit> 
                 .to_si(),
                 rotation_period: Time::Second(rng.gen_range(100..1800)).to_si(),
             });
+            orbit_materials.push(Some(orbit_material_assets.add(OrbitMaterial {
+                color: planet.color,
+                width: ORBIT_WIDTH,
+                radius: distance as f32,
+            })));
             cur_body += 1;
 
             for moon in &mut planet.children {
@@ -498,12 +521,17 @@ fn generate_orbits(rng: &mut impl Rng, stars: &mut Vec<StarData>) -> Vec<Orbit> 
                     .to_si(),
                     rotation_period: Time::Second(rng.gen_range(100..1800)).to_si(),
                 });
+                orbit_materials.push(Some(orbit_material_assets.add(OrbitMaterial {
+                    color: moon.color,
+                    width: ORBIT_WIDTH,
+                    radius: distance as f32,
+                })));
                 cur_body += 1;
             }
         }
     }
 
-    orbits
+    (orbits, orbit_materials)
 }
 
 fn spawn_bodies(
@@ -544,8 +572,7 @@ fn spawn_bodies(
                         body_index: BodyIndex(bodies.len()),
                         mesh: mesh.clone(),
                         material: rocky_body_materials.add(RockyBodyMaterial {
-                            // TODO: Generate color
-                            color: LinearRgba::WHITE,
+                            color: planet.color,
                         }),
                         transform: Transform::from_scale(Vec3::splat(
                             Length::Meter(planet.body.radius * 2.).to_si() as f32,
@@ -562,8 +589,7 @@ fn spawn_bodies(
                         body_index: BodyIndex(bodies.len()),
                         mesh: mesh.clone(),
                         material: giant_body_materials.add(GiantBodyMaterial {
-                            // TODO: Generate color
-                            color: LinearRgba::WHITE,
+                            color: planet.color,
                         }),
                         transform: Transform::from_scale(Vec3::splat(
                             Length::Meter(planet.body.radius * 2.).to_si() as f32,
@@ -585,10 +611,7 @@ fn spawn_bodies(
                         ty: BodyType::Rocky,
                         body_index: BodyIndex(bodies.len()),
                         mesh: mesh.clone(),
-                        material: rocky_body_materials.add(RockyBodyMaterial {
-                            // TODO: Generate color
-                            color: LinearRgba::WHITE,
-                        }),
+                        material: rocky_body_materials.add(RockyBodyMaterial { color: moon.color }),
                         transform: Transform::from_scale(Vec3::splat(
                             Length::Meter(moon.body.radius * 2.).to_si() as f32,
                         )),
@@ -605,4 +628,38 @@ fn spawn_bodies(
     }
 
     (bodies, statistics)
+}
+
+fn spawn_orbits(
+    commands: &mut Commands,
+    square_mesh: Mesh2dHandle,
+    orbits: &Vec<Orbit>,
+    orbit_materials: Vec<Option<Handle<OrbitMaterial>>>,
+) {
+    for (i_orbit, (material, orbit)) in orbit_materials.into_iter().zip(orbits).enumerate() {
+        let Some(material) = material else {
+            continue;
+        };
+
+        commands.spawn((
+            MaterialMesh2dBundle {
+                mesh: square_mesh.clone(),
+                material,
+                transform: Transform::from_scale(Vec3::splat(
+                    orbit.radius as f32 * 2. * ORBIT_MESH_SCALE,
+                )),
+                ..Default::default()
+            },
+            OrbitIndex(i_orbit),
+        ));
+    }
+}
+
+fn random_color(rng: &mut impl Rng) -> LinearRgba {
+    LinearRgba {
+        red: rng.gen_range(0.0..1.0),
+        green: rng.gen_range(0.0..1.0),
+        blue: rng.gen_range(0.0..1.0),
+        alpha: rng.gen_range(0.0..1.0),
+    }
 }

@@ -1,16 +1,14 @@
 use bevy::{
-    ecs::query::QueryFilter,
     math::DVec2,
-    prelude::{Component, Resource, With},
+    prelude::{Component, Resource},
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(QueryFilter)]
-pub struct IsCelestialBody {
-    pub star: With<Star>,
-    pub planet: With<Planet>,
-    pub moon: With<Moon>,
-}
+use crate::impl_rw_tuple_struct;
+
+#[derive(Resource, Default)]
+pub struct ShowOrbits(bool);
+impl_rw_tuple_struct!(ShowOrbits, bool);
 
 #[derive(Resource)]
 pub struct Cosmos {
@@ -23,6 +21,12 @@ pub struct Cosmos {
 /// You can fetch the detailed data using this index.
 #[derive(Component, Debug, Default)]
 pub struct BodyIndex(pub usize);
+
+/// The index of this orbit in cosmos.
+///
+/// You can fetch the detailed data using this index.
+#[derive(Component, Debug, Default)]
+pub struct OrbitIndex(pub usize);
 
 /// Marker struct for stars.
 #[derive(Component, Debug, Default)]

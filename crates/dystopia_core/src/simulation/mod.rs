@@ -4,31 +4,72 @@
 use bevy::{
     app::{App, FixedUpdate, Plugin, Update},
     log::info,
-    prelude::{IntoSystemConfigs, Res, ResMut, Resource},
+    prelude::{Component, DetectChanges, IntoSystemConfigs, Query, Res, ResMut, Resource, With},
+    render::camera::OrthographicProjection,
     state::{condition::in_state, state::NextState},
 };
 use rand::rngs::StdRng;
 
-use crate::schedule::{
-    signal::InitializationSignal,
-    state::{AssetState, GameState},
+use crate::{
+    impl_rw_tuple_struct,
+    schedule::{
+        signal::InitializationSignal,
+        state::{AssetState, GameState},
+    },
 };
 
 pub struct DystopiaSimulationPlugin;
 
 impl Plugin for DystopiaSimulationPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            FixedUpdate,
-            global_clock.run_if(in_state(GameState::Simulate)),
-        )
-        .add_systems(
-            Update,
-            check_if_initialized
-                .run_if(in_state(AssetState::Finish))
-                .run_if(in_state(GameState::Initialize)),
-        );
+        app.init_resource::<ViewScale>()
+            .add_systems(Update, sync_view_scale)
+            .add_systems(
+                FixedUpdate,
+                global_clock.run_if(in_state(GameState::Simulate)),
+            )
+            .add_systems(
+                Update,
+                check_if_initialized
+                    .run_if(in_state(AssetState::Finish))
+                    .run_if(in_state(GameState::Initialize)),
+            );
     }
+}
+
+/// Marker struct for main camera. The game only allows one main camera.
+#[derive(Component, Default)]
+pub struct MainCamera;
+
+/// The only choice in this game if you want to scale the camera. It is
+/// not allowed to directly change the `scale` in
+/// [`OrthographicProjection`](bevy::render::camera::OrthographicProjection)
+/// or `scale` in [`Transform`](bevy::transform::components::Transform) or
+/// anything like them.
+#[derive(Resource)]
+pub struct ViewScale(f32);
+impl_rw_tuple_struct!(ViewScale, f32);
+
+impl Default for ViewScale {
+    fn default() -> Self {
+        Self(1.)
+    }
+}
+
+// TODO uncomment this after finishing camera management.
+fn sync_view_scale(
+    view_scale: Res<ViewScale>,
+    mut camera: Query<&mut OrthographicProjection, With<MainCamera>>,
+) {
+    // if !view_scale.is_changed() {
+    //     return;
+    // }
+
+    // let Ok(mut camera) = camera.get_single_mut() else {
+    //     panic!("Exactly one main camera can exist at a time.")
+    // };
+
+    // camera.scale = *view_scale.get();
 }
 
 /// The RNG used across the entire game.

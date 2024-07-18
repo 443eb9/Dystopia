@@ -1,7 +1,7 @@
 use bevy::{
     asset::Asset,
     color::{ColorToComponents, LinearRgba},
-    math::Vec4,
+    math::{Vec3, Vec4Swizzles},
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
     sprite::Material2d,
@@ -9,7 +9,7 @@ use bevy::{
 
 #[derive(ShaderType, Debug, Clone, Copy)]
 pub struct StarMaterialUniform {
-    pub color: Vec4,
+    pub color: Vec3,
 }
 
 #[derive(AsBindGroup, Asset, TypePath, Debug, Default, Clone, Copy)]
@@ -21,7 +21,7 @@ pub struct StarMaterial {
 impl From<&StarMaterial> for StarMaterialUniform {
     fn from(value: &StarMaterial) -> Self {
         Self {
-            color: value.color.to_vec4(),
+            color: value.color.to_vec4().xyz(),
         }
     }
 }
@@ -34,7 +34,7 @@ impl Material2d for StarMaterial {
 
 #[derive(ShaderType, Debug, Clone, Copy)]
 pub struct RockyBodyMaterialUniform {
-    pub color: Vec4,
+    pub color: Vec3,
 }
 
 #[derive(AsBindGroup, Asset, TypePath, Debug, Default, Clone, Copy)]
@@ -46,7 +46,7 @@ pub struct RockyBodyMaterial {
 impl From<&RockyBodyMaterial> for RockyBodyMaterialUniform {
     fn from(value: &RockyBodyMaterial) -> Self {
         Self {
-            color: value.color.to_vec4(),
+            color: value.color.to_vec4().xyz(),
         }
     }
 }
@@ -59,7 +59,7 @@ impl Material2d for RockyBodyMaterial {
 
 #[derive(ShaderType, Debug, Clone, Copy)]
 pub struct GiantBodyMaterialUniform {
-    pub color: Vec4,
+    pub color: Vec3,
 }
 
 #[derive(AsBindGroup, Asset, TypePath, Debug, Default, Clone, Copy)]
@@ -71,7 +71,7 @@ pub struct GiantBodyMaterial {
 impl From<&GiantBodyMaterial> for GiantBodyMaterialUniform {
     fn from(value: &GiantBodyMaterial) -> Self {
         Self {
-            color: value.color.to_vec4(),
+            color: value.color.to_vec4().xyz(),
         }
     }
 }
@@ -79,5 +79,36 @@ impl From<&GiantBodyMaterial> for GiantBodyMaterialUniform {
 impl Material2d for GiantBodyMaterial {
     fn fragment_shader() -> ShaderRef {
         "shaders/bodies/giant_body.wgsl".into()
+    }
+}
+
+#[derive(ShaderType, Debug, Clone, Copy)]
+pub struct OrbitMaterialUniform {
+    pub color: Vec3,
+    pub width: f32,
+    pub radius: f32,
+}
+
+#[derive(AsBindGroup, Asset, TypePath, Debug, Default, Clone, Copy)]
+#[uniform(0, OrbitMaterialUniform)]
+pub struct OrbitMaterial {
+    pub color: LinearRgba,
+    pub width: f32,
+    pub radius: f32,
+}
+
+impl From<&OrbitMaterial> for OrbitMaterialUniform {
+    fn from(value: &OrbitMaterial) -> Self {
+        Self {
+            color: value.color.to_vec4().xyz(),
+            width: value.width,
+            radius: value.radius,
+        }
+    }
+}
+
+impl Material2d for OrbitMaterial {
+    fn fragment_shader() -> ShaderRef {
+        "shaders/bodies/orbit.wgsl".into()
     }
 }
