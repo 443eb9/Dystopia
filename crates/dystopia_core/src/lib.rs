@@ -5,6 +5,7 @@ use bevy::app::{App, Plugin};
 pub mod assets;
 pub mod cosmos;
 pub mod localization;
+pub mod map;
 pub mod math;
 pub mod schedule;
 pub mod sci;

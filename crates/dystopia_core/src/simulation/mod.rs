@@ -4,7 +4,7 @@
 use bevy::{
     app::{App, FixedUpdate, Plugin, Update},
     log::info,
-    prelude::{Component, DetectChanges, IntoSystemConfigs, Query, Res, ResMut, Resource, With},
+    prelude::{Component, IntoSystemConfigs, Query, Res, ResMut, Resource, With},
     render::camera::OrthographicProjection,
     state::{condition::in_state, state::NextState},
 };
