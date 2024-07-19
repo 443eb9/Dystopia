@@ -1,16 +1,41 @@
 use bevy::{
     asset::Handle,
+    color::LinearRgba,
     math::{IVec3, UVec2, UVec3, Vec2},
     prelude::{Component, Entity},
-    render::texture::Image,
+    render::{render_resource::FilterMode, texture::Image},
     utils::HashMap,
 };
 
-#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub struct TileAtlasIndex(pub u32);
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TileAtlasIndex {
+    Static { texture: u32, atlas: u32 },
+    // TODO animated
+}
+
+impl Default for TileAtlasIndex {
+    fn default() -> Self {
+        Self::Static {
+            texture: 0,
+            atlas: 0,
+        }
+    }
+}
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct TileTint(pub LinearRgba);
+
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TileBindedTilemap(pub Entity);
+
+impl Default for TileBindedTilemap {
+    fn default() -> Self {
+        Self(Entity::PLACEHOLDER)
+    }
+}
 
 /// Rendered size of a single tile.
-#[derive(Component, Debug, Default)]
+#[derive(Component, Debug, Default, Clone, Copy)]
 pub struct TileRenderSize(pub Vec2);
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -49,7 +74,7 @@ impl FlattenedTileIndex {
 }
 
 #[derive(Default, Clone)]
-pub struct Chunk {
+pub struct TilemapChunk {
     content: Vec<Option<Entity>>,
 }
 
@@ -57,7 +82,7 @@ pub struct Chunk {
 #[derive(Component, Default)]
 pub struct TilemapStorage {
     chunk_size: u32,
-    storage: HashMap<IVec3, Chunk>,
+    storage: HashMap<IVec3, TilemapChunk>,
 }
 
 impl TilemapStorage {
@@ -88,11 +113,11 @@ impl TilemapStorage {
             .and_then(|c| c.content[index.in_chunk_index])
     }
 
-    pub fn get_chunk(&self, index: IVec3) -> Option<&Chunk> {
+    pub fn get_chunk(&self, index: IVec3) -> Option<&TilemapChunk> {
         self.storage.get(&index)
     }
 
-    pub fn get_chunk_mut(&mut self, index: IVec3) -> Option<&mut Chunk> {
+    pub fn get_chunk_mut(&mut self, index: IVec3) -> Option<&mut TilemapChunk> {
         self.storage.get_mut(&index)
     }
 
@@ -102,7 +127,7 @@ impl TilemapStorage {
         }
     }
 
-    pub fn set_chunk(&mut self, index: IVec3, chunk: Chunk) {
+    pub fn set_chunk(&mut self, index: IVec3, chunk: TilemapChunk) {
         self.storage.insert(index, chunk);
     }
 }
@@ -122,11 +147,12 @@ pub struct TilemapTexture {
 #[derive(Component, Debug, Default, Clone)]
 pub struct TilemapTilesets {
     size: UVec2,
+    filter_mode: FilterMode,
     textures: Vec<TilemapTexture>,
 }
 
 impl TilemapTilesets {
-    pub fn new(textures: Vec<TilemapTexture>) -> Self {
+    pub fn new(textures: Vec<TilemapTexture>, filter_mode: FilterMode) -> Self {
         assert_ne!(
             textures.len(),
             0,
@@ -143,7 +169,11 @@ impl TilemapTilesets {
             );
         });
 
-        Self { size, textures }
+        Self {
+            size,
+            textures,
+            filter_mode,
+        }
     }
 
     pub fn size(&self) -> UVec2 {
@@ -153,4 +183,11 @@ impl TilemapTilesets {
     pub fn textures(&self) -> &Vec<TilemapTexture> {
         &self.textures
     }
+
+    pub fn filter_mode(&self) -> FilterMode {
+        self.filter_mode
+    }
 }
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct TilemapTint(pub LinearRgba);

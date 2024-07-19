@@ -11,7 +11,7 @@ use dystopia_core::{
     cosmos::gen::CosmosGenerationSettings,
     map::{
         bundle::{TileBundle, TilemapBundle},
-        tilemap::{FlattenedTileIndex, TileAtlasIndex, TileRenderSize},
+        tilemap::{FlattenedTileIndex, TileAtlasIndex, TileBindedTilemap, TileRenderSize},
     },
     schedule::state::{AssetState, GameState},
     sci::unit::Length,
@@ -57,6 +57,7 @@ fn debug_skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<Game
 fn debug_tilemap(mut commands: Commands) {
     const CHUNK_SIZE: u32 = 32;
 
+    let entity = commands.spawn_empty().id();
     let mut tilemap = TilemapBundle {
         tile_render_size: TileRenderSize(Vec2::splat(32.)),
         ..Default::default()
@@ -67,12 +68,18 @@ fn debug_tilemap(mut commands: Commands) {
             for x in 0..2 {
                 let index = FlattenedTileIndex::from_direct(IVec3 { x, y, z }, CHUNK_SIZE);
                 let tile = commands.spawn(TileBundle {
+                    binded_tilemap: TileBindedTilemap(entity),
                     index,
-                    atlas_index: TileAtlasIndex(0),
+                    atlas_index: TileAtlasIndex::Static {
+                        texture: 0,
+                        atlas: 0,
+                    },
                     ..Default::default()
                 });
                 tilemap.storgae.set(index, tile.id());
             }
         }
     }
+
+    commands.entity(entity).insert(tilemap);
 }

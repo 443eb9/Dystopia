@@ -5,7 +5,10 @@ use bevy::{
     app::{App, FixedUpdate, Plugin, Update},
     log::info,
     prelude::{Component, IntoSystemConfigs, Query, Res, ResMut, Resource, With},
-    render::camera::OrthographicProjection,
+    render::{
+        camera::OrthographicProjection,
+        extract_component::{ExtractComponent, ExtractComponentPlugin},
+    },
     state::{condition::in_state, state::NextState},
 };
 use rand::rngs::StdRng;
@@ -22,7 +25,7 @@ pub struct DystopiaSimulationPlugin;
 
 impl Plugin for DystopiaSimulationPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<ViewScale>()
+        app.add_plugins(ExtractComponentPlugin::<MainCamera>::default())
             .add_systems(Update, sync_view_scale)
             .add_systems(
                 FixedUpdate,
@@ -33,12 +36,13 @@ impl Plugin for DystopiaSimulationPlugin {
                 check_if_initialized
                     .run_if(in_state(AssetState::Finish))
                     .run_if(in_state(GameState::Initialize)),
-            );
+            )
+            .init_resource::<ViewScale>();
     }
 }
 
 /// Marker struct for main camera. The game only allows one main camera.
-#[derive(Component, Default)]
+#[derive(Component, ExtractComponent, Default, Clone)]
 pub struct MainCamera;
 
 /// The only choice in this game if you want to scale the camera. It is

@@ -2,7 +2,7 @@ use std::f64::consts::TAU;
 
 use bevy::{
     math::Vec3,
-    prelude::{Changed, DetectChanges, Query, Res, ResMut},
+    prelude::{DetectChanges, Query, Res, ResMut},
     render::view::Visibility,
     transform::components::Transform,
 };

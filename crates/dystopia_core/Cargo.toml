@@ -7,6 +7,7 @@ edition = "2021"
 bevy.workspace = true
 dystopia_derive = { version = "0.1.0", path = "../dystopia_derive" }
 enum-map.workspace = true
+hashbrown.workspace = true
 indexmap.workspace = true
 rand.workspace = true
 rand_distr.workspace = true
