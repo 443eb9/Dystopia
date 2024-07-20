@@ -3,6 +3,8 @@ use std::ops::Range;
 use bevy::math::DVec2;
 use rand::Rng;
 
+pub mod shape;
+
 pub fn polar_to_cartesian(theta: f64, r: f64) -> DVec2 {
     let (s, c) = theta.sin_cos();
     DVec2::new(c * r, s * r)

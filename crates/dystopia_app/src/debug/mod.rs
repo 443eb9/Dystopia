@@ -7,25 +7,33 @@ use bevy::{
     render::{camera::OrthographicProjection, render_resource::FilterMode},
     state::state::{NextState, OnEnter},
 };
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_pancam::PanCam;
 use dystopia_core::{
     cosmos::gen::CosmosGenerationSettings,
     map::{
         bundle::{TileBundle, TilemapBundle},
         tilemap::{
-            FlattenedTileIndex, TileAtlasIndex, TileBindedTilemap, TileIndex, TileRenderSize,
-            TilemapStorage, TilemapTexture, TilemapTextureDescriptor, TilemapTilesets,
+            TileAtlasIndex, TileBindedTilemap, TileIndex, TileRenderSize, TilemapStorage,
+            TilemapTexture, TilemapTextureDescriptor, TilemapTilesets,
         },
     },
+    math::shape::icosahedron,
     schedule::state::{AssetState, GameState},
     sci::unit::Length,
     simulation::{MainCamera, ViewScale},
 };
 
-pub struct DystopiaDebugPlugin;
+pub struct DystopiaDebugPlugin {
+    pub inspector: bool,
+}
 
 impl Plugin for DystopiaDebugPlugin {
     fn build(&self, app: &mut App) {
+        if self.inspector {
+            app.add_plugins(WorldInspectorPlugin::default());
+        }
+
         app.add_systems(Update, debug_sync_scale)
             .add_systems(OnEnter(AssetState::Finish), debug_skip_menu)
             .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
@@ -87,31 +95,17 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..Default::default()
     };
 
-    let mut sum = 1;
-    for y in 0..4 {
-        for x in 0..2 {
-            let index = TileIndex::new(
-                IVec3 {
-                    x,
-                    y,
-                    z: sum - x - y,
-                },
-                CHUNK_SIZE,
-            );
-            tilemap.storgae.set(
-                &mut commands,
-                TileBundle {
-                    binded_tilemap: TileBindedTilemap(entity),
-                    index,
-                    atlas_index: TileAtlasIndex::Static {
-                        texture: 0,
-                        atlas: if sum == 1 { 0 } else { 3 },
-                    },
-                    ..Default::default()
-                },
-            );
-            sum = if sum == 1 { 2 } else { 1 };
-        }
+    for tri in icosahedron(8, IVec3::Y) {
+        let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
+        tilemap.storgae.set(
+            &mut commands,
+            TileBundle {
+                binded_tilemap: TileBindedTilemap(entity),
+                index: TileIndex::new(tri, CHUNK_SIZE),
+                atlas_index: TileAtlasIndex::Static { texture: 0, atlas },
+                ..Default::default()
+            },
+        );
     }
 
     commands.entity(entity).insert(tilemap);

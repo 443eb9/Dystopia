@@ -8,7 +8,6 @@ use bevy::{
     window::{PresentMode, Window, WindowPlugin},
     DefaultPlugins,
 };
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_pancam::PanCamPlugin;
 use dystopia_core::DystopiaCorePlugin;
 
@@ -35,8 +34,7 @@ fn main() {
                 }),
             DystopiaCorePlugin,
             PanCamPlugin::default(),
-            debug::DystopiaDebugPlugin,
-            WorldInspectorPlugin::default(),
+            debug::DystopiaDebugPlugin { inspector: false },
         ))
         .run();
 }
