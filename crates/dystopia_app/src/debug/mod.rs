@@ -70,15 +70,15 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
                 TilemapTexture {
                     handle: asset_server.load("images/test_tileset_a.png"),
                     desc: TilemapTextureDescriptor {
-                        size: UVec2 { x: 48, y: 32 },
-                        tile_size: UVec2::splat(16),
+                        size: UVec2 { x: 45, y: 26 },
+                        tile_size: UVec2 { x: 15, y: 13 },
                     },
                 },
                 TilemapTexture {
                     handle: asset_server.load("images/test_tileset_b.png"),
                     desc: TilemapTextureDescriptor {
-                        size: UVec2 { x: 32, y: 32 },
-                        tile_size: UVec2::splat(16),
+                        size: UVec2 { x: 45, y: 26 },
+                        tile_size: UVec2 { x: 15, y: 13 },
                     },
                 },
             ],
@@ -105,7 +105,7 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
                     index,
                     atlas_index: TileAtlasIndex::Static {
                         texture: 0,
-                        atlas: 0,
+                        atlas: if sum == 1 { 0 } else { 3 },
                     },
                     ..Default::default()
                 },

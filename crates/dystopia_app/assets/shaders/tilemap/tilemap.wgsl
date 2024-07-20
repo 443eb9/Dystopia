@@ -10,6 +10,9 @@ struct TilemapVertexInput {
     @builtin(vertex_index) v_index: u32,
     @location(0) position: vec3f,
     @location(1) color: vec4f,
+    /// If not animated: `[texture_index, atlas_index, 0]`
+    ///
+    /// If animated: `[start, end, 1]`
     @location(2) atlas_index: vec3u,
     @location(3) tile_index: vec3i,
 }
@@ -18,13 +21,18 @@ struct TilemapVertexOutput {
     @builtin(position) position_cs: vec4f,
     @location(0) uv: vec2f,
     @location(1) tint: vec4f,
-    @location(2) atlas_index: vec2u,
+    @location(2) texture_index: u32,
+}
+
+struct TilemapTextureDescriptor {
+    tile_count: vec2u,
 }
 
 @group(0) @binding(0) var<uniform> view: View;
 @group(0) @binding(1) var<uniform> tilemap: Tilemap;
 @group(0) @binding(2) var texture: texture_2d_array<f32>;
 @group(0) @binding(3) var texture_sampler: sampler;
+@group(0) @binding(4) var<storage> texture_desc: array<TilemapTextureDescriptor>;
 
 const SQRT3 = sqrt(3.);
 
@@ -53,15 +61,15 @@ fn tri_corner(index: vec3i, edge_length: f32, corner: u32) -> vec2f {
 }
 
 var<private> UVS_UP: array<vec2f, 3> = array<vec2f, 3>(
+    vec2f(1., 1.),
     vec2f(0.5, 0.),
     vec2f(0., 1.),
-    vec2f(1., 1.),
 );
 
 var<private> UVS_DN: array<vec2f, 3> = array<vec2f, 3>(
-    vec2f(0., 1.),
-    vec2f(1., 1.),
-    vec2f(0.5, 0.),
+    vec2f(0., 0.),
+    vec2f(0.5, 1.),
+    vec2f(1., 0.),
 );
 
 fn tri_uv(index: vec3i, corner: u32) -> vec2f {
@@ -81,17 +89,19 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
 
     out.position_cs = view.clip_from_view * view.view_from_world * tilemap.world_from_model * position_os;
     out.tint = in.color;
-    out.uv = tri_uv(in.tile_index, corner);
-    if in.atlas_index[2] == 0 {
-        out.atlas_index = vec2u(in.atlas_index[0], in.atlas_index[1]);
-    } else {
-        // TODO animated tile
-    }
+
+    let vert_uv = tri_uv(in.tile_index, corner);
+    let tile_count = texture_desc[in.atlas_index[0]].tile_count;
+    let atlas_index = vec2u(in.atlas_index[1] % tile_count.x, in.atlas_index[1] / tile_count.x);
+    let tile_uv = vec2f(atlas_index) / vec2f(tile_count);
+    out.uv = tile_uv + vert_uv / vec2f(tile_count);
+    // out.uv = vert_uv;
 
     return out;
 }
 
 @fragment
 fn fragment(in: TilemapVertexOutput) -> @location(0) vec4f {
-    return vec4f(in.uv, 0., 1.);
+    return textureSample(texture, texture_sampler, in.uv, in.texture_index);
+    // return vec4f(in.uv, 0., 1.);
 }

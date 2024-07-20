@@ -243,15 +243,21 @@ impl<const B: usize> RenderCommand<Transparent2d> for BindTilemapBindGroups<B> {
         (bind_groups, buffers): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        if let (Some(bind_group), Some(offset)) = (
+        if let (Some(bind_group), Some(individual)) = (
             bind_groups.into_inner().bind_groups.get(&item.entity),
-            buffers.offsets.get(&item.entity),
+            buffers.individual.get(&item.entity),
         ) {
-            pass.set_bind_group(B, bind_group, &[view_uniform_offset.offset, *offset]);
-            RenderCommandResult::Success
-        } else {
-            RenderCommandResult::Failure
+            if let Some(uniform_offset) = individual.uniform_offset {
+                pass.set_bind_group(
+                    B,
+                    bind_group,
+                    &[view_uniform_offset.offset, uniform_offset],
+                );
+                return RenderCommandResult::Success;
+            }
         }
+
+        RenderCommandResult::Failure
     }
 }
 

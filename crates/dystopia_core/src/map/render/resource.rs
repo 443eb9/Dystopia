@@ -2,15 +2,15 @@ use bevy::{
     asset::{DirectAssetAccessExt, Handle},
     color::ColorToComponents,
     ecs::entity::EntityHashMap,
-    math::{Mat4, Vec2, Vec4},
+    math::{Mat4, UVec2, Vec2, Vec4},
     prelude::{Entity, FromWorld, Query, Res, ResMut, Resource, With, World},
     render::{
         extract_instances::ExtractedInstances,
         render_resource::{
             BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
-            ColorTargetState, ColorWrites, DynamicStorageBuffer, DynamicUniformBuffer,
-            FragmentState, MultisampleState, RenderPipelineDescriptor, SamplerBindingType, Shader,
-            ShaderStages, ShaderType, SpecializedRenderPipeline, TextureFormat, TextureSampleType,
+            BufferUsages, BufferVec, ColorTargetState, ColorWrites, FragmentState,
+            MultisampleState, RenderPipelineDescriptor, SamplerBindingType, Shader, ShaderStages,
+            ShaderType, SpecializedRenderPipeline, TextureFormat, TextureSampleType,
             VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
@@ -43,6 +43,7 @@ impl FromWorld for TilemapPipeline {
                     binding::uniform_buffer::<TilemapUniform>(true),
                     binding::texture_2d_array(TextureSampleType::Float { filterable: true }),
                     binding::sampler(SamplerBindingType::Filtering),
+                    binding::storage_buffer_read_only::<TilemapRenderTextureDescriptor>(false),
                 ),
             ),
         );
@@ -109,12 +110,40 @@ pub struct TilemapUniform {
     pub tint: Vec4,
 }
 
-#[derive(Resource, Default)]
+#[derive(ShaderType)]
+pub struct TilemapRenderTextureDescriptor {
+    pub tile_count: UVec2,
+}
+
+pub struct TilemapIndividualRenderData {
+    pub uniform_offset: Option<u32>,
+    pub texture_desc: BufferVec<TilemapRenderTextureDescriptor>,
+    pub animation: BufferVec<u32>,
+}
+
+impl Default for TilemapIndividualRenderData {
+    fn default() -> Self {
+        Self {
+            uniform_offset: Default::default(),
+            texture_desc: BufferVec::new(BufferUsages::STORAGE),
+            animation: BufferVec::new(BufferUsages::STORAGE),
+        }
+    }
+}
+
+#[derive(Resource)]
 pub struct TilemapBuffers {
-    pub uniform: DynamicUniformBuffer<TilemapUniform>,
-    pub offsets: EntityHashMap<u32>,
-    // TODO animated tile
-    pub animation: DynamicStorageBuffer<Vec<u32>>,
+    pub uniform: BufferVec<TilemapUniform>,
+    pub individual: EntityHashMap<TilemapIndividualRenderData>,
+}
+
+impl Default for TilemapBuffers {
+    fn default() -> Self {
+        Self {
+            uniform: BufferVec::new(BufferUsages::UNIFORM),
+            individual: Default::default(),
+        }
+    }
 }
 
 #[derive(Resource, Default)]
@@ -131,12 +160,26 @@ pub fn prepare_buffers(
     buffers.uniform.clear();
 
     for (entity, tilemap) in tilemaps.iter() {
-        let offset = buffers.uniform.push(&TilemapUniform {
+        let offset = buffers.uniform.push(TilemapUniform {
             tile_render_size: tilemap.tile_render_size.0,
             world_from_model: tilemap.transform.compute_matrix(),
             tint: tilemap.tint.0.to_vec4(),
         });
-        buffers.offsets.insert(*entity, offset);
+
+        let individual = buffers.individual.entry(*entity).or_default();
+        individual.uniform_offset = Some(offset as u32);
+
+        individual.texture_desc.clear();
+        tilemap.tilesets.textures().iter().for_each(|t| {
+            individual
+                .texture_desc
+                .push(TilemapRenderTextureDescriptor {
+                    tile_count: t.desc.size / t.desc.tile_size,
+                });
+        });
+        individual
+            .texture_desc
+            .write_buffer(&render_device, &render_queue);
     }
 
     buffers.uniform.write_buffer(&render_device, &render_queue);
@@ -156,12 +199,24 @@ pub fn prepare_bind_groups(
     };
 
     for tilemap in &tilemaps_query {
-        let (Some(tilemap_uniforms), Some(tilemap_texture)) = (
+        let (Some(tilemap_uniforms), Some(tilemap_texture), Some(individual)) = (
             tilemap_buffers.uniform.binding(),
             tilemap_textures.processed.get(&tilemap),
+            tilemap_buffers.individual.get(&tilemap),
         ) else {
             continue;
         };
+
+        let Some(texture_desc) = individual.texture_desc.binding() else {
+            continue;
+        };
+
+        // let (Some(animation), Some(texture_desc)) = (
+        //     individual.animation.binding(),
+        //     individual.texture_desc.binding(),
+        // ) else {
+        //     continue;
+        // };
 
         let bind_group = render_device.create_bind_group(
             format!("tilemap_bind_group_{:?}", tilemap).as_str(),
@@ -171,6 +226,7 @@ pub fn prepare_bind_groups(
                 tilemap_uniforms,
                 &tilemap_texture.texture_view,
                 &tilemap_texture.sampler,
+                texture_desc,
             )),
         );
 

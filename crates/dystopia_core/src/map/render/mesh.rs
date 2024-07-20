@@ -136,7 +136,7 @@ pub fn prepare_tilemap_meshes(
                         tile.atlas_index,
                         tile.atlas_index,
                     ]);
-                    vertex_color.extend_from_slice(&[tile.tint, tile.tint, tile.tint, tile.tint]);
+                    vertex_color.extend_from_slice(&[tile.tint, tile.tint, tile.tint]);
                     vertex_indices.extend_from_slice(&[
                         vertex_index,
                         vertex_index + 1,
