@@ -1,9 +1,10 @@
 use bevy::{
     app::{App, Plugin, Startup, Update},
+    asset::AssetServer,
     log::info,
-    math::{IVec3, Vec2},
-    prelude::{Camera2dBundle, Changed, Commands, Query, ResMut},
-    render::camera::OrthographicProjection,
+    math::{IVec3, UVec2, Vec2},
+    prelude::{Camera2dBundle, Changed, Commands, Query, Res, ResMut},
+    render::{camera::OrthographicProjection, render_resource::FilterMode},
     state::state::{NextState, OnEnter},
 };
 use bevy_pancam::PanCam;
@@ -11,7 +12,10 @@ use dystopia_core::{
     cosmos::gen::CosmosGenerationSettings,
     map::{
         bundle::{TileBundle, TilemapBundle},
-        tilemap::{FlattenedTileIndex, TileAtlasIndex, TileBindedTilemap, TileRenderSize},
+        tilemap::{
+            FlattenedTileIndex, TileAtlasIndex, TileBindedTilemap, TileIndex, TileRenderSize,
+            TilemapStorage, TilemapTexture, TilemapTextureDescriptor, TilemapTilesets,
+        },
     },
     schedule::state::{AssetState, GameState},
     sci::unit::Length,
@@ -54,20 +58,49 @@ fn debug_skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<Game
     info!("Skipped menu");
 }
 
-fn debug_tilemap(mut commands: Commands) {
-    const CHUNK_SIZE: u32 = 32;
+fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
+    const CHUNK_SIZE: u32 = 8;
 
     let entity = commands.spawn_empty().id();
     let mut tilemap = TilemapBundle {
         tile_render_size: TileRenderSize(Vec2::splat(32.)),
+        storgae: TilemapStorage::new(CHUNK_SIZE),
+        tilesets: TilemapTilesets::new(
+            vec![
+                TilemapTexture {
+                    handle: asset_server.load("images/test_tileset_a.png"),
+                    desc: TilemapTextureDescriptor {
+                        size: UVec2 { x: 48, y: 32 },
+                        tile_size: UVec2::splat(16),
+                    },
+                },
+                TilemapTexture {
+                    handle: asset_server.load("images/test_tileset_b.png"),
+                    desc: TilemapTextureDescriptor {
+                        size: UVec2 { x: 32, y: 32 },
+                        tile_size: UVec2::splat(16),
+                    },
+                },
+            ],
+            FilterMode::Nearest,
+        ),
         ..Default::default()
     };
 
-    for z in 0..5 {
-        for y in 0..4 {
-            for x in 0..2 {
-                let index = FlattenedTileIndex::from_direct(IVec3 { x, y, z }, CHUNK_SIZE);
-                let tile = commands.spawn(TileBundle {
+    let mut sum = 1;
+    for y in 0..4 {
+        for x in 0..2 {
+            let index = TileIndex::new(
+                IVec3 {
+                    x,
+                    y,
+                    z: sum - x - y,
+                },
+                CHUNK_SIZE,
+            );
+            tilemap.storgae.set(
+                &mut commands,
+                TileBundle {
                     binded_tilemap: TileBindedTilemap(entity),
                     index,
                     atlas_index: TileAtlasIndex::Static {
@@ -75,9 +108,9 @@ fn debug_tilemap(mut commands: Commands) {
                         atlas: 0,
                     },
                     ..Default::default()
-                });
-                tilemap.storgae.set(index, tile.id());
-            }
+                },
+            );
+            sum = if sum == 1 { 2 } else { 1 };
         }
     }
 

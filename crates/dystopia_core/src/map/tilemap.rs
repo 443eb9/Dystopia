@@ -2,10 +2,43 @@ use bevy::{
     asset::Handle,
     color::LinearRgba,
     math::{IVec3, UVec2, UVec3, Vec2},
-    prelude::{Component, Entity},
+    prelude::{Commands, Component, Deref, DerefMut, Entity},
     render::{render_resource::FilterMode, texture::Image},
-    utils::HashMap,
 };
+
+use crate::map::{
+    bundle::TileBundle,
+    storage::{Chunk, ChunkableIndex, ChunkedStorage, DEFAULT_CHUNK_SIZE},
+};
+
+#[derive(Component, Debug, Default, Clone, Copy)]
+pub struct TileIndex {
+    direct: IVec3,
+    flattend: FlattenedTileIndex,
+}
+
+impl TileIndex {
+    pub fn new(direct: IVec3, chunk_size: u32) -> Self {
+        assert!(
+            matches!(direct.element_sum(), 1 | 2),
+            "Invalid tile index {}. The element-wise sum of index must be 1 or 2.",
+            direct
+        );
+
+        Self {
+            direct,
+            flattend: FlattenedTileIndex::from_direct(direct, chunk_size),
+        }
+    }
+
+    pub fn direct(&self) -> IVec3 {
+        self.direct
+    }
+
+    pub fn flattend(&self) -> FlattenedTileIndex {
+        self.flattend
+    }
+}
 
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TileAtlasIndex {
@@ -56,16 +89,32 @@ impl ChunkedTileIndex {
     }
 }
 
-#[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq)]
+/// The fastest index for looking up tiles.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct FlattenedTileIndex {
     pub chunk_index: IVec3,
     pub in_chunk_index: usize,
 }
 
+impl ChunkableIndex for FlattenedTileIndex {
+    type ChunkIndex = IVec3;
+
+    #[inline]
+    fn in_chunk(&self) -> Self::ChunkIndex {
+        self.chunk_index
+    }
+
+    #[inline]
+    fn in_chunk_at(&self) -> usize {
+        self.in_chunk_index
+    }
+}
+
 impl FlattenedTileIndex {
+    #[inline]
     pub fn from_direct(index: IVec3, chunk_size: u32) -> Self {
         let chunk_size = chunk_size as i32;
-        let ic = index % chunk_size;
+        let ic = (index % chunk_size).abs();
         Self {
             chunk_index: index / chunk_size,
             in_chunk_index: (ic.x + ic.y * chunk_size + ic.z * chunk_size * chunk_size) as usize,
@@ -73,62 +122,59 @@ impl FlattenedTileIndex {
     }
 }
 
-#[derive(Default, Clone)]
-pub struct TilemapChunk {
-    content: Vec<Option<Entity>>,
-}
-
 /// Stores all entities on this tilemap.
-#[derive(Component, Default)]
-pub struct TilemapStorage {
-    chunk_size: u32,
-    storage: HashMap<IVec3, TilemapChunk>,
+#[derive(Component, Deref, DerefMut)]
+pub struct TilemapStorage(#[deref] ChunkedStorage<FlattenedTileIndex, Entity, 3>);
+
+impl Default for TilemapStorage {
+    fn default() -> Self {
+        Self(ChunkedStorage::new(DEFAULT_CHUNK_SIZE))
+    }
 }
 
 impl TilemapStorage {
     pub fn new(chunk_size: u32) -> Self {
-        Self {
-            chunk_size,
-            storage: Default::default(),
-        }
+        Self(ChunkedStorage::new(chunk_size))
     }
 
+    #[inline]
+    pub fn chunk_size(&self) -> u32 {
+        self.0.chunk_size()
+    }
+
+    #[inline]
     pub fn get(&self, index: IVec3) -> Option<Entity> {
-        let cs = self.chunk_size as i32;
-        let chunk_index = index / cs;
-        let in_chunk_index = (index % cs).as_uvec3();
-        self.chunked_get(ChunkedTileIndex {
-            chunk_index,
-            in_chunk_index,
-        })
+        self.flattened_get(FlattenedTileIndex::from_direct(index, self.chunk_size()))
     }
 
+    #[inline]
     pub fn chunked_get(&self, index: ChunkedTileIndex) -> Option<Entity> {
-        self.flattened_get(index.flatten(self.chunk_size))
+        self.flattened_get(index.flatten(self.chunk_size()))
     }
 
+    #[inline]
     pub fn flattened_get(&self, index: FlattenedTileIndex) -> Option<Entity> {
-        self.storage
-            .get(&index.chunk_index)
-            .and_then(|c| c.content[index.in_chunk_index])
+        self.0.get(&index).cloned()
     }
 
-    pub fn get_chunk(&self, index: IVec3) -> Option<&TilemapChunk> {
-        self.storage.get(&index)
+    #[inline]
+    pub fn get_chunk(&self, index: IVec3) -> Option<&Chunk<Entity>> {
+        self.0.get_chunk(&index)
     }
 
-    pub fn get_chunk_mut(&mut self, index: IVec3) -> Option<&mut TilemapChunk> {
-        self.storage.get_mut(&index)
+    #[inline]
+    pub fn get_chunk_mut(&mut self, index: IVec3) -> Option<&mut Chunk<Entity>> {
+        self.0.get_chunk_mut(&index)
     }
 
-    pub fn set(&mut self, index: FlattenedTileIndex, tile: Entity) {
-        if let Some(c) = self.storage.get_mut(&index.chunk_index) {
-            c.content[index.in_chunk_index] = Some(tile)
-        }
+    #[inline]
+    pub fn set(&mut self, commands: &mut Commands, tile: TileBundle) -> Option<Entity> {
+        self.0.set(tile.index.flattend, commands.spawn(tile).id())
     }
 
-    pub fn set_chunk(&mut self, index: IVec3, chunk: TilemapChunk) {
-        self.storage.insert(index, chunk);
+    #[inline]
+    pub fn set_chunk(&mut self, index: IVec3, chunk: Chunk<Entity>) {
+        self.0.set_chunk(&index, chunk);
     }
 }
 

@@ -2,6 +2,7 @@ use bevy::app::{App, Plugin};
 
 pub mod bundle;
 pub mod render;
+pub mod storage;
 pub mod tilemap;
 
 pub struct DystopiaMapPlugin;

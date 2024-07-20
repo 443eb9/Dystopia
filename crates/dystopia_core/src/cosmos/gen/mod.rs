@@ -453,7 +453,6 @@ fn scatter_bodies_in_range(
         let delta = (boundaries[1] - boundaries[0]) * t;
         if cur_dist + delta < boundaries[1] {
             bodies[cur_body].pos = DVec2::new(cur_dist, 0.);
-            dbg!(cur_dist);
 
             cur_body += 1;
             cur_dist += delta;
@@ -547,78 +546,78 @@ fn spawn_bodies(
     let mut statistics = CosmosBodiesStatistics::default();
 
     for star in stars {
-        commands.spawn(StarBundle {
-            star_ty: star.class.ty,
-            name: Name::new(star.name.clone()),
-            body_index: BodyIndex(bodies.len()),
-            mesh: mesh.clone(),
-            material: star_materials.add(StarMaterial { color: star.color }),
-            transform: Transform::from_scale(Vec3::splat(
-                Length::SolarRadius(star.body.radius * 2.).to_si() as f32,
-            )),
-            ..Default::default()
-        });
+        // commands.spawn(StarBundle {
+        //     star_ty: star.class.ty,
+        //     name: Name::new(star.name.clone()),
+        //     body_index: BodyIndex(bodies.len()),
+        //     mesh: mesh.clone(),
+        //     material: star_materials.add(StarMaterial { color: star.color }),
+        //     transform: Transform::from_scale(Vec3::splat(
+        //         Length::SolarRadius(star.body.radius * 2.).to_si() as f32,
+        //     )),
+        //     ..Default::default()
+        // });
         statistics.num_stars += 1;
         bodies.push(star.body);
 
         let mut i_children = 0;
 
         for planet in star.children {
-            if planet.ty == BodyType::Rocky {
-                commands.spawn((
-                    RockyBodyBundle {
-                        name: Name::new(format!("{} {}", &star.name, i_children)),
-                        ty: planet.ty,
-                        body_index: BodyIndex(bodies.len()),
-                        mesh: mesh.clone(),
-                        material: rocky_body_materials.add(RockyBodyMaterial {
-                            color: planet.color,
-                        }),
-                        transform: Transform::from_scale(Vec3::splat(
-                            Length::Meter(planet.body.radius * 2.).to_si() as f32,
-                        )),
-                        ..Default::default()
-                    },
-                    Planet,
-                ));
-            } else {
-                commands.spawn((
-                    GiantBodyBundle {
-                        name: Name::new(format!("{} {}", &star.name, i_children)),
-                        ty: planet.ty,
-                        body_index: BodyIndex(bodies.len()),
-                        mesh: mesh.clone(),
-                        material: giant_body_materials.add(GiantBodyMaterial {
-                            color: planet.color,
-                        }),
-                        transform: Transform::from_scale(Vec3::splat(
-                            Length::Meter(planet.body.radius * 2.).to_si() as f32,
-                        )),
-                        ..Default::default()
-                    },
-                    Planet,
-                ));
-            }
+            // if planet.ty == BodyType::Rocky {
+            //     commands.spawn((
+            //         RockyBodyBundle {
+            //             name: Name::new(format!("{} {}", &star.name, i_children)),
+            //             ty: planet.ty,
+            //             body_index: BodyIndex(bodies.len()),
+            //             mesh: mesh.clone(),
+            //             material: rocky_body_materials.add(RockyBodyMaterial {
+            //                 color: planet.color,
+            //             }),
+            //             transform: Transform::from_scale(Vec3::splat(
+            //                 Length::Meter(planet.body.radius * 2.).to_si() as f32,
+            //             )),
+            //             ..Default::default()
+            //         },
+            //         Planet,
+            //     ));
+            // } else {
+            //     commands.spawn((
+            //         GiantBodyBundle {
+            //             name: Name::new(format!("{} {}", &star.name, i_children)),
+            //             ty: planet.ty,
+            //             body_index: BodyIndex(bodies.len()),
+            //             mesh: mesh.clone(),
+            //             material: giant_body_materials.add(GiantBodyMaterial {
+            //                 color: planet.color,
+            //             }),
+            //             transform: Transform::from_scale(Vec3::splat(
+            //                 Length::Meter(planet.body.radius * 2.).to_si() as f32,
+            //             )),
+            //             ..Default::default()
+            //         },
+            //         Planet,
+            //     ));
+            // }
 
             statistics.num_planets += 1;
             i_children += 1;
             bodies.push(planet.body);
 
             for moon in planet.children {
-                commands.spawn((
-                    RockyBodyBundle {
-                        name: Name::new(format!("{} {}", star.name, i_children)),
-                        ty: BodyType::Rocky,
-                        body_index: BodyIndex(bodies.len()),
-                        mesh: mesh.clone(),
-                        material: rocky_body_materials.add(RockyBodyMaterial { color: moon.color }),
-                        transform: Transform::from_scale(Vec3::splat(
-                            Length::Meter(moon.body.radius * 2.).to_si() as f32,
-                        )),
-                        ..Default::default()
-                    },
-                    Moon,
-                ));
+                // commands.spawn((
+                //     RockyBodyBundle {
+                //         name: Name::new(format!("{} {}", star.name, i_children)),
+                //         ty: BodyType::Rocky,
+                //         body_index: BodyIndex(bodies.len()),
+                //         mesh: mesh.clone(),
+                //         material: rocky_body_materials.add(RockyBodyMaterial { color: moon.color }),
+                //         transform: Transform::from_scale(Vec3::splat(
+                //             Length::Meter(moon.body.radius * 2.).to_si() as f32,
+                //         )),
+                //         ..Default::default()
+                //     },
+                //     Moon,
+                // ));
 
                 statistics.num_moons += 1;
                 i_children += 1;

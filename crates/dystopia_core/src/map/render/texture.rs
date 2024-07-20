@@ -1,18 +1,21 @@
 use bevy::{
+    asset::{Assets, Handle},
     ecs::entity::EntityHashMap,
-    prelude::{Entity, Res, ResMut, Resource},
+    prelude::{Entity, Local, Query, Res, ResMut, Resource},
     render::{
+        extract_instances::ExtractedInstances,
         render_asset::RenderAssets,
         render_resource::{
             Extent3d, ImageCopyTexture, Origin3d, SamplerDescriptor, TextureAspect,
             TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
         },
         renderer::{RenderDevice, RenderQueue},
-        texture::GpuImage,
+        texture::{GpuImage, Image},
     },
+    utils::HashSet,
 };
 
-use crate::map::tilemap::TilemapTilesets;
+use crate::map::{render::ExtractedTilemap, tilemap::TilemapTilesets};
 
 #[derive(Resource, Default)]
 pub struct TilemapTextureStorage {
@@ -26,6 +29,39 @@ impl TilemapTextureStorage {
     }
 }
 
+pub fn change_texture_usage(
+    tilemaps_query: Query<&TilemapTilesets>,
+    mut images: ResMut<Assets<Image>>,
+    mut try_next_frame: Local<HashSet<Handle<Image>>>,
+) {
+    tilemaps_query
+        .iter()
+        .flat_map(|ts| ts.textures())
+        .map(|t| t.handle.clone())
+        .chain(try_next_frame.drain().collect::<Vec<_>>())
+        .for_each(|handle| {
+            let Some(image) = images.get_mut(&handle) else {
+                try_next_frame.insert(handle.clone());
+                return;
+            };
+
+            image.texture_descriptor.usage |= TextureUsages::COPY_SRC;
+        });
+}
+
+pub fn queue_tilemap_textures(
+    tilemaps: Res<ExtractedInstances<ExtractedTilemap>>,
+    mut texture_storage: ResMut<TilemapTextureStorage>,
+) {
+    for (entity, tilemap) in tilemaps.iter() {
+        if !texture_storage.processed.contains_key(entity) {
+            texture_storage
+                .to_process
+                .insert(*entity, tilemap.tilesets.clone());
+        }
+    }
+}
+
 pub fn process_textures(
     mut texture_storage: ResMut<TilemapTextureStorage>,
     gpu_images: Res<RenderAssets<GpuImage>>,
@@ -34,7 +70,6 @@ pub fn process_textures(
 ) {
     let mut to_process = EntityHashMap::default();
     std::mem::swap(&mut to_process, &mut texture_storage.to_process);
-
     for (tilemap, tileset) in to_process {
         if texture_storage.processed.contains_key(&tilemap) {
             continue;
@@ -64,7 +99,7 @@ pub fn process_textures(
             },
             mip_level_count: 1,
             sample_count: 1,
-            dimension: TextureDimension::D3,
+            dimension: TextureDimension::D2,
             format: TextureFormat::Rgba8Unorm,
             usage: TextureUsages::COPY_DST | TextureUsages::TEXTURE_BINDING,
             view_formats: &[],

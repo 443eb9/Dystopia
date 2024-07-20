@@ -5,14 +5,15 @@ use bevy::{
 };
 
 use crate::map::tilemap::{
-    FlattenedTileIndex, TileAtlasIndex, TileBindedTilemap, TileRenderSize, TileTint,
-    TilemapStorage, TilemapTint,
+    TileAtlasIndex, TileBindedTilemap, TileIndex, TileRenderSize, TileTint, TilemapStorage,
+    TilemapTilesets, TilemapTint,
 };
 
 #[derive(Bundle, Default)]
 pub struct TilemapBundle {
     pub tile_render_size: TileRenderSize,
     pub storgae: TilemapStorage,
+    pub tilesets: TilemapTilesets,
     pub tint: TilemapTint,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
@@ -24,7 +25,7 @@ pub struct TilemapBundle {
 #[derive(Bundle, Default)]
 pub struct TileBundle {
     pub binded_tilemap: TileBindedTilemap,
-    pub index: FlattenedTileIndex,
+    pub index: TileIndex,
     pub atlas_index: TileAtlasIndex,
     pub tint: TileTint,
     pub visibility: Visibility,

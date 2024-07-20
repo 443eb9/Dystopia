@@ -1,5 +1,5 @@
 use bevy::{
-    app::{App, Plugin},
+    app::{App, Plugin, Update},
     core_pipeline::core_2d::Transparent2d,
     ecs::{
         query::{QueryItem, ROQueryItem},
@@ -15,10 +15,10 @@ use bevy::{
         mesh::GpuBufferInfo,
         render_phase::{
             AddRenderCommand, DrawFunctions, PhaseItemExtraIndex, RenderCommand,
-            RenderCommandResult, TrackedRenderPass, ViewSortedRenderPhases,
+            RenderCommandResult, SetItemPipeline, TrackedRenderPass, ViewSortedRenderPhases,
         },
         render_resource::{PipelineCache, SpecializedRenderPipelines},
-        view::{Msaa, ViewUniformOffset, ViewVisibility},
+        view::{InheritedVisibility, Msaa, ViewUniformOffset, Visibility},
         Extract, ExtractSchedule, Render, RenderApp, RenderSet,
     },
     transform::components::GlobalTransform,
@@ -32,8 +32,8 @@ use crate::{
             texture::TilemapTextureStorage,
         },
         tilemap::{
-            FlattenedTileIndex, TileAtlasIndex, TileBindedTilemap, TileRenderSize, TileTint,
-            TilemapStorage, TilemapTint,
+            TileAtlasIndex, TileBindedTilemap, TileIndex, TileRenderSize, TileTint, TilemapStorage,
+            TilemapTilesets, TilemapTint,
         },
     },
     simulation::MainCamera,
@@ -47,21 +47,33 @@ pub struct DystopiaMapRenderPlugin;
 
 impl Plugin for DystopiaMapRenderPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(ExtractInstancesPlugin::<ExtractedTile>::new())
+            .add_plugins(ExtractInstancesPlugin::<ExtractedTilemap>::new())
+            .add_systems(Update, texture::change_texture_usage);
+
         let render_app = app.sub_app_mut(RenderApp);
 
         render_app
-            .add_plugins(ExtractInstancesPlugin::<ExtractedTile>::new())
-            .add_plugins(ExtractInstancesPlugin::<ExtractedTilemap>::extract_visible())
             .add_render_command::<Transparent2d, DrawTilemap>()
             .add_systems(ExtractSchedule, extract_visible_tilemap_renderers)
             .add_systems(
                 Render,
+                resource::prepare_buffers.in_set(RenderSet::PrepareResources),
+            )
+            .add_systems(
+                Render,
+                (texture::queue_tilemap_textures, texture::process_textures)
+                    .chain()
+                    .in_set(RenderSet::PrepareResources),
+            )
+            .add_systems(
+                Render,
                 (
+                    mesh::register_tilemaps_in_storage,
+                    mesh::prepare_tile_mesh_data,
                     mesh::prepare_tilemap_meshes,
-                    mesh::prepare_tiles.after(mesh::prepare_tilemap_meshes),
-                    resource::prepare_buffers,
-                    texture::process_textures,
                 )
+                    .chain()
                     .in_set(RenderSet::PrepareResources),
             )
             .add_systems(
@@ -69,11 +81,6 @@ impl Plugin for DystopiaMapRenderPlugin {
                 resource::prepare_bind_groups.in_set(RenderSet::PrepareBindGroups),
             )
             .add_systems(Render, queue_tilemap.in_set(RenderSet::Queue))
-            // TODO why we need to init it manually?
-            .init_resource::<bevy::render::extract_instances::ExtractedInstances<ExtractedTilemap>>(
-            )
-            // TODO why we need to init it manually?
-            .init_resource::<bevy::render::extract_instances::ExtractedInstances<ExtractedTile>>()
             .init_resource::<TilemapBindGroups>()
             .init_resource::<TilemapBuffers>()
             .init_resource::<TilemapMeshStorage>()
@@ -91,35 +98,39 @@ impl Plugin for DystopiaMapRenderPlugin {
 
 /// The renderer (or say a marker) for the target tilemap.
 ///
-/// As we are not extracting tilemaps into render world by spawning them,
-/// tilemap entities are in fact not exist, and cannot be queried.
-///
 /// Only visible tilemaps will have a corresponding renderer.
 #[derive(Component)]
-pub struct TilemapRenderer(pub Entity);
+pub struct TilemapRenderer;
 
 pub fn extract_visible_tilemap_renderers(
     mut commands: Commands,
-    tilemaps: Extract<Query<(Entity, &ViewVisibility), With<TilemapStorage>>>,
+    // TODO visibility system
+    tilemaps: Extract<Query<(Entity, &Visibility, &InheritedVisibility), With<TilemapStorage>>>,
 ) {
-    commands.spawn_batch(
+    commands.insert_or_spawn_batch(
         tilemaps
             .iter()
-            .filter_map(|(tm, v)| {
-                if v.get() {
-                    Some(TilemapRenderer(dbg!(tm)))
-                } else {
-                    None
+            .filter_map(|(tm, v, iv)| match v {
+                Visibility::Inherited => {
+                    if iv.get() {
+                        Some((tm, TilemapRenderer))
+                    } else {
+                        None
+                    }
                 }
+                Visibility::Hidden => None,
+                Visibility::Visible => Some((tm, TilemapRenderer)),
             })
             .collect::<Vec<_>>(),
     );
 }
 
 pub struct ExtractedTilemap {
+    pub chunk_size: u32,
     pub tile_render_size: TileRenderSize,
     pub transform: GlobalTransform,
     pub tint: TilemapTint,
+    pub tilesets: TilemapTilesets,
 }
 
 impl ExtractInstance for ExtractedTilemap {
@@ -127,6 +138,8 @@ impl ExtractInstance for ExtractedTilemap {
         Read<TileRenderSize>,
         Read<GlobalTransform>,
         Read<TilemapTint>,
+        Read<TilemapTilesets>,
+        Read<TilemapStorage>,
     );
 
     type QueryFilter = ();
@@ -136,13 +149,15 @@ impl ExtractInstance for ExtractedTilemap {
             tile_render_size: *item.0,
             transform: *item.1,
             tint: *item.2,
+            tilesets: item.3.clone(),
+            chunk_size: item.4.chunk_size(),
         })
     }
 }
 
 pub struct ExtractedTile {
     pub binded_tilemap: Entity,
-    pub index: FlattenedTileIndex,
+    pub index: TileIndex,
     pub atlas_index: TileAtlasIndex,
     pub tint: TileTint,
 }
@@ -150,12 +165,12 @@ pub struct ExtractedTile {
 impl ExtractInstance for ExtractedTile {
     type QueryData = (
         Read<TileBindedTilemap>,
-        Read<FlattenedTileIndex>,
+        Read<TileIndex>,
         Read<TileAtlasIndex>,
         Read<TileTint>,
     );
 
-    type QueryFilter = Changed<FlattenedTileIndex>;
+    type QueryFilter = (Changed<TileAtlasIndex>, Changed<TileTint>);
 
     fn extract(item: QueryItem<'_, Self::QueryData>) -> Option<Self> {
         Some(Self {
@@ -168,7 +183,7 @@ impl ExtractInstance for ExtractedTile {
 }
 
 pub fn queue_tilemap(
-    renderers_query: Query<&TilemapRenderer>,
+    tilemaps_query: Query<Entity, With<TilemapRenderer>>,
     mut render_phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
     main_view_query: Query<Entity, With<MainCamera>>,
     pipeline: Res<TilemapPipeline>,
@@ -194,10 +209,10 @@ pub fn queue_tilemap(
             continue;
         };
 
-        for renderer in &renderers_query {
+        for renderer in &tilemaps_query {
             render_phase.add(Transparent2d {
                 sort_key: FloatOrd(0.),
-                entity: renderer.0,
+                entity: renderer,
                 pipeline,
                 draw_function,
                 batch_range: 0..1,
@@ -207,11 +222,15 @@ pub fn queue_tilemap(
     }
 }
 
-pub type DrawTilemap = (BindTilemapBindGroups<0>,);
+pub type DrawTilemap = (
+    SetItemPipeline,
+    BindTilemapBindGroups<0>,
+    DrawTilemapChunkMeshes,
+);
 
 pub struct BindTilemapBindGroups<const B: usize>;
 impl<const B: usize> RenderCommand<Transparent2d> for BindTilemapBindGroups<B> {
-    type Param = SRes<TilemapBindGroups>;
+    type Param = (SRes<TilemapBindGroups>, SRes<TilemapBuffers>);
 
     type ViewQuery = Read<ViewUniformOffset>;
 
@@ -221,11 +240,14 @@ impl<const B: usize> RenderCommand<Transparent2d> for BindTilemapBindGroups<B> {
         item: &Transparent2d,
         view_uniform_offset: ROQueryItem<'w, Self::ViewQuery>,
         _entity: Option<ROQueryItem<'w, Self::ItemQuery>>,
-        bind_groups: SystemParamItem<'w, '_, Self::Param>,
+        (bind_groups, buffers): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
-        if let Some(bind_group) = bind_groups.into_inner().bind_groups.get(&item.entity) {
-            pass.set_bind_group(B, bind_group, &[view_uniform_offset.offset]);
+        if let (Some(bind_group), Some(offset)) = (
+            bind_groups.into_inner().bind_groups.get(&item.entity),
+            buffers.offsets.get(&item.entity),
+        ) {
+            pass.set_bind_group(B, bind_group, &[view_uniform_offset.offset, *offset]);
             RenderCommandResult::Success
         } else {
             RenderCommandResult::Failure
@@ -252,7 +274,7 @@ impl RenderCommand<Transparent2d> for DrawTilemapChunkMeshes {
             return RenderCommandResult::Failure;
         };
 
-        for chunk in chunks.values() {
+        for chunk in chunks.chunks.values() {
             let Some(gpu_mesh) = &chunk.gpu_mesh else {
                 continue;
             };
@@ -266,14 +288,8 @@ impl RenderCommand<Transparent2d> for DrawTilemapChunkMeshes {
                 } => {
                     pass.set_index_buffer(buffer.slice(..), 0, *index_format);
                     pass.draw_indexed(0..*count, 0, 0..1);
-
-                    println!("Drawn!");
                 }
-                GpuBufferInfo::NonIndexed => {
-                    pass.draw(0..gpu_mesh.vertex_count, 0..1);
-
-                    println!("Drawn!");
-                }
+                GpuBufferInfo::NonIndexed => pass.draw(0..gpu_mesh.vertex_count, 0..1),
             }
         }
         RenderCommandResult::Success

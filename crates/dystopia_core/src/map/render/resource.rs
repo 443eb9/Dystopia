@@ -3,17 +3,17 @@ use bevy::{
     color::ColorToComponents,
     ecs::entity::EntityHashMap,
     math::{Mat4, Vec2, Vec4},
-    prelude::{FromWorld, Query, Res, ResMut, Resource, World},
+    prelude::{Entity, FromWorld, Query, Res, ResMut, Resource, With, World},
     render::{
         extract_instances::ExtractedInstances,
         render_resource::{
             BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
             ColorTargetState, ColorWrites, DynamicStorageBuffer, DynamicUniformBuffer,
-            FragmentState, MultisampleState, RenderPipelineDescriptor, Shader, ShaderStages,
-            ShaderType, SpecializedRenderPipeline, TextureFormat, VertexBufferLayout, VertexFormat,
-            VertexState, VertexStepMode,
+            FragmentState, MultisampleState, RenderPipelineDescriptor, SamplerBindingType, Shader,
+            ShaderStages, ShaderType, SpecializedRenderPipeline, TextureFormat, TextureSampleType,
+            VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
-        renderer::RenderDevice,
+        renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
         view::{ViewUniform, ViewUniforms},
     },
@@ -41,6 +41,8 @@ impl FromWorld for TilemapPipeline {
                 (
                     binding::uniform_buffer::<ViewUniform>(true),
                     binding::uniform_buffer::<TilemapUniform>(true),
+                    binding::texture_2d_array(TextureSampleType::Float { filterable: true }),
+                    binding::sampler(SamplerBindingType::Filtering),
                 ),
             ),
         );
@@ -75,6 +77,8 @@ impl SpecializedRenderPipeline for TilemapPipeline {
                         VertexFormat::Float32x4,
                         // atlas_index
                         VertexFormat::Uint32x3,
+                        // tile_index
+                        VertexFormat::Sint32x3,
                     ],
                 )],
             },
@@ -121,6 +125,8 @@ pub struct TilemapBindGroups {
 pub fn prepare_buffers(
     tilemaps: Res<ExtractedInstances<ExtractedTilemap>>,
     mut buffers: ResMut<TilemapBuffers>,
+    render_device: Res<RenderDevice>,
+    render_queue: Res<RenderQueue>,
 ) {
     buffers.uniform.clear();
 
@@ -132,10 +138,12 @@ pub fn prepare_buffers(
         });
         buffers.offsets.insert(*entity, offset);
     }
+
+    buffers.uniform.write_buffer(&render_device, &render_queue);
 }
 
 pub fn prepare_bind_groups(
-    renderers_query: Query<&TilemapRenderer>,
+    tilemaps_query: Query<Entity, With<TilemapRenderer>>,
     pipeline: Res<TilemapPipeline>,
     view_uniforms: Res<ViewUniforms>,
     tilemap_buffers: Res<TilemapBuffers>,
@@ -147,9 +155,7 @@ pub fn prepare_bind_groups(
         return;
     };
 
-    for renderer in &renderers_query {
-        let tilemap = renderer.0;
-
+    for tilemap in &tilemaps_query {
         let (Some(tilemap_uniforms), Some(tilemap_texture)) = (
             tilemap_buffers.uniform.binding(),
             tilemap_textures.processed.get(&tilemap),
