@@ -4,14 +4,16 @@ use bevy::{
     input::ButtonInput,
     log::info,
     math::{IVec3, UVec2, Vec2},
-    prelude::{Camera2dBundle, Changed, Commands, KeyCode, Query, Res, ResMut},
+    prelude::{Camera2dBundle, Changed, Commands, KeyCode, Local, Query, Res, ResMut, With},
     render::{
         camera::OrthographicProjection,
         render_resource::FilterMode,
         settings::{Backends, RenderCreation, WgpuSettings},
+        view::Visibility,
         RenderPlugin,
     },
     state::state::{NextState, OnEnter},
+    time::{Real, Time},
     utils::hashbrown::HashSet,
     window::{PresentMode, Window, WindowPlugin},
     DefaultPlugins,
@@ -152,7 +154,11 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn debug_rm_vis(
     mut commands: Commands,
     mut tilemaps_query: Query<&mut TilemapStorage>,
+    mut tiles_query: Query<&mut Visibility, With<TileIndex>>,
     keyboard: Res<ButtonInput<KeyCode>>,
+    mut visible: Local<Visibility>,
+    time: Res<Time<Real>>,
+    mut twinkled: Local<bool>,
 ) {
     let mut rng = rand::thread_rng();
 
@@ -185,5 +191,30 @@ fn debug_rm_vis(
         for storage in &tilemaps_query {
             storage.despawn(&mut commands);
         }
+    }
+
+    if keyboard.pressed(KeyCode::Digit4) {
+        const CYCLE: f32 = 0.25;
+        let t = (time.elapsed_seconds() / CYCLE) as u32 % 2 == 0;
+
+        if t != *twinkled {
+            return;
+        }
+
+        if *visible != Visibility::Hidden {
+            tiles_query.iter_mut().for_each(|mut visibility| {
+                *visibility = Visibility::Inherited;
+            });
+            *visible = Visibility::Hidden;
+        } else {
+            tiles_query.iter_mut().for_each(|mut visibility| {
+                if rng.gen_range(0.0..1.0) > 0.5 {
+                    *visibility = Visibility::Hidden;
+                }
+            });
+            *visible = Visibility::Inherited;
+        }
+
+        *twinkled = !t;
     }
 }

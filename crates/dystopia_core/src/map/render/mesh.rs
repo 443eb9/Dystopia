@@ -113,16 +113,21 @@ pub fn prepare_tile_mesh_data(
             .entry(index.chunk_index)
             .or_insert_with(|| TilemapRenderChunk::new(chunks.chunk_size));
 
-        chunk.set(
-            index.in_chunk_index,
-            Some(TileMeshData {
-                tint: tile.tint.0.to_vec4(),
-                atlas_index: match tile.atlas_index {
-                    TileAtlasIndex::Static { texture, atlas } => [texture, atlas, 0],
-                },
-                tile_index: tile.index.direct(),
-            }),
-        );
+        let data = {
+            if tile.changed_vis.is_some_and(|v| !v) {
+                None
+            } else {
+                Some(TileMeshData {
+                    tint: tile.tint.0.to_vec4(),
+                    atlas_index: match tile.atlas_index {
+                        TileAtlasIndex::Static { texture, atlas } => [texture, atlas, 0],
+                    },
+                    tile_index: tile.index.direct(),
+                })
+            }
+        };
+
+        chunk.set(index.in_chunk_index, data);
     }
 }
 

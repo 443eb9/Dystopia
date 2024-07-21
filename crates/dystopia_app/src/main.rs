@@ -11,8 +11,6 @@ use bevy::{
 use bevy_pancam::PanCamPlugin;
 use dystopia_core::DystopiaCorePlugin;
 
-mod debug;
-
 fn main() {
     App::new()
         .add_plugins((

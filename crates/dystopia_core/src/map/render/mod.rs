@@ -9,7 +9,10 @@ use bevy::{
         },
     },
     math::FloatOrd,
-    prelude::{Changed, Commands, Component, Entity, IntoSystemConfigs, Query, Res, ResMut, With},
+    prelude::{
+        Changed, Commands, Component, DetectChanges, Entity, IntoSystemConfigs, Or, Query, Ref,
+        Res, ResMut, With,
+    },
     render::{
         extract_instances::{ExtractInstance, ExtractInstancesPlugin},
         mesh::GpuBufferInfo,
@@ -48,8 +51,8 @@ pub struct DystopiaMapRenderPlugin;
 impl Plugin for DystopiaMapRenderPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins((
-            ExtractInstancesPlugin::<ExtractedTile>::new(),
             ExtractInstancesPlugin::<ExtractedTilemap>::new(),
+            ExtractInstancesPlugin::<ExtractedTile>::new(),
         ))
         .add_systems(Update, texture::change_texture_usage);
 
@@ -82,7 +85,7 @@ impl Plugin for DystopiaMapRenderPlugin {
                 Render,
                 resource::prepare_bind_groups.in_set(RenderSet::PrepareBindGroups),
             )
-            .add_systems(Render, queue_tilemap.in_set(RenderSet::Queue))
+            .add_systems(Render, queue_tilemaps.in_set(RenderSet::Queue))
             .init_resource::<TilemapBindGroups>()
             .init_resource::<TilemapBuffers>()
             .init_resource::<TilemapMeshStorage>()
@@ -162,6 +165,7 @@ pub struct ExtractedTile {
     pub index: TileIndex,
     pub atlas_index: TileAtlasIndex,
     pub tint: TileTint,
+    pub changed_vis: Option<bool>,
 }
 
 impl ExtractInstance for ExtractedTile {
@@ -170,9 +174,14 @@ impl ExtractInstance for ExtractedTile {
         Read<TileIndex>,
         Read<TileAtlasIndex>,
         Read<TileTint>,
+        Ref<'static, Visibility>,
     );
 
-    type QueryFilter = (Changed<TileAtlasIndex>, Changed<TileTint>);
+    type QueryFilter = Or<(
+        Changed<TileAtlasIndex>,
+        Changed<TileTint>,
+        Changed<Visibility>,
+    )>;
 
     fn extract(item: QueryItem<'_, Self::QueryData>) -> Option<Self> {
         Some(Self {
@@ -180,11 +189,16 @@ impl ExtractInstance for ExtractedTile {
             index: *item.1,
             atlas_index: *item.2,
             tint: *item.3,
+            changed_vis: if item.4.is_changed() {
+                Some(*item.4 != Visibility::Hidden)
+            } else {
+                None
+            },
         })
     }
 }
 
-pub fn queue_tilemap(
+pub fn queue_tilemaps(
     tilemaps_query: Query<Entity, With<TilemapRenderer>>,
     mut render_phases: ResMut<ViewSortedRenderPhases<Transparent2d>>,
     main_view_query: Query<Entity, With<MainCamera>>,
