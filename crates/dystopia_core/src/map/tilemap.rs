@@ -8,7 +8,7 @@ use bevy::{
 
 use crate::map::{
     bundle::TileBundle,
-    rm_vis::{DespawnMe, RemoveTilemapChunk},
+    removal::{DespawnMe, RemoveTilemapChunk},
     storage::{Chunk, ChunkableIndex, ChunkedStorage, DEFAULT_CHUNK_SIZE},
 };
 

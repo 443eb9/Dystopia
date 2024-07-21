@@ -1,4 +1,4 @@
-//! Removal and visibility change handlers.
+//! Tilemaps/Tiles/Chunks removal handlers.
 
 use bevy::{
     app::{App, First, Plugin, Update},
