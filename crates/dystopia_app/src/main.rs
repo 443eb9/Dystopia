@@ -34,7 +34,6 @@ fn main() {
                 }),
             DystopiaCorePlugin,
             PanCamPlugin::default(),
-            debug::DystopiaDebugPlugin { inspector: false },
         ))
         .run();
 }

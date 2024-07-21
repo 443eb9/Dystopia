@@ -81,6 +81,20 @@ where
     }
 
     #[inline]
+    pub fn remove(&mut self, index: &I) -> Option<T> {
+        self.storage
+            .entry(index.in_chunk())
+            .or_insert_with(|| Chunk(vec![None; self.chunk_size.pow(DIM) as usize]))
+            [index.in_chunk_at()]
+        .take()
+    }
+
+    #[inline]
+    pub fn remove_chunk(&mut self, index: &I::ChunkIndex) -> Option<Chunk<T>> {
+        self.storage.remove(index)
+    }
+
+    #[inline]
     pub fn set(&mut self, index: I, item: T) -> Option<T> {
         let slot = &mut self
             .storage

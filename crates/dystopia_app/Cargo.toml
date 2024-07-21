@@ -8,3 +8,10 @@ bevy.workspace = true
 bevy-inspector-egui.workspace = true
 bevy_pancam.workspace = true
 dystopia_core = { version = "0.1.0", path = "../dystopia_core" }
+
+[dev-dependencies]
+rand = "0.8"
+
+[[example]]
+name = "debug"
+path = "examples/debug.rs"

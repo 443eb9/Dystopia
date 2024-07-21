@@ -39,10 +39,11 @@ pub struct TileMeshData {
 
 pub struct TilemapRenderChunk {
     pub chunk_size: u32,
-    pub tiles: Vec<Option<TileMeshData>>,
     pub mesh: Option<Mesh>,
     pub gpu_mesh: Option<GpuMesh>,
-    pub is_dirty: bool,
+
+    tiles: Vec<Option<TileMeshData>>,
+    is_dirty: bool,
 }
 
 impl TilemapRenderChunk {
@@ -54,6 +55,22 @@ impl TilemapRenderChunk {
             gpu_mesh: Default::default(),
             is_dirty: true,
         }
+    }
+
+    #[inline]
+    pub fn set(&mut self, index: usize, tile: Option<TileMeshData>) {
+        self.tiles[index] = tile;
+        self.is_dirty = true;
+    }
+
+    #[inline]
+    pub fn tiles(&self) -> &Vec<Option<TileMeshData>> {
+        &self.tiles
+    }
+
+    #[inline]
+    pub fn is_dirty(&self) -> bool {
+        self.is_dirty
     }
 }
 
@@ -89,21 +106,23 @@ pub fn prepare_tile_mesh_data(
     mut mesh_storage: ResMut<TilemapMeshStorage>,
 ) {
     for tile in tiles.values() {
+        let index = tile.index.flattend();
         let chunks = mesh_storage.storage.get_mut(&tile.binded_tilemap).unwrap();
         let chunk = chunks
             .chunks
-            .entry(tile.index.flattend().chunk_index)
+            .entry(index.chunk_index)
             .or_insert_with(|| TilemapRenderChunk::new(chunks.chunk_size));
 
-        chunk.tiles[tile.index.flattend().in_chunk_index] = Some(TileMeshData {
-            tint: tile.tint.0.to_vec4(),
-            atlas_index: match tile.atlas_index {
-                TileAtlasIndex::Static { texture, atlas } => [texture, atlas, 0],
-            },
-            tile_index: tile.index.direct(),
-        });
-
-        chunk.is_dirty = true;
+        chunk.set(
+            index.in_chunk_index,
+            Some(TileMeshData {
+                tint: tile.tint.0.to_vec4(),
+                atlas_index: match tile.atlas_index {
+                    TileAtlasIndex::Static { texture, atlas } => [texture, atlas, 0],
+                },
+                tile_index: tile.index.direct(),
+            }),
+        );
     }
 }
 

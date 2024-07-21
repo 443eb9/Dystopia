@@ -8,6 +8,7 @@ use bevy::{
 
 use crate::map::{
     bundle::TileBundle,
+    rm_vis::{DespawnMe, RemoveTilemapChunk},
     storage::{Chunk, ChunkableIndex, ChunkedStorage, DEFAULT_CHUNK_SIZE},
 };
 
@@ -124,22 +125,32 @@ impl FlattenedTileIndex {
 
 /// Stores all entities on this tilemap.
 #[derive(Component, Deref, DerefMut)]
-pub struct TilemapStorage(#[deref] ChunkedStorage<FlattenedTileIndex, Entity, 3>);
+pub struct TilemapStorage {
+    tilemap: Entity,
+    #[deref]
+    internal: ChunkedStorage<FlattenedTileIndex, Entity, 3>,
+}
 
 impl Default for TilemapStorage {
     fn default() -> Self {
-        Self(ChunkedStorage::new(DEFAULT_CHUNK_SIZE))
+        Self {
+            tilemap: Entity::PLACEHOLDER,
+            internal: ChunkedStorage::new(DEFAULT_CHUNK_SIZE),
+        }
     }
 }
 
 impl TilemapStorage {
-    pub fn new(chunk_size: u32) -> Self {
-        Self(ChunkedStorage::new(chunk_size))
+    pub fn new(binded_tilemap: Entity, chunk_size: u32) -> Self {
+        Self {
+            tilemap: binded_tilemap,
+            internal: ChunkedStorage::new(chunk_size),
+        }
     }
 
     #[inline]
     pub fn chunk_size(&self) -> u32 {
-        self.0.chunk_size()
+        self.internal.chunk_size()
     }
 
     #[inline]
@@ -154,27 +165,70 @@ impl TilemapStorage {
 
     #[inline]
     pub fn flattened_get(&self, index: FlattenedTileIndex) -> Option<Entity> {
-        self.0.get(&index).cloned()
+        self.internal.get(&index).cloned()
     }
 
     #[inline]
     pub fn get_chunk(&self, index: IVec3) -> Option<&Chunk<Entity>> {
-        self.0.get_chunk(&index)
+        self.internal.get_chunk(&index)
     }
 
     #[inline]
     pub fn get_chunk_mut(&mut self, index: IVec3) -> Option<&mut Chunk<Entity>> {
-        self.0.get_chunk_mut(&index)
+        self.internal.get_chunk_mut(&index)
     }
 
     #[inline]
     pub fn set(&mut self, commands: &mut Commands, tile: TileBundle) -> Option<Entity> {
-        self.0.set(tile.index.flattend, commands.spawn(tile).id())
+        self.internal
+            .set(tile.index.flattend, commands.spawn(tile).id())
     }
 
     #[inline]
     pub fn set_chunk(&mut self, index: IVec3, chunk: Chunk<Entity>) {
-        self.0.set_chunk(&index, chunk);
+        self.internal.set_chunk(&index, chunk);
+    }
+
+    #[inline]
+    pub fn remove(&mut self, commands: &mut Commands, index: IVec3) -> Option<Entity> {
+        self.flattened_remove(
+            commands,
+            FlattenedTileIndex::from_direct(index, self.chunk_size()),
+        )
+    }
+
+    #[inline]
+    pub fn chunked_remove(
+        &mut self,
+        commands: &mut Commands,
+        index: ChunkedTileIndex,
+    ) -> Option<Entity> {
+        self.flattened_remove(commands, index.flatten(self.chunk_size()))
+    }
+
+    #[inline]
+    pub fn flattened_remove(
+        &mut self,
+        commands: &mut Commands,
+        index: FlattenedTileIndex,
+    ) -> Option<Entity> {
+        self.internal.remove(&index).inspect(|e| {
+            commands.entity(*e).insert(DespawnMe);
+        })
+    }
+
+    #[inline]
+    pub fn remove_chunk(&mut self, commands: &mut Commands, index: IVec3) -> Option<Chunk<Entity>> {
+        commands.spawn(RemoveTilemapChunk {
+            tilemap: self.tilemap,
+            index,
+        });
+        self.internal.remove_chunk(&index)
+    }
+
+    #[inline]
+    pub fn despawn(&self, commands: &mut Commands) {
+        commands.entity(self.tilemap).insert(DespawnMe);
     }
 }
 

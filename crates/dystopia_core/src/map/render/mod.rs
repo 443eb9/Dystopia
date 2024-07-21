@@ -47,9 +47,11 @@ pub struct DystopiaMapRenderPlugin;
 
 impl Plugin for DystopiaMapRenderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(ExtractInstancesPlugin::<ExtractedTile>::new())
-            .add_plugins(ExtractInstancesPlugin::<ExtractedTilemap>::new())
-            .add_systems(Update, texture::change_texture_usage);
+        app.add_plugins((
+            ExtractInstancesPlugin::<ExtractedTile>::new(),
+            ExtractInstancesPlugin::<ExtractedTilemap>::new(),
+        ))
+        .add_systems(Update, texture::change_texture_usage);
 
         let render_app = app.sub_app_mut(RenderApp);
 
@@ -248,11 +250,7 @@ impl<const B: usize> RenderCommand<Transparent2d> for BindTilemapBindGroups<B> {
             buffers.individual.get(&item.entity),
         ) {
             if let Some(uniform_offset) = individual.uniform_offset {
-                pass.set_bind_group(
-                    B,
-                    bind_group,
-                    &[view_uniform_offset.offset, uniform_offset],
-                );
+                pass.set_bind_group(B, bind_group, &[view_uniform_offset.offset, uniform_offset]);
                 return RenderCommandResult::Success;
             }
         }
