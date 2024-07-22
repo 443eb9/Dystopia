@@ -25,8 +25,9 @@ use dystopia_core::{
     map::{
         bundle::{TileBundle, TilemapBundle},
         tilemap::{
-            FlattenedTileIndex, TileAtlasIndex, TileBindedTilemap, TileIndex, TileRenderSize,
-            TilemapStorage, TilemapTexture, TilemapTextureDescriptor, TilemapTilesets,
+            FlattenedTileIndex, TileAtlasIndex, TileBindedTilemap, TileFlip, TileIndex,
+            TileRenderSize, TilemapStorage, TilemapTexture, TilemapTextureDescriptor,
+            TilemapTilesets,
         },
     },
     math::shape::icosahedron,
@@ -164,33 +165,33 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
 
     let anim_dn = tilemap.animations.register(
         vec![
-            (0, 0),
-            (0, 1),
-            (0, 2),
-            (1, 1),
+            (0, 0, TileFlip::NONE),
+            (0, 1, TileFlip::NONE),
+            (0, 2, TileFlip::HORIZONTAL),
+            (1, 1, TileFlip::NONE),
         ],
         3,
     );
     let anim_up = tilemap.animations.register(
         vec![
-            (0, 3),
-            (0, 4),
-            (0, 5),
-            (1, 4),
+            (0, 3, TileFlip::NONE),
+            (0, 4, TileFlip::NONE),
+            (0, 5, TileFlip::HORIZONTAL),
+            (1, 4, TileFlip::NONE),
         ],
         3,
     );
 
     let mut rng = rand::thread_rng();
     for (i_tri, tri) in icosahedron(2, IVec3::Y).into_iter().enumerate() {
-        // let texture = if i_tri % 2 == 0 { 0 } else { 1 };
-        // let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
+        let texture = if i_tri % 2 == 0 { 0 } else { 1 };
+        let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
         tilemap.storgae.set(
             &mut commands,
             TileBundle {
                 binded_tilemap: TileBindedTilemap(entity),
                 index: TileIndex::new(tri, CHUNK_SIZE),
-                // atlas_index: TileAtlasIndex::Static((texture, atlas).into()),
+                // atlas_index: TileAtlasIndex::Static((texture, atlas, TileFlip::HORIZONTAL).into()),
                 atlas_index: TileAtlasIndex::Animated {
                     anim: if tri.element_sum() == 1 {
                         anim_dn

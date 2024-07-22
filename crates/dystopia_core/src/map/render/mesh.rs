@@ -120,7 +120,10 @@ pub fn prepare_tile_mesh_data(
                 Some(TileMeshData {
                     tint: tile.tint.0.to_vec4(),
                     atlas_index: match tile.atlas_index {
-                        TileAtlasIndex::Static(s) => [s.texture, s.atlas, 0, 0],
+                        TileAtlasIndex::Static(mut s) => {
+                            s = s.encode();
+                            [s.texture, s.atlas, 0, 0]
+                        }
                         TileAtlasIndex::Animated {
                             anim,
                             offset_milisec,

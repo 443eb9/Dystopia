@@ -19,6 +19,7 @@ bevy = { version = "0.14", default-features = false, features = [
 ] }
 bevy-inspector-egui = "0.25"
 bevy_pancam = { version = "0.12.0", features = ["bevy_egui"] }
+bitflags = "2.6"
 enum-map = "2.7"
 hashbrown = { version = "0.14", features = ["rayon"] }
 indexmap = "2.2"

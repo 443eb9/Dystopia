@@ -70,6 +70,7 @@ impl Default for TileAtlasIndex {
 pub struct TileStaticAtlas {
     pub texture: u32,
     pub atlas: u32,
+    pub flip: TileFlip,
 }
 
 impl From<(u32, u32)> for TileStaticAtlas {
@@ -77,6 +78,35 @@ impl From<(u32, u32)> for TileStaticAtlas {
         Self {
             texture: value.0,
             atlas: value.1,
+            flip: TileFlip::NONE,
+        }
+    }
+}
+
+impl From<(u32, u32, TileFlip)> for TileStaticAtlas {
+    fn from(value: (u32, u32, TileFlip)) -> Self {
+        Self {
+            texture: value.0,
+            atlas: value.1,
+            flip: value.2,
+        }
+    }
+}
+
+impl TileStaticAtlas {
+    pub fn encode(self) -> Self {
+        Self {
+            texture: self.texture,
+            atlas: self.atlas ^ (self.flip.bits() << 30),
+            flip: TileFlip::NONE,
+        }
+    }
+
+    pub fn decode(self) -> Self {
+        Self {
+            texture: self.texture,
+            atlas: self.atlas & (0x3FFF_FFFF),
+            flip: TileFlip::from_bits(self.atlas >> 30).unwrap(),
         }
     }
 }
@@ -85,6 +115,16 @@ impl From<(u32, u32)> for TileStaticAtlas {
 pub struct TileAnimation {
     pub(crate) start: usize,
     pub(crate) len: usize,
+}
+
+bitflags::bitflags! {
+    #[derive(Debug, Default, Clone, Copy)]
+    pub struct TileFlip: u32 {
+        const NONE       = 0b00;
+        const HORIZONTAL = 0b10;
+        const VERTICAL   = 0b01;
+        const BOTH       = 0b11;
+    }
 }
 
 #[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
@@ -331,7 +371,11 @@ impl TilemapAnimations {
         animation: impl IntoIterator<IntoIter: Iterator<Item = impl Into<TileStaticAtlas>>>,
         fps: u32,
     ) -> TileAnimation {
-        let animation = animation.into_iter().map(Into::into).collect::<Vec<_>>();
+        let animation = animation
+            .into_iter()
+            .map(Into::into)
+            .map(|f| f.encode())
+            .collect::<Vec<_>>();
         self.push(fps);
         let anim = TileAnimation {
             start: self.len(),

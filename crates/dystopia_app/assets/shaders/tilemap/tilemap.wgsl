@@ -10,9 +10,9 @@ struct TilemapVertexInput {
     @builtin(vertex_index) v_index: u32,
     @location(0) position: vec3f,
     @location(1) color: vec4f,
-    /// If not animated: `[texture_index, atlas_index, 0, 0]`
+    /// If not animated: `[texture_index, atlas_index, special, 0]`
     ///
-    /// If animated: `[start, len, 1, offset_milisec]`
+    /// If animated: `[start, len, special, offset_milisec]`
     @location(2) atlas_index: vec4u,
     @location(3) tile_index: vec3i,
 }
@@ -82,6 +82,17 @@ fn tri_uv(index: vec3i, corner: u32) -> vec2f {
     }
 }
 
+fn decode_atlas_and_flip_uv(atlas_index: u32, uv: ptr<function, vec2f>) -> u32 {
+    let flip = atlas_index >> 30;
+    if (flip & 1u) != 0u {
+        (*uv).y = 1. - (*uv).y;
+    }
+    if (flip & 2u) != 0u {
+        (*uv).x = 1. - (*uv).x;
+    }
+    return atlas_index & 0x3FFFFFFF;
+}
+
 @vertex
 fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
     var out: TilemapVertexOutput;
@@ -103,10 +114,11 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
         atlas_indices = array<u32, 2>(animations[cur_index], animations[cur_index + 1u]);
     }
 
-    let vert_uv = tri_uv(in.tile_index, corner);
+    var vert_uv = tri_uv(in.tile_index, corner);
     let tile_count = texture_desc[atlas_indices[0]].tile_count;
-    let atlas_index = vec2u(atlas_indices[1] % tile_count.x, atlas_indices[1] / tile_count.x);
-    let tile_uv = vec2f(atlas_index) / vec2f(tile_count);
+    let decoded_atlas_index = decode_atlas_and_flip_uv(atlas_indices[1], &vert_uv);
+    let atlas_index_2d = vec2u(decoded_atlas_index % tile_count.x, decoded_atlas_index / tile_count.x);
+    let tile_uv = vec2f(atlas_index_2d) / vec2f(tile_count);
     out.uv = tile_uv + vert_uv / vec2f(tile_count);
     out.texture_index = atlas_indices[0];
 

@@ -1,6 +1,3 @@
-import math
-
-for i in range(15,128):
-    t = i / 2 * math.sqrt(3)
-    if abs(1 - (t - math.floor(t))) < 0.01:
-        print(i, t)
+test = 0b1100_0000_0000_0000_0000_0000_0100_1000
+print(test >> 30)
+print((52 ^ (3 << 30) ) & 0x3FFFFFFF)
