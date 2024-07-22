@@ -135,14 +135,71 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..Default::default()
     };
 
-    for tri in icosahedron(2, IVec3::Y) {
-        let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
+    // let anim_dn = tilemap.animations.register(
+    //     vec![
+    //         (0, 0),
+    //         (0, 1),
+    //         (0, 2),
+    //         (1, 1),
+    //         (1, 0),
+    //         (0, 1),
+    //         (1, 2),
+    //         (0, 1),
+    //     ],
+    //     3,
+    // );
+    // let anim_up = tilemap.animations.register(
+    //     vec![
+    //         (0, 3),
+    //         (0, 4),
+    //         (0, 5),
+    //         (1, 4),
+    //         (1, 3),
+    //         (0, 4),
+    //         (1, 5),
+    //         (0, 4),
+    //     ],
+    //     3,
+    // );
+
+    let anim_dn = tilemap.animations.register(
+        vec![
+            (0, 0),
+            (0, 1),
+            (0, 2),
+            (1, 1),
+        ],
+        3,
+    );
+    let anim_up = tilemap.animations.register(
+        vec![
+            (0, 3),
+            (0, 4),
+            (0, 5),
+            (1, 4),
+        ],
+        3,
+    );
+
+    let mut rng = rand::thread_rng();
+    for (i_tri, tri) in icosahedron(2, IVec3::Y).into_iter().enumerate() {
+        // let texture = if i_tri % 2 == 0 { 0 } else { 1 };
+        // let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
         tilemap.storgae.set(
             &mut commands,
             TileBundle {
                 binded_tilemap: TileBindedTilemap(entity),
                 index: TileIndex::new(tri, CHUNK_SIZE),
-                atlas_index: TileAtlasIndex::Static { texture: 0, atlas },
+                // atlas_index: TileAtlasIndex::Static((texture, atlas).into()),
+                atlas_index: TileAtlasIndex::Animated {
+                    anim: if tri.element_sum() == 1 {
+                        anim_dn
+                    } else {
+                        anim_up
+                    },
+                    offset_milisec: rng.gen_range(0..2000),
+                    // offset_milisec: 0,
+                },
                 ..Default::default()
             },
         );

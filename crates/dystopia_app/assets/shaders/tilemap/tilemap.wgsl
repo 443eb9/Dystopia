@@ -1,4 +1,4 @@
-#import bevy_render::view::View
+#import bevy_render::{view::View, globals::Globals}
 
 struct Tilemap {
     edge_length: f32,
@@ -10,17 +10,17 @@ struct TilemapVertexInput {
     @builtin(vertex_index) v_index: u32,
     @location(0) position: vec3f,
     @location(1) color: vec4f,
-    /// If not animated: `[texture_index, atlas_index, 0]`
+    /// If not animated: `[texture_index, atlas_index, 0, 0]`
     ///
-    /// If animated: `[start, end, 1]`
-    @location(2) atlas_index: vec3u,
+    /// If animated: `[start, len, 1, offset_milisec]`
+    @location(2) atlas_index: vec4u,
     @location(3) tile_index: vec3i,
 }
 
 struct TilemapVertexOutput {
     @builtin(position) position_cs: vec4f,
-    @location(0) uv: vec2f,
-    @location(1) tint: vec4f,
+    @location(0) tint: vec4f,
+    @location(1) uv: vec2f,
     @location(2) texture_index: u32,
 }
 
@@ -29,10 +29,12 @@ struct TilemapTextureDescriptor {
 }
 
 @group(0) @binding(0) var<uniform> view: View;
-@group(0) @binding(1) var<uniform> tilemap: Tilemap;
-@group(0) @binding(2) var texture: texture_2d_array<f32>;
-@group(0) @binding(3) var texture_sampler: sampler;
-@group(0) @binding(4) var<storage> texture_desc: array<TilemapTextureDescriptor>;
+@group(0) @binding(1) var<uniform> globals: Globals;
+@group(0) @binding(2) var<uniform> tilemap: Tilemap;
+@group(0) @binding(3) var texture: texture_2d_array<f32>;
+@group(0) @binding(4) var texture_sampler: sampler;
+@group(0) @binding(5) var<storage> texture_desc: array<TilemapTextureDescriptor>;
+@group(0) @binding(6) var<storage> animations: array<u32>;
 
 const SQRT3 = sqrt(3.);
 
@@ -90,12 +92,23 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
     out.position_cs = view.clip_from_view * view.view_from_world * tilemap.world_from_model * position_os;
     out.tint = in.color;
 
+    var atlas_indices: array<u32, 2>;
+    if in.atlas_index[2] == 0 {
+        atlas_indices = array<u32, 2>(in.atlas_index[0], in.atlas_index[1]);
+    } else {
+        let fps = f32(animations[in.atlas_index[0] - 1]);
+        let offset = f32(in.atlas_index[3]) * 0.001;
+        let cur_frame = u32((globals.time + offset) * fps) % in.atlas_index[1];
+        let cur_index = cur_frame * 2u + in.atlas_index[0];
+        atlas_indices = array<u32, 2>(animations[cur_index], animations[cur_index + 1u]);
+    }
+
     let vert_uv = tri_uv(in.tile_index, corner);
-    let tile_count = texture_desc[in.atlas_index[0]].tile_count;
-    let atlas_index = vec2u(in.atlas_index[1] % tile_count.x, in.atlas_index[1] / tile_count.x);
+    let tile_count = texture_desc[atlas_indices[0]].tile_count;
+    let atlas_index = vec2u(atlas_indices[1] % tile_count.x, atlas_indices[1] / tile_count.x);
     let tile_uv = vec2f(atlas_index) / vec2f(tile_count);
     out.uv = tile_uv + vert_uv / vec2f(tile_count);
-    // out.uv = vert_uv;
+    out.texture_index = atlas_indices[0];
 
     return out;
 }
@@ -103,5 +116,4 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
 @fragment
 fn fragment(in: TilemapVertexOutput) -> @location(0) vec4f {
     return textureSample(texture, texture_sampler, in.uv, in.texture_index);
-    // return vec4f(in.uv, 0., 1.);
 }

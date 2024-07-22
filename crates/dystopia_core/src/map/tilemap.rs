@@ -12,9 +12,19 @@ use crate::map::{
     storage::{Chunk, ChunkableIndex, ChunkedStorage, DEFAULT_CHUNK_SIZE},
 };
 
-#[derive(Component, Debug, Default, Clone, Copy)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Deref, DerefMut)]
+pub struct TileBindedTilemap(pub Entity);
+
+impl Default for TileBindedTilemap {
+    fn default() -> Self {
+        Self(Entity::PLACEHOLDER)
+    }
+}
+
+#[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
 pub struct TileIndex {
     direct: IVec3,
+    #[deref]
     flattend: FlattenedTileIndex,
 }
 
@@ -41,35 +51,47 @@ impl TileIndex {
     }
 }
 
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Debug, Clone, Copy)]
 pub enum TileAtlasIndex {
-    Static { texture: u32, atlas: u32 },
-    // TODO animated
+    Static(TileStaticAtlas),
+    Animated {
+        anim: TileAnimation,
+        offset_milisec: u32,
+    },
 }
 
 impl Default for TileAtlasIndex {
     fn default() -> Self {
-        Self::Static {
-            texture: 0,
-            atlas: 0,
+        Self::Static(Default::default())
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct TileStaticAtlas {
+    pub texture: u32,
+    pub atlas: u32,
+}
+
+impl From<(u32, u32)> for TileStaticAtlas {
+    fn from(value: (u32, u32)) -> Self {
+        Self {
+            texture: value.0,
+            atlas: value.1,
         }
     }
 }
 
-#[derive(Component, Debug, Default, Clone, Copy)]
-pub struct TileTint(pub LinearRgba);
-
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
-pub struct TileBindedTilemap(pub Entity);
-
-impl Default for TileBindedTilemap {
-    fn default() -> Self {
-        Self(Entity::PLACEHOLDER)
-    }
+#[derive(Debug, Clone, Copy)]
+pub struct TileAnimation {
+    pub(crate) start: usize,
+    pub(crate) len: usize,
 }
 
+#[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
+pub struct TileTint(pub LinearRgba);
+
 /// Rendered size of a single tile.
-#[derive(Component, Debug, Default, Clone, Copy)]
+#[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
 pub struct TileRenderSize(pub Vec2);
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
@@ -124,10 +146,9 @@ impl FlattenedTileIndex {
 }
 
 /// Stores all entities on this tilemap.
-#[derive(Component, Deref, DerefMut)]
+#[derive(Component)]
 pub struct TilemapStorage {
     tilemap: Entity,
-    #[deref]
     internal: ChunkedStorage<FlattenedTileIndex, Entity, 3>,
 }
 
@@ -289,5 +310,38 @@ impl TilemapTilesets {
     }
 }
 
-#[derive(Component, Debug, Default, Clone, Copy)]
+#[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
 pub struct TilemapTint(pub LinearRgba);
+
+/// Layout: `[fps, frame_1_tex, frame_1_atl, frame_2_tex, frame_2_atl, fps, frame_1_tex, frame_1_atl, ...]`
+#[derive(Component, Debug, Clone, Deref, DerefMut)]
+pub struct TilemapAnimations(Vec<u32>);
+
+impl Default for TilemapAnimations {
+    fn default() -> Self {
+        // A dummy value. This will force the gpu-side buffer to be created.
+        // If leave empty, [`RawBufferVec::write_buffer`] will not take affect.
+        Self([0].into())
+    }
+}
+
+impl TilemapAnimations {
+    pub fn register(
+        &mut self,
+        animation: impl IntoIterator<IntoIter: Iterator<Item = impl Into<TileStaticAtlas>>>,
+        fps: u32,
+    ) -> TileAnimation {
+        let animation = animation.into_iter().map(Into::into).collect::<Vec<_>>();
+        self.push(fps);
+        let anim = TileAnimation {
+            start: self.len(),
+            len: animation.len(),
+        };
+        self.extend(
+            animation
+                .into_iter()
+                .flat_map(|frame| [frame.texture, frame.atlas]),
+        );
+        anim
+    }
+}

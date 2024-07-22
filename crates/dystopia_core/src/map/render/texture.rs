@@ -68,8 +68,8 @@ pub fn process_textures(
     render_device: Res<RenderDevice>,
     render_queue: Res<RenderQueue>,
 ) {
-    let mut to_process = EntityHashMap::default();
-    std::mem::swap(&mut to_process, &mut texture_storage.to_process);
+    let to_process = std::mem::replace(&mut texture_storage.to_process, Default::default());
+
     for (tilemap, tileset) in to_process {
         if texture_storage.processed.contains_key(&tilemap) {
             continue;

@@ -23,17 +23,17 @@ use crate::map::{
 };
 
 pub const TILEMAP_MESH_ATLAS_INDEX_ATTR: MeshVertexAttribute =
-    MeshVertexAttribute::new("Atlas_Index", 1433223, VertexFormat::Uint32x3);
+    MeshVertexAttribute::new("Atlas_Index", 1433223, VertexFormat::Uint32x4);
 pub const TILEMAP_MESH_TILE_INDEX_ATTR: MeshVertexAttribute =
     MeshVertexAttribute::new("Tile_Index", 1433224, VertexFormat::Sint32x3);
 
 #[derive(Clone)]
 pub struct TileMeshData {
     pub tint: Vec4,
-    /// If not animated: `[texture_index, atlas_index, 0]`
+    /// If not animated: `[texture_index, atlas_index, 0, 0]`
     ///
-    /// If animated: `[start, end, 1]`
-    pub atlas_index: [u32; 3],
+    /// If animated: `[start, len, 1, offset_milisec]`
+    pub atlas_index: [u32; 4],
     pub tile_index: IVec3,
 }
 
@@ -120,7 +120,11 @@ pub fn prepare_tile_mesh_data(
                 Some(TileMeshData {
                     tint: tile.tint.0.to_vec4(),
                     atlas_index: match tile.atlas_index {
-                        TileAtlasIndex::Static { texture, atlas } => [texture, atlas, 0],
+                        TileAtlasIndex::Static(s) => [s.texture, s.atlas, 0, 0],
+                        TileAtlasIndex::Animated {
+                            anim,
+                            offset_milisec,
+                        } => [anim.start as u32, anim.len as u32, 1, offset_milisec],
                     },
                     tile_index: tile.index.direct(),
                 })

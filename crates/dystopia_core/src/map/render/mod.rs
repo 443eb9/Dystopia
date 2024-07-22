@@ -35,8 +35,8 @@ use crate::{
             texture::TilemapTextureStorage,
         },
         tilemap::{
-            TileAtlasIndex, TileBindedTilemap, TileIndex, TileRenderSize, TileTint, TilemapStorage,
-            TilemapTilesets, TilemapTint,
+            TileAtlasIndex, TileBindedTilemap, TileIndex, TileRenderSize, TileTint,
+            TilemapAnimations, TilemapStorage, TilemapTilesets, TilemapTint,
         },
     },
     simulation::MainCamera,
@@ -136,6 +136,7 @@ pub struct ExtractedTilemap {
     pub transform: GlobalTransform,
     pub tint: TilemapTint,
     pub tilesets: TilemapTilesets,
+    pub changed_animations: Option<TilemapAnimations>,
 }
 
 impl ExtractInstance for ExtractedTilemap {
@@ -145,6 +146,7 @@ impl ExtractInstance for ExtractedTilemap {
         Read<TilemapTint>,
         Read<TilemapTilesets>,
         Read<TilemapStorage>,
+        Ref<'static, TilemapAnimations>,
     );
 
     type QueryFilter = ();
@@ -156,6 +158,11 @@ impl ExtractInstance for ExtractedTilemap {
             tint: *item.2,
             tilesets: item.3.clone(),
             chunk_size: item.4.chunk_size(),
+            changed_animations: if item.5.is_changed() {
+                Some(item.5.clone())
+            } else {
+                None
+            },
         })
     }
 }
@@ -232,7 +239,7 @@ pub fn queue_tilemaps(
                 pipeline,
                 draw_function,
                 batch_range: 0..1,
-                extra_index: PhaseItemExtraIndex(0),
+                extra_index: PhaseItemExtraIndex::NONE,
             });
         }
     }
@@ -252,6 +259,7 @@ impl<const B: usize> RenderCommand<Transparent2d> for BindTilemapBindGroups<B> {
 
     type ItemQuery = ();
 
+    #[inline]
     fn render<'w>(
         item: &Transparent2d,
         view_uniform_offset: ROQueryItem<'w, Self::ViewQuery>,
@@ -281,6 +289,7 @@ impl RenderCommand<Transparent2d> for DrawTilemapChunkMeshes {
 
     type ItemQuery = ();
 
+    #[inline]
     fn render<'w>(
         item: &Transparent2d,
         _view: ROQueryItem<'w, Self::ViewQuery>,

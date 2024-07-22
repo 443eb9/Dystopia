@@ -6,11 +6,12 @@ use bevy::{
     prelude::{Entity, FromWorld, Query, Res, ResMut, Resource, With, World},
     render::{
         extract_instances::ExtractedInstances,
+        globals::{GlobalsBuffer, GlobalsUniform},
         render_resource::{
             BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
             BufferUsages, BufferVec, ColorTargetState, ColorWrites, FragmentState,
-            MultisampleState, RenderPipelineDescriptor, SamplerBindingType, Shader, ShaderStages,
-            ShaderType, SpecializedRenderPipeline, TextureFormat, TextureSampleType,
+            MultisampleState, RawBufferVec, RenderPipelineDescriptor, SamplerBindingType, Shader,
+            ShaderStages, ShaderType, SpecializedRenderPipeline, TextureFormat, TextureSampleType,
             VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
@@ -40,10 +41,12 @@ impl FromWorld for TilemapPipeline {
                 ShaderStages::VERTEX_FRAGMENT,
                 (
                     binding::uniform_buffer::<ViewUniform>(true),
+                    binding::uniform_buffer::<GlobalsUniform>(false),
                     binding::uniform_buffer::<TilemapUniform>(true),
                     binding::texture_2d_array(TextureSampleType::Float { filterable: true }),
                     binding::sampler(SamplerBindingType::Filtering),
                     binding::storage_buffer_read_only::<TilemapRenderTextureDescriptor>(false),
+                    binding::storage_buffer_read_only::<u32>(false),
                 ),
             ),
         );
@@ -77,7 +80,7 @@ impl SpecializedRenderPipeline for TilemapPipeline {
                         // color
                         VertexFormat::Float32x4,
                         // atlas_index
-                        VertexFormat::Uint32x3,
+                        VertexFormat::Uint32x4,
                         // tile_index
                         VertexFormat::Sint32x3,
                     ],
@@ -118,7 +121,7 @@ pub struct TilemapRenderTextureDescriptor {
 pub struct TilemapIndividualRenderData {
     pub uniform_offset: Option<u32>,
     pub texture_desc: BufferVec<TilemapRenderTextureDescriptor>,
-    pub animation: BufferVec<u32>,
+    pub animations: RawBufferVec<u32>,
 }
 
 impl Default for TilemapIndividualRenderData {
@@ -126,7 +129,7 @@ impl Default for TilemapIndividualRenderData {
         Self {
             uniform_offset: Default::default(),
             texture_desc: BufferVec::new(BufferUsages::STORAGE),
-            animation: BufferVec::new(BufferUsages::STORAGE),
+            animations: RawBufferVec::new(BufferUsages::STORAGE),
         }
     }
 }
@@ -180,6 +183,14 @@ pub fn prepare_buffers(
         individual
             .texture_desc
             .write_buffer(&render_device, &render_queue);
+
+        if let Some(changed_animations) = &tilemap.changed_animations {
+            individual.animations.clear();
+            *individual.animations.values_mut() = changed_animations.to_vec();
+            individual
+                .animations
+                .write_buffer(&render_device, &render_queue);
+        }
     }
 
     buffers.uniform.write_buffer(&render_device, &render_queue);
@@ -189,12 +200,16 @@ pub fn prepare_bind_groups(
     tilemaps_query: Query<Entity, With<TilemapRenderer>>,
     pipeline: Res<TilemapPipeline>,
     view_uniforms: Res<ViewUniforms>,
+    global_uniforms: Res<GlobalsBuffer>,
     tilemap_buffers: Res<TilemapBuffers>,
     tilemap_textures: Res<TilemapTextureStorage>,
     mut bind_groups: ResMut<TilemapBindGroups>,
     render_device: Res<RenderDevice>,
 ) {
-    let Some(view_uniforms) = view_uniforms.uniforms.binding() else {
+    let (Some(view_uniforms), Some(global_uniforms)) = (
+        view_uniforms.uniforms.binding(),
+        global_uniforms.buffer.binding(),
+    ) else {
         return;
     };
 
@@ -207,26 +222,24 @@ pub fn prepare_bind_groups(
             continue;
         };
 
-        let Some(texture_desc) = individual.texture_desc.binding() else {
+        let (Some(texture_desc), Some(animations)) = (
+            individual.texture_desc.binding(),
+            individual.animations.binding(),
+        ) else {
             continue;
         };
-
-        // let (Some(animation), Some(texture_desc)) = (
-        //     individual.animation.binding(),
-        //     individual.texture_desc.binding(),
-        // ) else {
-        //     continue;
-        // };
 
         let bind_group = render_device.create_bind_group(
             format!("tilemap_bind_group_{:?}", tilemap).as_str(),
             &pipeline.layout,
             &BindGroupEntries::sequential((
                 view_uniforms.clone(),
+                global_uniforms.clone(),
                 tilemap_uniforms,
                 &tilemap_texture.texture_view,
                 &tilemap_texture.sampler,
                 texture_desc,
+                animations,
             )),
         );
 
