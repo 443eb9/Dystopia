@@ -140,18 +140,6 @@ pub struct ChunkedTileIndex {
     pub in_chunk_index: UVec3,
 }
 
-impl ChunkedTileIndex {
-    pub fn flatten(self, chunk_size: u32) -> FlattenedTileIndex {
-        FlattenedTileIndex {
-            chunk_index: self.chunk_index,
-            in_chunk_index: (self.in_chunk_index.x
-                + self.in_chunk_index.y * chunk_size
-                + self.in_chunk_index.z * chunk_size * chunk_size)
-                as usize,
-        }
-    }
-}
-
 /// The fastest index for looking up tiles.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct FlattenedTileIndex {
@@ -181,6 +169,17 @@ impl FlattenedTileIndex {
         Self {
             chunk_index: index / chunk_size,
             in_chunk_index: (ic.x + ic.y * chunk_size + ic.z * chunk_size * chunk_size) as usize,
+        }
+    }
+
+    #[inline]
+    pub fn from_chunked(index: ChunkedTileIndex, chunk_size: u32) -> Self {
+        FlattenedTileIndex {
+            chunk_index: index.chunk_index,
+            in_chunk_index: (index.in_chunk_index.x
+                + index.in_chunk_index.y * chunk_size
+                + index.in_chunk_index.z * chunk_size * chunk_size)
+                as usize,
         }
     }
 }
@@ -221,7 +220,7 @@ impl TilemapStorage {
 
     #[inline]
     pub fn chunked_get(&self, index: ChunkedTileIndex) -> Option<Entity> {
-        self.flattened_get(index.flatten(self.chunk_size()))
+        self.flattened_get(FlattenedTileIndex::from_chunked(index, self.chunk_size()))
     }
 
     #[inline]
@@ -264,7 +263,10 @@ impl TilemapStorage {
         commands: &mut Commands,
         index: ChunkedTileIndex,
     ) -> Option<Entity> {
-        self.flattened_remove(commands, index.flatten(self.chunk_size()))
+        self.flattened_remove(
+            commands,
+            FlattenedTileIndex::from_chunked(index, self.chunk_size()),
+        )
     }
 
     #[inline]

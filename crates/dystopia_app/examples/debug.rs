@@ -1,10 +1,15 @@
 use bevy::{
     app::{App, Plugin, PluginGroup, Startup, Update},
     asset::AssetServer,
+    color::palettes::css::WHITE,
+    dev_tools::ui_debug_overlay::{DebugUiPlugin, UiDebugOptions},
     input::ButtonInput,
     log::info,
     math::{IVec3, UVec2, Vec2},
-    prelude::{Camera2dBundle, Changed, Commands, KeyCode, Local, Query, Res, ResMut, With},
+    prelude::{
+        BuildChildren, Camera2dBundle, Changed, Commands, KeyCode, Local, NodeBundle, Query, Res,
+        ResMut, TextBundle, With,
+    },
     render::{
         camera::OrthographicProjection,
         render_resource::FilterMode,
@@ -13,7 +18,9 @@ use bevy::{
         RenderPlugin,
     },
     state::state::{NextState, OnEnter},
+    text::{Text, TextStyle},
     time::{Real, Time},
+    ui::{FlexDirection, FlexWrap, IsDefaultUiCamera, Overflow, Style, Val},
     utils::hashbrown::HashSet,
     window::{PresentMode, Window, WindowPlugin},
     DefaultPlugins,
@@ -34,6 +41,11 @@ use dystopia_core::{
     schedule::state::{AssetState, GameState},
     sci::unit::Length,
     simulation::{MainCamera, ViewScale},
+    ui::{
+        common::UiAggregate,
+        scrollable_list::{ListElement, ListElementStyle, ScrollableList, ScrollableListStyle},
+        UiBuilder, FUSION_PIXEL,
+    },
     DystopiaCorePlugin,
 };
 use rand::Rng;
@@ -59,13 +71,17 @@ fn main() {
                 }),
             DystopiaCorePlugin,
             PanCamPlugin::default(),
-            DystopiaDebugPlugin { inspector: true },
+            DystopiaDebugPlugin {
+                inspector: true,
+                ui_debug: true,
+            },
         ))
         .run();
 }
 
 pub struct DystopiaDebugPlugin {
     pub inspector: bool,
+    pub ui_debug: bool,
 }
 
 impl Plugin for DystopiaDebugPlugin {
@@ -74,16 +90,27 @@ impl Plugin for DystopiaDebugPlugin {
             app.add_plugins(WorldInspectorPlugin::default());
         }
 
+        if self.ui_debug {
+            app.add_plugins(DebugUiPlugin);
+        }
+
         app.add_systems(Update, debug_sync_scale)
             .add_systems(OnEnter(AssetState::Finish), debug_skip_menu)
-            .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
-            .add_systems(Update, debug_rm_vis)
-            .add_systems(Startup, setup_debug);
+            .add_systems(OnEnter(GameState::Simulate), debug_ui)
+            // .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
+            // .add_systems(Update, debug_rm_vis)
+            .add_systems(Startup, setup_debug)
+            .add_systems(Update, toggle_ui_debug);
     }
 }
 
 fn setup_debug(mut commands: Commands) {
-    commands.spawn((Camera2dBundle::default(), PanCam::default(), MainCamera));
+    commands.spawn((
+        Camera2dBundle::default(),
+        PanCam::default(),
+        MainCamera,
+        IsDefaultUiCamera,
+    ));
 }
 
 fn debug_sync_scale(
@@ -275,4 +302,45 @@ fn debug_rm_vis(
 
         *twinkled = !t;
     }
+}
+
+fn toggle_ui_debug(keyboard: Res<ButtonInput<KeyCode>>, mut options: ResMut<UiDebugOptions>) {
+    if keyboard.just_pressed(KeyCode::Space) {
+        info!("Toggle ui debug");
+        options.toggle();
+    }
+}
+
+fn debug_ui(mut commands: Commands) {
+    commands
+        .spawn(NodeBundle {
+            style: Style {
+                width: Val::Percent(100.),
+                height: Val::Percent(100.),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_children(|root| {
+            root.build_ui(
+                ScrollableList {
+                    elements: (0..30)
+                        .into_iter()
+                        .map(|i| ListElement {
+                            title: format!("Test Elem {}", i),
+                            value: format!("{}", i),
+                        })
+                        .collect(),
+                },
+                ScrollableListStyle {
+                    list_style: Style {
+                        width: Val::Px(250.),
+                        height: Val::Px(500.),
+                        flex_direction: FlexDirection::Column,
+                        ..Default::default()
+                    },
+                    element_style: ListElementStyle::default(),
+                },
+            );
+        });
 }
