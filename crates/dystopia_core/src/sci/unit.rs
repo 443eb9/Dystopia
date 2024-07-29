@@ -28,7 +28,6 @@ impl<U: Unit> AsBuiltUiElement for U {
 }
 
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
-#[precision(f64)]
 pub enum Length {
     #[conversion = 16.]
     SolarRadius(f64),
@@ -41,7 +40,6 @@ pub enum Length {
 }
 
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
-#[precision(f64)]
 pub enum Mass {
     #[conversion = 1.988_4e8]
     SolarMass(f64),
@@ -52,7 +50,6 @@ pub enum Mass {
 }
 
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
-#[precision(f64)]
 pub enum RadiantFlux {
     #[conversion = 3.846e13]
     SolarLuminosity(f64),
@@ -61,7 +58,6 @@ pub enum RadiantFlux {
 }
 
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
-#[precision(f64)]
 pub enum Temperature {
     #[conversion = 273.15]
     #[conv_method = "sub"]
@@ -72,7 +68,6 @@ pub enum Temperature {
 
 /// Time are precise stuff and don't have decimal forms.
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
-#[precision(u64)]
 pub enum Time {
     #[conversion = 50]
     Second(u64),
