@@ -4,7 +4,7 @@
 use bevy::{
     app::{App, FixedUpdate, Plugin, Update},
     log::info,
-    prelude::{Component, IntoSystemConfigs, Query, Res, ResMut, Resource, With},
+    prelude::{Component, Deref, DerefMut, IntoSystemConfigs, Query, Res, ResMut, Resource, With},
     render::{
         camera::OrthographicProjection,
         extract_component::{ExtractComponent, ExtractComponentPlugin},
@@ -13,12 +13,9 @@ use bevy::{
 };
 use rand::rngs::StdRng;
 
-use crate::{
-    impl_rw_tuple_struct,
-    schedule::{
-        signal::InitializationSignal,
-        state::{AssetState, GameState},
-    },
+use crate::schedule::{
+    signal::InitializationSignal,
+    state::{AssetState, GameState},
 };
 
 pub struct DystopiaSimulationPlugin;
@@ -50,9 +47,8 @@ pub struct MainCamera;
 /// [`OrthographicProjection`](bevy::render::camera::OrthographicProjection)
 /// or `scale` in [`Transform`](bevy::transform::components::Transform) or
 /// anything like them.
-#[derive(Resource)]
+#[derive(Resource, Deref, DerefMut)]
 pub struct ViewScale(f32);
-impl_rw_tuple_struct!(ViewScale, f32);
 
 impl Default for ViewScale {
     fn default() -> Self {

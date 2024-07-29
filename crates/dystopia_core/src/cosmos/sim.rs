@@ -42,7 +42,7 @@ pub fn sync_bodies(cosmos: Res<Cosmos>, mut bodies_query: Query<(&BodyIndex, &mu
     bodies_query
         .par_iter_mut()
         .for_each(|(i_body, mut transform)| {
-            let body = &cosmos.bodies[i_body.0];
+            let body = &cosmos.bodies[**i_body];
             transform.translation = Vec3 {
                 x: body.pos.x as f32,
                 y: body.pos.y as f32,
@@ -59,7 +59,7 @@ pub fn sync_orbits(
     orbits_query
         .par_iter_mut()
         .for_each(|(i_orbit, mut transform, mut visibility)| {
-            let orbit = &cosmos.orbits[i_orbit.0];
+            let orbit = &cosmos.orbits[**i_orbit];
             transform.translation = Vec3 {
                 x: orbit.center.x as f32,
                 y: orbit.center.y as f32,
@@ -67,7 +67,7 @@ pub fn sync_orbits(
             };
 
             *visibility = {
-                if *show_orbits.get() {
+                if **show_orbits {
                     Visibility::Inherited
                 } else {
                     Visibility::Hidden
@@ -78,6 +78,6 @@ pub fn sync_orbits(
 
 pub fn manage_orbit_visibility(view_scale: Res<ViewScale>, mut show_orbits: ResMut<ShowOrbits>) {
     if view_scale.is_changed() {
-        show_orbits.set(*view_scale.get() < 1.);
+        **show_orbits = **view_scale < 1.;
     }
 }

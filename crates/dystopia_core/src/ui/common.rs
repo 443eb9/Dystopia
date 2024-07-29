@@ -1,23 +1,12 @@
 use bevy::{
-    a11y::{
-        accesskit::{NodeBuilder, Role},
-        AccessibilityNode,
-    },
     asset::Handle,
-    color::{
-        palettes::css::{BLACK, WHITE},
-        Color,
-    },
-    prelude::{BuildChildren, ChildBuilder, Component, Entity, Label, NodeBundle},
-    text::{Font, Text, TextStyle},
-    ui::{FlexDirection, JustifyContent, Style, Val},
+    prelude::{ChildBuilder, Component, Entity},
+    text::Font,
+    ui::Val,
 };
 use dystopia_derive::AsBuiltComponent;
 
-use crate::ui::{
-    primitive::{AsBuiltComponent, PrimitveUiData},
-    FUSION_PIXEL,
-};
+use crate::ui::FUSION_PIXEL;
 
 pub trait UiAggregate: Component {
     type Style;

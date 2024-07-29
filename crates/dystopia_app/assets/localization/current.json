@@ -1,0 +1,44 @@
+{
+    "Length": {
+        "SolarRadius": "R☉",
+        "LightYear": "LY",
+        "AstronomicalUnit": "Au",
+        "Meter": "M"
+    },
+    "Mass": {
+        "SolarMass": "M☉",
+        "EarthMass": "M🜨",
+        "Kilogram": "Kg"
+    },
+    "RadiantFlux": {
+        "SolarLuminosity": "L☉",
+        "Watt": "W"
+    },
+    "Temperature": {
+        "Celsius": "°C",
+        "Kelvin": "K"
+    },
+    "Time": {
+        "Second": "s",
+        "Tick": "t"
+    },
+    "BodyDataPanelData": {
+        "body_ty": {
+            "star": "Star",
+            "planet": "Planet",
+            "moon": "Moon"
+        },
+        "detailed_body_ty": {
+            "o": "O-Type Star",
+            "b": "B-Type Star",
+            "a": "A-Type Star",
+            "f": "F-Type Star",
+            "g": "G-Type Star",
+            "k": "K-Type Star",
+            "m": "M-Type Star",
+            "rocky": "Rocky",
+            "gas": "Gas Giant",
+            "ice": "Ice Giant"
+        }
+    }
+}

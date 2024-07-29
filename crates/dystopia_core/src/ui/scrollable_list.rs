@@ -8,7 +8,7 @@ use bevy::{
     input::mouse::{MouseScrollUnit, MouseWheel},
     prelude::{
         BuildChildren, ChildBuilder, Component, Entity, EventReader, GlobalTransform, Label,
-        NodeBundle, Parent, Query, TextBundle, With,
+        NodeBundle, Parent, Query, TextBundle,
     },
     text::{Font, TextStyle},
     ui::{FocusPolicy, JustifyContent, Node, Overflow, Style, Val},
@@ -16,7 +16,7 @@ use bevy::{
 };
 use dystopia_derive::AsBuiltComponent;
 
-use crate::ui::{common::UiAggregate, primitive::PrimitveUiData, FUSION_PIXEL};
+use crate::ui::{common::UiAggregate, primitive::AsBuiltUiElement, FUSION_PIXEL};
 
 #[derive(Component, AsBuiltComponent)]
 pub struct ScrollableList {
@@ -72,7 +72,7 @@ pub struct ListElement {
     pub value: String,
 }
 
-impl PrimitveUiData for ListElement {
+impl AsBuiltUiElement for ListElement {
     type BuiltType = BuiltListElement;
 }
 
@@ -167,15 +167,12 @@ pub fn handle_scroll(
     window: Query<&Window>,
     mut mouse_wheel: EventReader<MouseWheel>,
     list_query: Query<(&Node, &GlobalTransform)>,
-    mut inner_container_query: Query<
-        (
-            &mut Style,
-            &Node,
-            &Parent,
-            &mut ScrollableListInnerContainer,
-        ),
-        With<ScrollableListInnerContainer>,
-    >,
+    mut inner_container_query: Query<(
+        &mut Style,
+        &Node,
+        &Parent,
+        &mut ScrollableListInnerContainer,
+    )>,
 ) {
     let Some(cursor_pos) = window
         .get_single()

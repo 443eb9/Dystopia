@@ -12,10 +12,7 @@ pub fn expand_unit_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
         .unwrap_or_else(|| panic!("You need to specify a precision for the SI unit, like f64."));
     let presion = &crate::helper::unpack_list(&precision_attr.meta).tokens;
 
-    let data = match &input.data {
-        syn::Data::Enum(e) => e,
-        syn::Data::Struct(_) | syn::Data::Union(_) => panic!("Unit can only be derived for enums."),
-    };
+    let data = crate::helper::unpack_data_enum(&input.data);
 
     let mut si = None;
     let mut conversions = Vec::with_capacity(data.variants.len());
@@ -83,8 +80,10 @@ pub fn expand_unit_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
     let si = &data.variants[si.unwrap_or_else(|| panic!("You have to specify a SI unit."))].ident;
 
     quote::quote! {
-        impl Unit<#presion> for #ty {
-            fn to_si(self) -> #presion {
+        impl Unit for #ty {
+            type Precision = #presion;
+
+            fn to_si(self) -> Self::Precision {
                 match self {
                     #(#conversions)*
                 }

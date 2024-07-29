@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use bevy::{
     app::{App, Plugin, PluginGroup, Startup, Update},
     asset::AssetServer,
@@ -120,7 +122,7 @@ fn debug_sync_scale(
     let Ok(camera) = camera.get_single() else {
         return;
     };
-    view_scale.set(camera.scale);
+    **view_scale = camera.scale;
 }
 
 fn debug_skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {

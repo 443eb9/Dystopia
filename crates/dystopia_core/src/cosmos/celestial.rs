@@ -1,14 +1,11 @@
 use bevy::{
     math::DVec2,
-    prelude::{Component, Resource},
+    prelude::{Component, Deref, DerefMut, Resource},
 };
 use serde::{Deserialize, Serialize};
 
-use crate::impl_rw_tuple_struct;
-
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Deref, DerefMut)]
 pub struct ShowOrbits(bool);
-impl_rw_tuple_struct!(ShowOrbits, bool);
 
 #[derive(Resource)]
 pub struct Cosmos {
@@ -19,14 +16,26 @@ pub struct Cosmos {
 /// The index of this body in cosmos.
 ///
 /// You can fetch the detailed data using this index.
-#[derive(Component, Debug, Default)]
-pub struct BodyIndex(pub usize);
+#[derive(Component, Debug, Default, Deref)]
+pub struct BodyIndex(usize);
+
+impl BodyIndex {
+    pub fn new(index: usize) -> Self {
+        Self(index)
+    }
+}
 
 /// The index of this orbit in cosmos.
 ///
 /// You can fetch the detailed data using this index.
-#[derive(Component, Debug, Default)]
-pub struct OrbitIndex(pub usize);
+#[derive(Component, Debug, Default, Deref)]
+pub struct OrbitIndex(usize);
+
+impl OrbitIndex {
+    pub fn new(index: usize) -> Self {
+        Self(index)
+    }
+}
 
 /// Marker struct for stars.
 #[derive(Component, Debug, Default)]

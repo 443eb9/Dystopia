@@ -10,14 +10,24 @@
 //! uses [`Tick`](Time::Tick) as the base unit, as the simulation goes on not continously like
 //! that in nature.
 
-use dystopia_derive::Unit;
+use bevy::prelude::Entity;
+use dystopia_derive::{LocalizableEnum, Unit};
 
-pub trait Unit<U> {
-    fn to_si(self) -> U;
+use crate::ui::primitive::AsBuiltUiElement;
+
+pub trait Unit {
+    type Precision;
+
+    fn to_si(self) -> Self::Precision;
+
     fn to_si_unit(self) -> Self;
 }
 
-#[derive(Unit, Debug, Clone, Copy)]
+impl<U: Unit> AsBuiltUiElement for U {
+    type BuiltType = Entity;
+}
+
+#[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
 #[precision(f64)]
 pub enum Length {
     #[conversion = 16.]
@@ -30,7 +40,7 @@ pub enum Length {
     Meter(f64),
 }
 
-#[derive(Unit, Debug, Clone, Copy)]
+#[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
 #[precision(f64)]
 pub enum Mass {
     #[conversion = 1.988_4e8]
@@ -41,7 +51,7 @@ pub enum Mass {
     Kilogram(f64),
 }
 
-#[derive(Unit, Debug, Clone, Copy)]
+#[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
 #[precision(f64)]
 pub enum RadiantFlux {
     #[conversion = 3.846e13]
@@ -50,7 +60,7 @@ pub enum RadiantFlux {
     Watt(f64),
 }
 
-#[derive(Unit, Debug, Clone, Copy)]
+#[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
 #[precision(f64)]
 pub enum Temperature {
     #[conversion = 273.15]
@@ -61,7 +71,7 @@ pub enum Temperature {
 }
 
 /// Time are precise stuff and don't have decimal forms.
-#[derive(Unit, Debug, Clone, Copy)]
+#[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
 #[precision(u64)]
 pub enum Time {
     #[conversion = 50]

@@ -10,7 +10,7 @@ use crate::ui::common::UiAggregate;
 pub mod common;
 pub mod primitive;
 pub mod scrollable_list;
-pub mod specific;
+pub mod body_data_panel;
 
 pub const FUSION_PIXEL: Handle<Font> = Handle::weak_from_u128(789641049865321367040365478967874510);
 

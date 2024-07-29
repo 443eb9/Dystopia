@@ -24,6 +24,39 @@ impl_meta_unpack!(unpack_list, List, NameValue, Path, "list", syn::MetaList);
 
 impl_meta_unpack!(unpack_path, Path, NameValue, List, "path", syn::Path);
 
+macro_rules! impl_data_unpack {
+    ($fn_name: ident, $target: ident, $non_target_a: ident, $non_target_b: ident, $hint: literal, $returns: ty) => {
+        pub fn $fn_name(data: &syn::Data) -> &$returns {
+            match data {
+                syn::Data::$target(d) => d,
+                syn::Data::$non_target_a(_) | syn::Data::$non_target_b(_) => {
+                    panic!("This trait should only be derived for {}s", $hint)
+                }
+            }
+        }
+    };
+}
+
+impl_data_unpack!(
+    unpack_data_struct,
+    Struct,
+    Enum,
+    Union,
+    "struct",
+    syn::DataStruct
+);
+
+impl_data_unpack!(unpack_data_enum, Enum, Struct, Union, "enum", syn::DataEnum);
+
+impl_data_unpack!(
+    unpack_data_union,
+    Union,
+    Struct,
+    Enum,
+    "union",
+    syn::DataUnion
+);
+
 pub fn core_crate() -> syn::Ident {
     match proc_macro_crate::crate_name("dystopia_core").unwrap() {
         proc_macro_crate::FoundCrate::Itself => {

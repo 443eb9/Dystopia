@@ -176,9 +176,7 @@ fn generate_stars(
     let n = rng.gen_range(settings.num_stars.clone());
     let masses = reject_sampling(rng, star_mass_pdf, 0f64..130f64, 0f64..1f64, n, n * 2);
 
-    let star_props = star_props.get();
-    let mut available_names = star_names
-        .get()
+    let mut available_names = (**star_names)
         .clone()
         .into_iter()
         .collect::<IndexSet<_>>();
@@ -649,7 +647,7 @@ fn spawn_orbits(
                 )),
                 ..Default::default()
             },
-            OrbitIndex(i_orbit),
+            OrbitIndex::new(i_orbit),
         ));
     }
 }

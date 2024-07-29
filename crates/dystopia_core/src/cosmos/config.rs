@@ -1,23 +1,21 @@
 use bevy::{
     asset::Asset,
     color::{Color, LinearRgba, Srgba},
-    prelude::Resource,
+    prelude::{Deref, Resource},
     reflect::TypePath,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{assets::config::RawConfig, cosmos::celestial::StarClass, impl_ro_tuple_struct};
+use crate::{assets::config::RawConfig, cosmos::celestial::StarClass};
 
 /// All properties about a main sequence star. This vector is sorted descending by
 /// the mass of bodies.
-#[derive(Resource)]
+#[derive(Resource, Deref)]
 pub struct CosmosStarPropertiesConfig(Vec<StarProperties>);
-impl_ro_tuple_struct!(CosmosStarPropertiesConfig, Vec<StarProperties>);
 
 /// All possible names of a star.
-#[derive(Resource, Asset, TypePath, Clone, Deserialize)]
+#[derive(Resource, Asset, TypePath, Clone, Deserialize, Deref)]
 pub struct CosmosStarNamesConfig(Vec<String>);
-impl_ro_tuple_struct!(CosmosStarNamesConfig, Vec<String>);
 
 impl RawConfig for CosmosStarNamesConfig {
     type Processed = Self;
