@@ -1,172 +1,66 @@
 use bevy::{
-    a11y::{
-        accesskit::{NodeBuilder, Role},
-        AccessibilityNode,
-    },
-    asset::Handle,
-    color::{palettes::css::BLACK, Color},
     input::mouse::{MouseScrollUnit, MouseWheel},
     prelude::{
-        BuildChildren, ChildBuilder, Component, Entity, EventReader, GlobalTransform, Label,
-        NodeBundle, Parent, Query, TextBundle,
+        Added, BuildChildren, Children, Commands, Component, Entity, EventReader, GlobalTransform,
+        NodeBundle, Parent, Query, With,
     },
-    text::{Font, TextStyle},
-    ui::{FocusPolicy, JustifyContent, Node, Overflow, Style, Val},
+    ui::{Node, Overflow, Style, Val},
     window::Window,
 };
-use dystopia_derive::AsBuiltComponent;
 
-use crate::ui::{common::UiAggregate, primitive::AsBuiltUiElement, FUSION_PIXEL};
-
-#[derive(Component, AsBuiltComponent)]
-pub struct ScrollableList {
-    pub elements: Vec<ListElement>,
-}
-
-pub struct ScrollableListStyle {
-    pub list_style: Style,
-    pub element_style: ListElementStyle,
-}
-
-impl UiAggregate for ScrollableList {
-    type Style = ScrollableListStyle;
-
-    fn build(&self, parent: &mut ChildBuilder, style: Self::Style) -> Entity {
-        let mut elements = Vec::with_capacity(self.elements.len());
-
-        parent
-            .spawn(NodeBundle {
-                style: Style {
-                    overflow: Overflow::clip_y(),
-                    ..style.list_style.clone()
-                },
-                focus_policy: FocusPolicy::Block,
-                ..Default::default()
-            })
-            .with_children(|root| {
-                root.spawn((
-                    NodeBundle {
-                        style: Style {
-                            width: Default::default(),
-                            height: Default::default(),
-                            ..style.list_style
-                        },
-                        ..Default::default()
-                    },
-                    ScrollableListInnerContainer::default(),
-                ))
-                .with_children(|panel| {
-                    for elem in &self.elements {
-                        elements.push(elem.build(panel, style.element_style.clone()));
-                    }
-                });
-            })
-            .insert(BuiltScrollableList { elements })
-            .id()
-    }
-}
-
-#[derive(Component, AsBuiltComponent)]
-pub struct ListElement {
-    pub title: String,
-    pub value: String,
-}
-
-impl AsBuiltUiElement for ListElement {
-    type BuiltType = BuiltListElement;
-}
-
-#[derive(Clone)]
-pub struct ListElementStyle {
-    pub font: Handle<Font>,
-    pub font_size: f32,
-    pub title_color: Color,
-    pub value_color: Color,
-    pub height: Val,
-}
-
-impl Default for ListElementStyle {
-    fn default() -> Self {
-        Self {
-            font: FUSION_PIXEL,
-            font_size: 16.,
-            title_color: BLACK.into(),
-            value_color: BLACK.into(),
-            height: Val::Px(20.),
-        }
-    }
-}
-
-impl UiAggregate for ListElement {
-    type Style = ListElementStyle;
-
-    fn build(&self, parent: &mut ChildBuilder, style: Self::Style) -> Entity {
-        let mut title = None;
-        let mut value = None;
-
-        parent
-            .spawn(NodeBundle {
-                style: Style {
-                    width: Val::Percent(100.),
-                    height: style.height,
-                    min_height: style.height,
-                    max_height: style.height,
-                    justify_content: JustifyContent::SpaceBetween,
-                    ..Default::default()
-                },
-                ..Default::default()
-            })
-            .with_children(|root| {
-                // Title
-                title = Some(
-                    root.spawn((
-                        TextBundle::from_section(
-                            self.title.clone(),
-                            TextStyle {
-                                font: style.font.clone(),
-                                font_size: style.font_size,
-                                color: style.title_color,
-                            },
-                        ),
-                        Label,
-                        AccessibilityNode(NodeBuilder::new(Role::ListItem)),
-                    ))
-                    .id(),
-                );
-
-                // Value
-                value = Some(
-                    root.spawn((
-                        TextBundle::from_section(
-                            self.value.clone(),
-                            TextStyle {
-                                font: style.font.clone(),
-                                font_size: style.font_size,
-                                color: style.value_color,
-                            },
-                        ),
-                        Label,
-                    ))
-                    .id(),
-                );
-            })
-            .insert(BuiltListElement {
-                title: title.unwrap(),
-                value: value.unwrap(),
-            })
-            .id()
-    }
-}
+/// Mark a container as a scrollable list.
+///
+/// A scrollable list should have a following structure:
+///
+/// - Root [`ScrollableList`]
+///   - InnerContainer [`ScrollableListInnerContainer`]
+///     - Elements
+///
+/// This structure will be created by system [``], as well as the overflow settings.
+/// What you need to do is to create following structure:
+///
+/// - Root [`ScrollableList`]
+///   - Elements
+#[derive(Component)]
+pub struct ScrollableList;
 
 #[derive(Component, Default)]
 pub struct ScrollableListInnerContainer {
     position: f32,
 }
 
+pub fn init_structure(
+    mut commands: Commands,
+    mut list_query: Query<(Entity, &mut Style, &Children), Added<ScrollableList>>,
+) {
+    for (list_root, mut style, children) in &mut list_query {
+        style.overflow = Overflow::clip_y();
+
+        let inner_container = commands
+            .spawn((
+                NodeBundle {
+                    style: Style {
+                        width: Default::default(),
+                        height: Default::default(),
+                        ..style.clone()
+                    },
+                    ..Default::default()
+                },
+                ScrollableListInnerContainer::default(),
+            ))
+            .id();
+
+        commands.entity(inner_container).set_parent(list_root);
+        for child in children {
+            commands.entity(*child).set_parent(inner_container);
+        }
+    }
+}
+
 pub fn handle_scroll(
     window: Query<&Window>,
     mut mouse_wheel: EventReader<MouseWheel>,
-    list_query: Query<(&Node, &GlobalTransform)>,
+    node_query: Query<(&Node, &GlobalTransform)>,
     mut inner_container_query: Query<(
         &mut Style,
         &Node,
@@ -184,7 +78,7 @@ pub fn handle_scroll(
 
     for scroll in mouse_wheel.read() {
         for (mut style, node, parent, mut inner_container) in &mut inner_container_query {
-            let (list, list_transform) = list_query.get(parent.get()).unwrap();
+            let (list, list_transform) = node_query.get(parent.get()).unwrap();
             if !list.logical_rect(list_transform).contains(cursor_pos) {
                 return;
             }

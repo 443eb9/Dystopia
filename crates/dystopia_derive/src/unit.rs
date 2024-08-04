@@ -101,6 +101,10 @@ pub fn expand_unit_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
             fn to_si_unit(self) -> Self {
                 Self::#si(self.to_si())
             }
+
+            fn wrap_with_si(data: Self::Precision) -> Self {
+                Self::#si(data)
+            }
         }
     }
     .into()

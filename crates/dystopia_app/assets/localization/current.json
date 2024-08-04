@@ -18,27 +18,21 @@
         "Celsius": "°C",
         "Kelvin": "K"
     },
-    "Time": {
-        "Second": "s",
-        "Tick": "t"
+    "LBodyType": {
+        "Star": "Star",
+        "Planet": "Planet",
+        "Moon": "Moon"
     },
-    "BodyDataPanelData": {
-        "body_ty": {
-            "star": "Star",
-            "planet": "Planet",
-            "moon": "Moon"
-        },
-        "detailed_body_ty": {
-            "o": "O-Type Star",
-            "b": "B-Type Star",
-            "a": "A-Type Star",
-            "f": "F-Type Star",
-            "g": "G-Type Star",
-            "k": "K-Type Star",
-            "m": "M-Type Star",
-            "rocky": "Rocky",
-            "gas": "Gas Giant",
-            "ice": "Ice Giant"
-        }
+    "LDetailedBodyType": {
+        "O": "O-Type Star",
+        "B": "B-Type Star",
+        "A": "A-Type Star",
+        "F": "F-Type Star",
+        "G": "G-Type Star",
+        "K": "K-Type Star",
+        "M": "M-Type Star",
+        "Rocky": "Rocky",
+        "Gas": "Gas Giant",
+        "Ice": "Ice Giant"
     }
 }

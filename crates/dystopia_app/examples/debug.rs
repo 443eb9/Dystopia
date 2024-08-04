@@ -31,6 +31,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
 use dystopia_core::{
     cosmos::gen::CosmosGenerationSettings,
+    key_value_list_element,
     map::{
         bundle::{TileBundle, TilemapBundle},
         tilemap::{
@@ -43,11 +44,7 @@ use dystopia_core::{
     schedule::state::{AssetState, GameState},
     sci::unit::Length,
     simulation::{MainCamera, ViewScale},
-    ui::{
-        common::UiAggregate,
-        scrollable_list::{ListElement, ListElementStyle, ScrollableList, ScrollableListStyle},
-        UiBuilder, FUSION_PIXEL,
-    },
+    ui::{common::UiAggregate, scrollable_list::ScrollableList, UiBuilder, FUSION_PIXEL},
     DystopiaCorePlugin,
 };
 use rand::Rng;
@@ -324,25 +321,41 @@ fn debug_ui(mut commands: Commands) {
             ..Default::default()
         })
         .with_children(|root| {
-            root.build_ui(
-                ScrollableList {
-                    elements: (0..30)
-                        .into_iter()
-                        .map(|i| ListElement {
-                            title: format!("Test Elem {}", i),
-                            value: format!("{}", i),
-                        })
-                        .collect(),
-                },
-                ScrollableListStyle {
-                    list_style: Style {
+            root.spawn((
+                NodeBundle {
+                    style: Style {
                         width: Val::Px(250.),
                         height: Val::Px(500.),
                         flex_direction: FlexDirection::Column,
                         ..Default::default()
                     },
-                    element_style: ListElementStyle::default(),
+                    ..Default::default()
                 },
-            );
+                ScrollableList,
+            ))
+            .with_children(|list_root| {
+                for i in 0..30 {
+                    key_value_list_element!(
+                        list_root,
+                        Default::default(),
+                        TextBundle::from_section(
+                            format!("Test Elem {}", i),
+                            TextStyle {
+                                font: FUSION_PIXEL,
+                                font_size: 20.,
+                                color: WHITE.into()
+                            }
+                        ),
+                        TextBundle::from_section(
+                            format!("{}", i),
+                            TextStyle {
+                                font: FUSION_PIXEL,
+                                font_size: 20.,
+                                color: WHITE.into()
+                            }
+                        )
+                    );
+                }
+            });
         });
 }

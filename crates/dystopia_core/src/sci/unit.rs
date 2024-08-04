@@ -15,12 +15,16 @@ use dystopia_derive::{LocalizableEnum, Unit};
 
 use crate::ui::primitive::AsBuiltUiElement;
 
+pub const TICKS_PER_SEC: u64 = 50;
+
 pub trait Unit {
     type Precision;
 
     fn to_si(self) -> Self::Precision;
 
     fn to_si_unit(self) -> Self;
+
+    fn wrap_with_si(data: Self::Precision) -> Self;
 }
 
 impl<U: Unit> AsBuiltUiElement for U {
@@ -67,8 +71,9 @@ pub enum Temperature {
 }
 
 /// Time are precise stuff and don't have decimal forms.
-#[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
+#[derive(Unit, Debug, Clone, Copy)]
 pub enum Time {
+    // This value should be equal to `TICKS_PER_SEC`.
     #[conversion = 50]
     Second(u64),
     /// Tick is the smallest time unit in simulation in Dystopia.

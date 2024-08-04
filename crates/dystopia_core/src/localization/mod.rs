@@ -13,6 +13,8 @@ use crate::{
 };
 
 pub mod macros;
+pub mod time;
+pub mod ui;
 
 pub struct DystopiaLocalizationPlugin;
 
@@ -57,6 +59,12 @@ impl<E: LocalizableEnum> AsBuiltUiElement for LocalizableEnumWrapper<E> {
     type BuiltType = Entity;
 }
 
+impl<E: LocalizableEnum> From<E> for LocalizableEnumWrapper<E> {
+    fn from(value: E) -> Self {
+        Self::Raw(value)
+    }
+}
+
 impl<E: LocalizableEnum> LocalizableEnumWrapper<E> {
     #[inline]
     pub fn localize(&mut self, lang: &LangFile) {
@@ -68,10 +76,10 @@ impl<E: LocalizableEnum> LocalizableEnumWrapper<E> {
     }
 
     #[inline]
-    pub fn localized(&self) -> Option<String> {
+    pub fn localized(&self) -> String {
         match self {
-            LocalizableEnumWrapper::Raw(_) => None,
-            LocalizableEnumWrapper::Localized(l) => Some(l.to_owned()),
+            LocalizableEnumWrapper::Raw(_) => panic!("This data is not localized yet."),
+            LocalizableEnumWrapper::Localized(l) => l.to_owned(),
         }
     }
 }
