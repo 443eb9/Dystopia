@@ -25,11 +25,11 @@ impl Manifest {
     }
 
     pub fn finish<C: RawConfig>(&mut self) {
-        self.to_load.remove(C::NAME);
+        self.to_load.remove(C::PATH);
     }
 
     pub fn add<C: RawConfig>(&mut self) {
-        self.to_load.insert(C::NAME.to_string());
+        self.to_load.insert(C::PATH.to_string());
         self.total += 1;
     }
 }

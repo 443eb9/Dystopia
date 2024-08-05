@@ -1,18 +1,20 @@
 use bevy::{
     app::{App, Plugin},
     asset::Asset,
-    prelude::{Deref, Entity, Resource},
+    prelude::{Deref, Resource},
     reflect::TypePath,
+    text::Text,
     utils::HashMap,
 };
 use serde::Deserialize;
 
 use crate::{
     assets::{app_ext::DystopiaAssetAppExt, config::RawConfig},
-    ui::primitive::AsBuiltUiElement,
+    ui::primitive::AsUiComponent,
 };
 
 pub mod macros;
+pub mod number;
 pub mod time;
 pub mod ui;
 
@@ -34,7 +36,7 @@ impl RawConfig for LangFile {
     type Processed = Self;
 
     // TODO Language switching
-    const NAME: &'static str = "localization/current.json";
+    const PATH: &'static str = "localization/current.json";
 }
 
 /// Before data being passed to UI components, it should be localized.
@@ -45,32 +47,44 @@ pub trait LocalizableStruct {
     fn localize(&mut self, lang: &LangFile);
 }
 
-/// [`LocalizableEnum`]s can be localized without knowing the struct or field it belongs to.
-pub trait LocalizableEnum {
+/// [`LocalizableData`]s can be localized without knowing the struct or field it belongs to.
+pub trait LocalizableData {
     fn localize(&self, lang: &LangFile) -> String;
 }
 
-pub enum LocalizableEnumWrapper<E: LocalizableEnum> {
+pub enum LocalizableDataWrapper<E: LocalizableData> {
     Raw(E),
     Localized(String),
 }
 
-impl<E: LocalizableEnum> AsBuiltUiElement for LocalizableEnumWrapper<E> {
-    type BuiltType = Entity;
-}
-
-impl<E: LocalizableEnum> From<E> for LocalizableEnumWrapper<E> {
+impl<E: LocalizableData> From<E> for LocalizableDataWrapper<E> {
     fn from(value: E) -> Self {
         Self::Raw(value)
     }
 }
 
-impl<E: LocalizableEnum> LocalizableEnumWrapper<E> {
+impl<E: LocalizableData> From<&LocalizableDataWrapper<E>> for String {
+    fn from(value: &LocalizableDataWrapper<E>) -> Self {
+        value.localized()
+    }
+}
+
+impl<E: LocalizableData + Default> Default for LocalizableDataWrapper<E> {
+    fn default() -> Self {
+        Self::Raw(E::default())
+    }
+}
+
+impl<E: LocalizableData> AsUiComponent for LocalizableDataWrapper<E> {
+    type UiComponent = Text;
+}
+
+impl<E: LocalizableData> LocalizableDataWrapper<E> {
     #[inline]
     pub fn localize(&mut self, lang: &LangFile) {
         let s = match &*self {
-            LocalizableEnumWrapper::Raw(r) => &r.localize(lang),
-            LocalizableEnumWrapper::Localized(l) => l,
+            LocalizableDataWrapper::Raw(r) => &r.localize(lang),
+            LocalizableDataWrapper::Localized(l) => l,
         };
         *self = Self::Localized(s.to_owned());
     }
@@ -78,8 +92,8 @@ impl<E: LocalizableEnum> LocalizableEnumWrapper<E> {
     #[inline]
     pub fn localized(&self) -> String {
         match self {
-            LocalizableEnumWrapper::Raw(_) => panic!("This data is not localized yet."),
-            LocalizableEnumWrapper::Localized(l) => l.to_owned(),
+            LocalizableDataWrapper::Raw(_) => panic!("This data is not localized yet."),
+            LocalizableDataWrapper::Localized(l) => l.to_owned(),
         }
     }
 }

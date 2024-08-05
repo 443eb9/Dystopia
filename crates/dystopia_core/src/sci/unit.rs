@@ -10,10 +10,7 @@
 //! uses [`Tick`](Time::Tick) as the base unit, as the simulation goes on not continously like
 //! that in nature.
 
-use bevy::prelude::Entity;
 use dystopia_derive::{LocalizableEnum, Unit};
-
-use crate::ui::primitive::AsBuiltUiElement;
 
 pub const TICKS_PER_SEC: u64 = 50;
 
@@ -25,10 +22,6 @@ pub trait Unit {
     fn to_si_unit(self) -> Self;
 
     fn wrap_with_si(data: Self::Precision) -> Self;
-}
-
-impl<U: Unit> AsBuiltUiElement for U {
-    type BuiltType = Entity;
 }
 
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]

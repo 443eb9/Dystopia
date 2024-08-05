@@ -5,12 +5,13 @@ use bevy::{
     asset::AssetServer,
     color::palettes::css::WHITE,
     dev_tools::ui_debug_overlay::{DebugUiPlugin, UiDebugOptions},
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     input::ButtonInput,
     log::info,
     math::{IVec3, UVec2, Vec2},
     prelude::{
-        BuildChildren, Camera2dBundle, Changed, Commands, KeyCode, Local, NodeBundle, Query, Res,
-        ResMut, TextBundle, With,
+        BuildChildren, Camera2dBundle, Changed, Commands, Entity, KeyCode, Local, NodeBundle,
+        Query, Res, ResMut, TextBundle, With,
     },
     render::{
         camera::OrthographicProjection,
@@ -30,8 +31,8 @@ use bevy::{
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_pancam::{PanCam, PanCamPlugin};
 use dystopia_core::{
-    cosmos::gen::CosmosGenerationSettings,
-    key_value_list_element,
+    cosmos::{celestial::BodyIndex, gen::CosmosGenerationSettings},
+    distributed_list_element,
     map::{
         bundle::{TileBundle, TilemapBundle},
         tilemap::{
@@ -44,7 +45,10 @@ use dystopia_core::{
     schedule::state::{AssetState, GameState},
     sci::unit::Length,
     simulation::{MainCamera, ViewScale},
-    ui::{common::UiAggregate, scrollable_list::ScrollableList, UiBuilder, FUSION_PIXEL},
+    ui::{
+        body_data_panel::BodyDataPanel, common::UiAggregate, scrollable_list::ScrollableList,
+        UiBuilder, FUSION_PIXEL,
+    },
     DystopiaCorePlugin,
 };
 use rand::Rng;
@@ -93,13 +97,14 @@ impl Plugin for DystopiaDebugPlugin {
             app.add_plugins(DebugUiPlugin);
         }
 
-        app.add_systems(Update, debug_sync_scale)
+        app.add_plugins((FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin::default()))
+            .add_systems(Update, debug_sync_scale)
             .add_systems(OnEnter(AssetState::Finish), debug_skip_menu)
-            .add_systems(OnEnter(GameState::Simulate), debug_ui)
+            // .add_systems(OnEnter(GameState::Simulate), debug_ui)
             // .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
             // .add_systems(Update, debug_rm_vis)
             .add_systems(Startup, setup_debug)
-            .add_systems(Update, toggle_ui_debug);
+            .add_systems(Update, (toggle_ui_debug, debug_body_panel_ui));
     }
 }
 
@@ -335,7 +340,7 @@ fn debug_ui(mut commands: Commands) {
             ))
             .with_children(|list_root| {
                 for i in 0..30 {
-                    key_value_list_element!(
+                    distributed_list_element!(
                         list_root,
                         Default::default(),
                         TextBundle::from_section(
@@ -358,4 +363,20 @@ fn debug_ui(mut commands: Commands) {
                 }
             });
         });
+}
+
+fn debug_body_panel_ui(
+    mut panel: ResMut<BodyDataPanel>,
+    body_query: Query<Entity, With<BodyIndex>>,
+    mut index: Local<usize>,
+    keyboard: Res<ButtonInput<KeyCode>>,
+) {
+    if keyboard.just_pressed(KeyCode::Enter) {
+        if let Some(body) = body_query.iter().nth(*index) {
+            panel.target_body = Some(body);
+            dbg!(*index);
+        }
+
+        *index = (*index + 1) % body_query.iter().len();
+    }
 }

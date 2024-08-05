@@ -35,7 +35,7 @@ impl DystopiaAssetAppExt for App {
             manifest.add::<C>();
         } else {
             self.world_mut()
-                .insert_resource(Manifest::new([C::NAME.to_string()].into()))
+                .insert_resource(Manifest::new([C::PATH.to_string()].into()))
         }
 
         self

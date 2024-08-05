@@ -20,6 +20,7 @@ impl Plugin for DystopiaCorePlugin {
         app.add_plugins((
             assets::DystopiaAssetsPlugin,
             cosmos::DystopiaCosmosPlugin,
+            localization::DystopiaLocalizationPlugin,
             map::DystopiaMapPlugin,
             schedule::DystopiaSchedulePlugin,
             simulation::DystopiaSimulationPlugin,

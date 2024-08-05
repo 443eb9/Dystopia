@@ -1,103 +1,125 @@
 use bevy::{
-    asset::Handle,
-    color::Color,
+    app::{App, Plugin, Update},
     core::Name,
     log::warn,
     prelude::{
-        BuildChildren, ChildBuilder, Component, DetectChanges, Entity, NodeBundle, Query, Res,
-        Resource, TextBundle,
+        in_state, BuildChildren, ChildBuilder, Commands, Component, DetectChanges, Entity,
+        IntoSystemConfigs, NodeBundle, Query, Res, ResMut, Resource, TextBundle,
     },
-    text::{Font, Text, TextStyle},
-    ui::{BackgroundColor, BorderColor, FlexDirection, FocusPolicy, Overflow, Style, Val},
+    text::{Text, TextStyle},
+    ui::{FlexDirection, FocusPolicy, Style, Val},
 };
 use dystopia_derive::{AsBuiltComponent, LocalizableEnum, LocalizableStruct};
 
 use crate::{
-    cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, OrbitIndex, Planet, Star, StarType},
-    gen_localizable_enum, key_value_list_element,
-    localization::{ui::LUiPanel, LangFile, LocalizableEnumWrapper},
+    cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, Planet, Star, StarType},
+    distributed_list_element, gen_localizable_enum,
+    localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
+    merge_list,
+    schedule::state::GameState,
     sci::unit::{Length, Time, Unit},
     ui::{
         common::UiAggregate,
-        primitive::AsBuiltUiElement,
-        scrollable_list::{ScrollableList, ScrollableListInnerContainer},
+        ext::DefaultWithStyle,
+        preset::{
+            default_panel_style, default_section_style, default_title_style, PANEL_BORDER_COLOR,
+            PANEL_BACKGROUND, PANEL_ELEM_TEXT_STYLE, PANEL_SUBTITLE_TEXT_STYLE,
+            PANEL_TITLE_BACKGROUND, PANEL_TITLE_FONT_SIZE, PANEL_TITLE_TEXT_COLOR,
+        },
+        primitive::AsBuiltComponent,
+        scrollable_list::ScrollableList,
+        GlobalUiRoot, UiBuilder, FUSION_PIXEL,
     },
 };
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct BodyDataPanel {
+    pub panel: Option<Entity>,
     pub target_body: Option<Entity>,
 }
 
 gen_localizable_enum!(LBodyType, Star, Planet, Moon);
 gen_localizable_enum!(LDetailedBodyType, O, B, A, F, G, K, M, Rocky, Gas, Ice);
 gen_localizable_enum!(
-    LBodyDataPanelDataField,
+    LBodyOrbitInfoType,
     OrbitRadius,
     SiderealPeriod,
     RotationPeriod
 );
+gen_localizable_enum!(LBodyDataPanelSectionType, BodyInfo, OrbitInfo);
+
+pub struct BodyDataPanelPlugin;
+
+impl Plugin for BodyDataPanelPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            (pack_body_data_panel_data, update_ui_panel_data).run_if(in_state(GameState::Simulate)),
+        )
+        .init_resource::<BodyDataPanel>();
+    }
+}
 
 #[derive(Component, AsBuiltComponent, LocalizableStruct)]
-pub struct BodyDataPanelData {
-    pub title: LocalizableEnumWrapper<LUiPanel>,
-    #[lang_skip]
-    pub body_name: String,
-    pub body_ty: LocalizableEnumWrapper<LBodyType>,
-    pub detailed_body_ty: LocalizableEnumWrapper<LDetailedBodyType>,
+struct BodyDataPanelData {
+    title: LocalizableDataWrapper<LUiPanel>,
 
-    pub orbit_radius: LocalizableEnumWrapper<Length>,
-    pub sidereal_period: LocalizableEnumWrapper<Time>,
-    pub rotation_period: LocalizableEnumWrapper<Time>,
+    section_body_info: LocalizableDataWrapper<LBodyDataPanelSectionType>,
+    #[lang_skip]
+    body_name: String,
+    body_ty: LocalizableDataWrapper<LBodyType>,
+    detailed_body_ty: LocalizableDataWrapper<LDetailedBodyType>,
+
+    section_orbit_info: LocalizableDataWrapper<LBodyDataPanelSectionType>,
+    title_orbit_radius: LocalizableDataWrapper<LBodyOrbitInfoType>,
+    orbit_radius: LocalizableDataWrapper<Length>,
+    title_sidereal_period: LocalizableDataWrapper<LBodyOrbitInfoType>,
+    sidereal_period: LocalizableDataWrapper<Time>,
+    title_rotation_period: LocalizableDataWrapper<LBodyOrbitInfoType>,
+    rotation_period: LocalizableDataWrapper<Time>,
 }
 
 pub struct BodyDataPanelStyle {
     pub width: Val,
     pub height: Val,
-    pub background_color: Color,
-    pub border_color: Option<Color>,
-    pub font: Handle<Font>,
-    pub title_font_size: f32,
-    pub title_font_color: Color,
-    pub title_background_color: Color,
-    pub content_font_color: Color,
 }
 
 impl UiAggregate for BodyDataPanelData {
     type Style = BodyDataPanelStyle;
 
     fn build(&self, parent: &mut ChildBuilder, style: Self::Style) -> Entity {
+        let mut entities = Vec::with_capacity(Self::NUM_FIELDS);
+
         parent
-            .spawn(NodeBundle {
-                style: Style {
-                    width: style.width,
-                    height: style.height,
+            .spawn((
+                NodeBundle {
+                    style: Style {
+                        width: style.width,
+                        height: style.height,
+                        ..default_panel_style()
+                    },
+                    background_color: PANEL_BACKGROUND,
+                    border_color: PANEL_BORDER_COLOR.into(),
+                    focus_policy: FocusPolicy::Block,
                     ..Default::default()
                 },
-                background_color: BackgroundColor(style.background_color),
-                border_color: BorderColor(style.border_color.unwrap_or(Color::NONE)),
-                focus_policy: FocusPolicy::Block,
-                ..Default::default()
-            })
+                Name::new("BodyDataPanel"),
+            ))
             .with_children(|root| {
                 // Title Bar
-                root.spawn(TextBundle {
-                    text: Text::from_section(
-                        String::default(),
-                        TextStyle {
-                            font: style.font.clone(),
-                            font_size: style.title_font_size,
-                            color: style.title_font_color,
-                        },
-                    ),
-                    style: Style {
-                        width: Val::Percent(100.),
-                        height: Val::Px(style.title_font_size * 1.5),
+                entities.push(
+                    root.spawn(TextBundle {
+                        text: Text::default_with_style(TextStyle {
+                            font: FUSION_PIXEL,
+                            font_size: PANEL_TITLE_FONT_SIZE,
+                            color: PANEL_TITLE_TEXT_COLOR,
+                        }),
+                        style: default_title_style(),
+                        background_color: PANEL_TITLE_BACKGROUND,
                         ..Default::default()
-                    },
-                    background_color: BackgroundColor(style.title_background_color),
-                    ..Default::default()
-                });
+                    })
+                    .id(),
+                );
 
                 // Data
                 root.spawn((
@@ -105,56 +127,94 @@ impl UiAggregate for BodyDataPanelData {
                         style: Style {
                             width: style.width,
                             height: style.height,
-                            overflow: Overflow::clip_y(),
+                            flex_direction: FlexDirection::Column,
                             ..Default::default()
                         },
                         ..Default::default()
                     },
-                    ScrollableListInnerContainer::default(),
+                    ScrollableList,
                 ))
                 .with_children(|list_root| {
+                    // TODO Add a icon for different types of bodies.
+                    // Body info section
                     list_root
                         .spawn(NodeBundle {
-                            style: Style {
-                                flex_direction: FlexDirection::Column,
-                                ..Default::default()
-                            },
+                            style: default_section_style(),
                             ..Default::default()
                         })
-                        .with_children(|data_root| {
-                            key_value_list_element!(
-                                data_root,
-                                Val::Percent(20.),
-                                TextBundle::from_section(
-                                    String::default(),
-                                    TextStyle {
-                                        font: style.font.clone(),
-                                        font_size: 16.,
-                                        color: style.content_font_color
-                                    }
-                                ),
-                                TextBundle::from_section(
-                                    String::default(),
-                                    TextStyle {
-                                        font: style.font.clone(),
-                                        font_size: 12.,
-                                        color: style.content_font_color
-                                    }
-                                )
+                        .with_children(|section_root| {
+                            entities.push(
+                                section_root
+                                    .spawn(TextBundle::default_with_style(
+                                        PANEL_SUBTITLE_TEXT_STYLE,
+                                    ))
+                                    .id(),
                             );
+
+                            entities.extend(distributed_list_element!(
+                                section_root,
+                                Val::Percent(20.),
+                                // body_name
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                // body_ty
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                // detailed_body_ty
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                            ));
+                        });
+
+                    // Orbit info section
+                    list_root
+                        .spawn(NodeBundle {
+                            style: default_section_style(),
+                            ..Default::default()
+                        })
+                        .with_children(|section_root| {
+                            entities.push(
+                                section_root
+                                    .spawn(TextBundle::default_with_style(
+                                        PANEL_SUBTITLE_TEXT_STYLE,
+                                    ))
+                                    .id(),
+                            );
+
+                            entities.extend(merge_list!(
+                                // orbit_radius
+                                distributed_list_element!(
+                                    section_root,
+                                    Val::Px(20.),
+                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                                ),
+                                // sidereal_period
+                                distributed_list_element!(
+                                    section_root,
+                                    Val::Px(20.),
+                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                                ),
+                                // rotation_period
+                                distributed_list_element!(
+                                    section_root,
+                                    Val::Px(20.),
+                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                                )
+                            ));
                         });
                 });
             })
+            .insert(BuiltBodyDataPanelData::from_entities(entities))
             .id()
     }
 }
 
 pub(super) fn pack_body_data_panel_data(
-    panel: Res<BodyDataPanel>,
+    mut commands: Commands,
+    mut panel: ResMut<BodyDataPanel>,
     body_query: Query<(
         &Name,
         &BodyIndex,
-        &OrbitIndex,
         Option<&Star>,
         Option<&StarType>,
         Option<&Planet>,
@@ -174,7 +234,6 @@ pub(super) fn pack_body_data_panel_data(
     let Ok((
         body_name,
         body_index,
-        orbit_index,
         maybe_star,
         maybe_star_ty,
         maybe_planet,
@@ -186,12 +245,10 @@ pub(super) fn pack_body_data_panel_data(
         return;
     };
 
-    let (Some(body), Some(orbit)) = (
-        cosmos.bodies.get(**body_index),
-        cosmos.orbits.get(**orbit_index),
-    ) else {
+    // body indices should be equal to orbit indices
+    let Some(orbit) = cosmos.orbits.get(**body_index) else {
         warn!(
-            "Failed to get detailed body and orbit data for body {}, named {}",
+            "Failed to get orbit data for body {}, named {}",
             **body_index,
             body_name.as_str()
         );
@@ -232,13 +289,63 @@ pub(super) fn pack_body_data_panel_data(
 
     let data = BodyDataPanelData {
         title: LUiPanel::BodyData.into(),
+        section_body_info: LBodyDataPanelSectionType::BodyInfo.into(),
         body_name: body_name.to_string(),
         body_ty,
         detailed_body_ty,
+        section_orbit_info: LBodyDataPanelSectionType::OrbitInfo.into(),
+        title_orbit_radius: LBodyOrbitInfoType::OrbitRadius.into(),
         orbit_radius: Length::wrap_with_si(orbit.radius).into(),
+        title_sidereal_period: LBodyOrbitInfoType::SiderealPeriod.into(),
         sidereal_period: Time::wrap_with_si(orbit.sidereal_period).into(),
+        title_rotation_period: LBodyOrbitInfoType::RotationPeriod.into(),
         rotation_period: Time::wrap_with_si(orbit.rotation_period).into(),
     };
+
+    if let Some(panel) = panel.panel {
+        commands.entity(panel).insert(data);
+    } else {
+        panel.panel = Some(commands.spawn(data).id());
+    }
 }
 
-pub(super) fn update_ui_panel_data(lang: Res<LangFile>) {}
+fn update_ui_panel_data(
+    mut commands: Commands,
+    lang: Res<LangFile>,
+    mut panel: ResMut<BodyDataPanel>,
+    mut panel_query: Query<(
+        Entity,
+        &mut BodyDataPanelData,
+        Option<&BuiltBodyDataPanelData>,
+    )>,
+    global_root: Res<GlobalUiRoot>,
+) {
+    if panel_query.is_empty() {
+        return;
+    }
+
+    let Some((entity, mut data, built)) = panel.panel.and_then(|e| panel_query.get_mut(e).ok())
+    else {
+        return;
+    };
+
+    data.localize(&lang);
+
+    if let Some(built) = built {
+        built.update(&data, &mut commands);
+        commands.entity(entity).remove::<BodyDataPanelData>();
+    } else {
+        let mut built = None;
+        commands.entity(**global_root).with_children(|root| {
+            built = Some(root.build_ui(
+                &*data,
+                BodyDataPanelStyle {
+                    width: Val::Px(250.),
+                    height: Val::Px(500.),
+                },
+            ));
+        });
+        panel.panel = built;
+        commands.entity(entity).despawn();
+    }
+}

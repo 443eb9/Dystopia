@@ -13,13 +13,13 @@ pub fn expand_localizable_enum(input: syn::DeriveInput) -> proc_macro::TokenStre
             });
         } else {
             variants.push(quote::quote! {
-                Self::#var_ident(data) => format!("{} {}", data, enum_lang[stringify!(#var_ident)]),
+                Self::#var_ident(data) => format!("{} {}", data.localize(lang), enum_lang[stringify!(#var_ident)]),
             });
         }
     }
 
     quote::quote! {
-        impl #core_crate::localization::LocalizableEnum for #ty {
+        impl #core_crate::localization::LocalizableData for #ty {
             fn localize(&self, lang: &#core_crate::localization::LangFile) -> String {
                 let enum_lang = &(**lang)[stringify!(#ty)];
                 match self {

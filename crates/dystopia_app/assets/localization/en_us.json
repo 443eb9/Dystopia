@@ -18,6 +18,9 @@
         "Celsius": "°C",
         "Kelvin": "K"
     },
+    "LUiPanel": {
+        "BodyData": "Body Information"
+    },
     "LBodyType": {
         "Star": "Star",
         "Planet": "Planet",
@@ -34,5 +37,14 @@
         "Rocky": "Rocky",
         "Gas": "Gas Giant",
         "Ice": "Ice Giant"
+    },
+    "LBodyOrbitInfoType": {
+        "OrbitRadius": "Orbit Radius",
+        "SiderealPeriod": "Sidereal Period",
+        "RotationPeriod": "Rotation Period"
+    },
+    "LBodyDataPanelSectionType": {
+        "BodyInfo": "Body",
+        "OrbitInfo": "Orbit"
     }
 }

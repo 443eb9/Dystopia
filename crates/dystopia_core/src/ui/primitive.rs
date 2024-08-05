@@ -1,52 +1,71 @@
 use bevy::{
     asset::Handle,
-    prelude::{Entity, Image},
+    prelude::{Component, Entity, Image, ParallelCommands, Query},
     text::Text,
-    ui::{UiImage, Val},
+    ui::UiImage,
 };
 
-/// Generate a component for ui data that contains all entities.
-pub trait AsBuiltComponent {}
-
-impl AsBuiltComponent for Entity {}
-
-/// Primitive ui data is data that can be spawned into world and be stored
-/// using one variable.
-pub trait AsBuiltUiElement {
-    type BuiltType;
-}
-
-#[macro_export]
-macro_rules! impl_built_to_entity {
-    ($ty: ty) => {
-        impl AsBuiltUiElement for $ty {
-            type BuiltType = Entity;
-        }
-    };
-}
-
-impl_built_to_entity!(i32);
-impl_built_to_entity!(u32);
-impl_built_to_entity!(f32);
-impl_built_to_entity!(String);
-impl_built_to_entity!(Val);
-
-impl<T: AsBuiltUiElement> AsBuiltUiElement for Vec<T> {
-    type BuiltType = Vec<Entity>;
+/// Generate a component for ui data that contains all entities that
+/// have components to display corresponding data.
+pub trait AsBuiltComponent {
+    const NUM_FIELDS: usize;
 }
 
 pub trait AsOriginalUiData {
-    type OriginalType;
+    type OriginalType: Send + Sync + Clone;
+}
+
+pub trait AsUiComponent {
+    type UiComponent;
 }
 
 #[macro_export]
-macro_rules! impl_as_original_ui_data {
+macro_rules! link_component_and_data {
     ($built: ty, $original: ty) => {
         impl AsOriginalUiData for $built {
             type OriginalType = $original;
         }
+
+        impl AsUiComponent for $original {
+            type UiComponent = $built;
+        }
     };
 }
 
-impl_as_original_ui_data!(Text, String);
-impl_as_original_ui_data!(UiImage, Handle<Image>);
+link_component_and_data!(Text, String);
+link_component_and_data!(UiImage, Handle<Image>);
+
+pub trait UpdatableUiComponent: AsOriginalUiData + Component {
+    fn update(&mut self, data: Self::OriginalType);
+}
+
+impl UpdatableUiComponent for Text {
+    fn update(&mut self, data: Self::OriginalType) {
+        self.sections[0].value = data;
+    }
+}
+
+impl UpdatableUiComponent for UiImage {
+    fn update(&mut self, data: Self::OriginalType) {
+        self.texture = data;
+    }
+}
+
+#[derive(Component)]
+pub struct PrimitiveDataUpdate<T: AsOriginalUiData> {
+    pub new: T::OriginalType,
+}
+
+pub fn update_primitive_data<T: UpdatableUiComponent>(
+    commands: ParallelCommands,
+    mut updates_query: Query<(Entity, &PrimitiveDataUpdate<T>, &mut T)>,
+) {
+    updates_query
+        .par_iter_mut()
+        .for_each(|(entity, update, mut component)| {
+            component.update(update.new.clone());
+            commands.command_scope(|mut c| {
+                c.entity(entity).remove::<PrimitiveDataUpdate<T>>();
+            })
+        });
+}

@@ -1,9 +1,9 @@
 use crate::{
-    localization::LocalizableEnum,
+    localization::LocalizableData,
     sci::unit::{Time, Unit, TICKS_PER_SEC},
 };
 
-impl LocalizableEnum for Time {
+impl LocalizableData for Time {
     fn localize(&self, _lang: &super::LangFile) -> String {
         let total_secs = (self.to_si() / TICKS_PER_SEC) as f64;
         let hours = total_secs / 3600.;

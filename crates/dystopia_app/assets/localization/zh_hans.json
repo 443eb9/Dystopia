@@ -1,0 +1,50 @@
+{
+    "Length": {
+        "SolarRadius": "R☉",
+        "LightYear": "LY",
+        "AstronomicalUnit": "Au",
+        "Meter": "M"
+    },
+    "Mass": {
+        "SolarMass": "M☉",
+        "EarthMass": "M🜨",
+        "Kilogram": "Kg"
+    },
+    "RadiantFlux": {
+        "SolarLuminosity": "L☉",
+        "Watt": "W"
+    },
+    "Temperature": {
+        "Celsius": "°C",
+        "Kelvin": "K"
+    },
+    "LUiPanel": {
+        "BodyData": "天体信息"
+    },
+    "LBodyType": {
+        "Star": "恒星",
+        "Planet": "行星",
+        "Moon": "卫星"
+    },
+    "LDetailedBodyType": {
+        "O": "O-型恒星",
+        "B": "B-型恒星",
+        "A": "A-型恒星",
+        "F": "F-型恒星",
+        "G": "G-型恒星",
+        "K": "K-型恒星",
+        "M": "M-型恒星",
+        "Rocky": "岩石",
+        "Gas": "气巨星",
+        "Ice": "冰巨星"
+    },
+    "LBodyOrbitInfoType": {
+        "OrbitRadius": "轨道半径",
+        "SiderealPeriod": "公转周期",
+        "RotationPeriod": "自转周期"
+    },
+    "LBodyDataPanelSectionType": {
+        "BodyInfo": "天体",
+        "OrbitInfo": "轨道"
+    }
+}

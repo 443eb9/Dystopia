@@ -20,7 +20,7 @@ pub struct CosmosStarNamesConfig(Vec<String>);
 impl RawConfig for CosmosStarNamesConfig {
     type Processed = Self;
 
-    const NAME: &'static str = "star_names.json";
+    const PATH: &'static str = "configs/star_names.json";
 }
 
 #[derive(Asset, TypePath, Clone, Serialize, Deserialize)]
@@ -29,7 +29,7 @@ pub(super) struct RawCosmosStarPropertiesConfig(Vec<RawStarProperties>);
 impl RawConfig for RawCosmosStarPropertiesConfig {
     type Processed = CosmosStarPropertiesConfig;
 
-    const NAME: &'static str = "star_properties.json";
+    const PATH: &'static str = "configs/star_properties.json";
 }
 
 impl From<RawCosmosStarPropertiesConfig> for CosmosStarPropertiesConfig {

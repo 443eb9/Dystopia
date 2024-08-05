@@ -2,7 +2,7 @@ use bevy::{
     input::mouse::{MouseScrollUnit, MouseWheel},
     prelude::{
         Added, BuildChildren, Children, Commands, Component, Entity, EventReader, GlobalTransform,
-        NodeBundle, Parent, Query, With,
+        NodeBundle, Parent, Query,
     },
     ui::{Node, Overflow, Style, Val},
     window::Window,
