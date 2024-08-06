@@ -1,9 +1,25 @@
-use std::ops::Range;
+use std::{fmt::Display, ops::Range};
 
 use bevy::math::DVec2;
 use rand::Rng;
 
+pub mod raycasting;
 pub mod shape;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UiDirection {
+    Top,
+    Right,
+    Bottom,
+    Left,
+}
 
 pub fn polar_to_cartesian(theta: f64, r: f64) -> DVec2 {
     let (s, c) = theta.sin_cos();

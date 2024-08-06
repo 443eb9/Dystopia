@@ -155,8 +155,8 @@ pub fn generate_cosmos(
     spawn_orbits(&mut commands, square_mesh.clone(), &orbits, orbit_materials);
 
     commands.insert_resource(Cosmos { bodies, orbits });
-    commands.insert_resource(GlobalRng(rng));
-    commands.insert_resource(Ticker(0));
+    commands.insert_resource(GlobalRng::new(rng));
+    commands.insert_resource(Ticker::default());
 
     info!(
         "Cosmos generation finished after {} s! {} star(s), {} planet(s), {} moon(s).",

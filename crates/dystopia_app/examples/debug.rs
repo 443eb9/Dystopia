@@ -46,8 +46,7 @@ use dystopia_core::{
     sci::unit::Length,
     simulation::{MainCamera, ViewScale},
     ui::{
-        body_data_panel::BodyDataPanel, common::UiAggregate, scrollable_list::ScrollableList,
-        UiBuilder, FUSION_PIXEL,
+        body_data_panel::BodyDataPanel, scrollable_list::ScrollableList, UiBuilder, FUSION_PIXEL,
     },
     DystopiaCorePlugin,
 };
@@ -374,7 +373,6 @@ fn debug_body_panel_ui(
     if keyboard.just_pressed(KeyCode::Enter) {
         if let Some(body) = body_query.iter().nth(*index) {
             panel.target_body = Some(body);
-            dbg!(*index);
         }
 
         *index = (*index + 1) % body_query.iter().len();

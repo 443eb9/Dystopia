@@ -1,12 +1,13 @@
 use bevy::{
     input::mouse::{MouseScrollUnit, MouseWheel},
     prelude::{
-        Added, BuildChildren, Children, Commands, Component, Entity, EventReader, GlobalTransform,
-        NodeBundle, Parent, Query,
+        Added, BuildChildren, Children, Commands, Component, Entity, EventReader, NodeBundle,
+        Parent, Query, ViewVisibility, With,
     },
     ui::{Node, Overflow, Style, Val},
-    window::Window,
 };
+
+use crate::math::raycasting::MouseHovering;
 
 /// Mark a container as a scrollable list.
 ///
@@ -58,42 +59,40 @@ pub fn init_structure(
 }
 
 pub fn handle_scroll(
-    window: Query<&Window>,
     mut mouse_wheel: EventReader<MouseWheel>,
-    node_query: Query<(&Node, &GlobalTransform)>,
-    mut inner_container_query: Query<(
-        &mut Style,
-        &Node,
-        &Parent,
-        &mut ScrollableListInnerContainer,
-    )>,
+    node_query: Query<&Node>,
+    mut inner_container_query: Query<
+        (
+            &mut Style,
+            &Node,
+            &Parent,
+            &mut ScrollableListInnerContainer,
+            &ViewVisibility,
+        ),
+        With<MouseHovering>,
+    >,
 ) {
-    let Some(cursor_pos) = window
-        .get_single()
-        .map(|w| w.cursor_position())
-        .expect("Multiple windows detected, which is not allowed.")
-    else {
-        return;
-    };
-
     for scroll in mouse_wheel.read() {
-        for (mut style, node, parent, mut inner_container) in &mut inner_container_query {
-            let (list, list_transform) = node_query.get(parent.get()).unwrap();
-            if !list.logical_rect(list_transform).contains(cursor_pos) {
-                return;
-            }
+        inner_container_query.par_iter_mut().for_each(
+            |(mut style, node, parent, mut inner_container, vis)| {
+                if !vis.get() {
+                    return;
+                }
 
-            let inner_container_height = node.size().y;
-            let max_scroll = (inner_container_height - list.size().y).max(0.);
+                let list = node_query.get(parent.get()).unwrap();
 
-            let dy = match scroll.unit {
-                MouseScrollUnit::Line => scroll.y * 20.,
-                MouseScrollUnit::Pixel => scroll.y,
-            };
+                let inner_container_height = node.size().y;
+                let max_scroll = (inner_container_height - list.size().y).max(0.);
 
-            inner_container.position += dy;
-            inner_container.position = inner_container.position.clamp(-max_scroll, 0.);
-            style.top = Val::Px(inner_container.position);
-        }
+                let dy = match scroll.unit {
+                    MouseScrollUnit::Line => scroll.y * 20.,
+                    MouseScrollUnit::Pixel => scroll.y,
+                };
+
+                inner_container.position += dy;
+                inner_container.position = inner_container.position.clamp(-max_scroll, 0.);
+                style.top = Val::Px(inner_container.position);
+            },
+        );
     }
 }

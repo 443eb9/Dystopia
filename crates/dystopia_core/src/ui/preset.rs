@@ -20,7 +20,7 @@ pub fn default_panel_style() -> Style {
 pub fn default_title_style() -> Style {
     Style {
         width: Val::Percent(100.),
-        height: Val::Px(25.),
+        height: Val::Px(PANEL_TITLE_HEIGHT),
         ..Default::default()
     }
 }
@@ -29,10 +29,12 @@ pub fn default_section_style() -> Style {
     Style {
         flex_direction: FlexDirection::Column,
         border: UiRect::all(Val::Px(2.)),
-        margin: UiRect::all(Val::Px(7.)),
+        margin: UiRect::all(Val::Px(SECTION_MARGIN)),
         ..Default::default()
     }
 }
+
+pub const SECTION_MARGIN: f32 = 7.;
 
 pub const PANEL_BACKGROUND: BackgroundColor = BackgroundColor(Color::WHITE);
 
@@ -44,7 +46,7 @@ pub const PANEL_TITLE_TEXT_STYLE: TextStyle = TextStyle {
 pub const PANEL_TITLE_TEXT_COLOR: Color = Color::WHITE;
 pub const PANEL_TITLE_FONT_SIZE: f32 = 20.;
 pub const PANEL_TITLE_BACKGROUND: BackgroundColor = BackgroundColor(PANEL_BORDER_COLOR);
-pub const PANEL_TITLE_HEIGHT: Val = Val::Px(25.);
+pub const PANEL_TITLE_HEIGHT: f32 = 25.;
 
 pub const PANEL_SUBTITLE_TEXT_STYLE: TextStyle = TextStyle {
     font: FUSION_PIXEL,

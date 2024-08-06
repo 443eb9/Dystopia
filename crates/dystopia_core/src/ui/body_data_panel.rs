@@ -7,7 +7,7 @@ use bevy::{
         IntoSystemConfigs, NodeBundle, Query, Res, ResMut, Resource, TextBundle,
     },
     text::{Text, TextStyle},
-    ui::{FlexDirection, FocusPolicy, Style, Val},
+    ui::{FlexDirection, Style, Val},
 };
 use dystopia_derive::{AsBuiltComponent, LocalizableEnum, LocalizableStruct};
 
@@ -19,16 +19,17 @@ use crate::{
     schedule::state::GameState,
     sci::unit::{Length, Time, Unit},
     ui::{
-        common::UiAggregate,
         ext::DefaultWithStyle,
+        interaction::Dragable,
         preset::{
-            default_panel_style, default_section_style, default_title_style, PANEL_BORDER_COLOR,
-            PANEL_BACKGROUND, PANEL_ELEM_TEXT_STYLE, PANEL_SUBTITLE_TEXT_STYLE,
-            PANEL_TITLE_BACKGROUND, PANEL_TITLE_FONT_SIZE, PANEL_TITLE_TEXT_COLOR,
+            default_panel_style, default_section_style, default_title_style, PANEL_BACKGROUND,
+            PANEL_BORDER_COLOR, PANEL_ELEM_TEXT_STYLE, PANEL_SUBTITLE_TEXT_STYLE,
+            PANEL_TITLE_BACKGROUND, PANEL_TITLE_FONT_SIZE, PANEL_TITLE_HEIGHT,
+            PANEL_TITLE_TEXT_COLOR, SECTION_MARGIN,
         },
         primitive::AsBuiltComponent,
         scrollable_list::ScrollableList,
-        GlobalUiRoot, UiBuilder, FUSION_PIXEL,
+        GlobalUiRoot, UiAggregate, UiBuilder, FUSION_PIXEL,
     },
 };
 
@@ -80,8 +81,8 @@ struct BodyDataPanelData {
 }
 
 pub struct BodyDataPanelStyle {
-    pub width: Val,
-    pub height: Val,
+    pub width: f32,
+    pub height: f32,
 }
 
 impl UiAggregate for BodyDataPanelData {
@@ -94,16 +95,16 @@ impl UiAggregate for BodyDataPanelData {
             .spawn((
                 NodeBundle {
                     style: Style {
-                        width: style.width,
-                        height: style.height,
+                        width: Val::Px(style.width),
+                        height: Val::Px(style.height),
                         ..default_panel_style()
                     },
                     background_color: PANEL_BACKGROUND,
                     border_color: PANEL_BORDER_COLOR.into(),
-                    focus_policy: FocusPolicy::Block,
                     ..Default::default()
                 },
                 Name::new("BodyDataPanel"),
+                Dragable::default(),
             ))
             .with_children(|root| {
                 // Title Bar
@@ -125,8 +126,8 @@ impl UiAggregate for BodyDataPanelData {
                 root.spawn((
                     NodeBundle {
                         style: Style {
-                            width: style.width,
-                            height: style.height,
+                            width: Val::Percent(100.),
+                            height: Val::Px(style.height - PANEL_TITLE_HEIGHT - SECTION_MARGIN),
                             flex_direction: FlexDirection::Column,
                             ..Default::default()
                         },
@@ -340,8 +341,8 @@ fn update_ui_panel_data(
             built = Some(root.build_ui(
                 &*data,
                 BodyDataPanelStyle {
-                    width: Val::Px(250.),
-                    height: Val::Px(500.),
+                    width: 250.,
+                    height: 250.,
                 },
             ));
         });

@@ -9,14 +9,11 @@ use bevy::{
     ui::{Style, UiImage, Val},
 };
 
-use crate::{
-    schedule::state::GameState,
-    ui::{body_data_panel::BodyDataPanelPlugin, common::UiAggregate},
-};
+use crate::{schedule::state::GameState, ui::body_data_panel::BodyDataPanelPlugin};
 
 pub mod body_data_panel;
-pub mod common;
 pub mod ext;
+pub mod interaction;
 pub mod macros;
 pub mod preset;
 pub mod primitive;
@@ -52,6 +49,14 @@ impl Plugin for DystopiaUiPlugin {
                 )
                     .run_if(in_state(GameState::Simulate)),
             )
+            .add_systems(
+                Update,
+                (
+                    interaction::ui_drag_canceller,
+                    interaction::ui_drag_marker,
+                    interaction::ui_drag_handler,
+                ),
+            )
             .init_resource::<GlobalUiRoot>();
     }
 }
@@ -74,6 +79,13 @@ impl FromWorld for GlobalUiRoot {
                 .id(),
         )
     }
+}
+
+pub trait UiAggregate {
+    type Style;
+
+    /// Build the ui and spawn them into world.
+    fn build(&self, parent: &mut ChildBuilder, style: Self::Style) -> Entity;
 }
 
 pub trait UiBuilder {

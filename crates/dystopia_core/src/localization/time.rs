@@ -17,7 +17,7 @@ impl LocalizableData for Time {
         if i_hours == 0 {
             if i_mins == 0 {
                 if i_secs == 0 {
-                    "Now".into()
+                    "NaN".into()
                 } else {
                     format!("{}s", i_secs)
                 }

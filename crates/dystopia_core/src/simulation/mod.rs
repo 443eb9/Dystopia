@@ -4,12 +4,14 @@
 use bevy::{
     app::{App, FixedUpdate, Plugin, Update},
     log::info,
+    math::Vec2,
     prelude::{Component, Deref, DerefMut, IntoSystemConfigs, Query, Res, ResMut, Resource, With},
     render::{
         camera::OrthographicProjection,
         extract_component::{ExtractComponent, ExtractComponentPlugin},
     },
     state::{condition::in_state, state::NextState},
+    window::Window,
 };
 use rand::rngs::StdRng;
 
@@ -23,7 +25,7 @@ pub struct DystopiaSimulationPlugin;
 impl Plugin for DystopiaSimulationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ExtractComponentPlugin::<MainCamera>::default())
-            .add_systems(Update, sync_view_scale)
+            .add_systems(Update, (update_window_related_data, sync_view_scale))
             .add_systems(
                 FixedUpdate,
                 global_clock.run_if(in_state(GameState::Simulate)),
@@ -34,7 +36,9 @@ impl Plugin for DystopiaSimulationPlugin {
                     .run_if(in_state(AssetState::Finish))
                     .run_if(in_state(GameState::Initialize)),
             )
-            .init_resource::<ViewScale>();
+            .init_resource::<CursorPosition>()
+            .init_resource::<ViewScale>()
+            .init_resource::<WindowSize>();
     }
 }
 
@@ -76,14 +80,38 @@ fn sync_view_scale(
 ///
 /// For wold that is generated, this RNG will be inserted when generating
 /// cosmos, and for those are loaded, this will be loaded from the save.
-#[derive(Resource)]
-pub struct GlobalRng(pub StdRng);
+#[derive(Resource, Deref, DerefMut)]
+pub struct GlobalRng(StdRng);
 
-#[derive(Resource)]
-pub struct Ticker(pub u64);
+impl GlobalRng {
+    pub fn new(rng: StdRng) -> Self {
+        Self(rng)
+    }
+}
+
+#[derive(Resource, Default, Deref)]
+pub struct Ticker(u64);
 
 pub fn global_clock(mut ticker: ResMut<Ticker>) {
     ticker.0 += 1;
+}
+
+#[derive(Resource, Default, Deref)]
+pub struct CursorPosition(Vec2);
+
+#[derive(Resource, Default, Deref)]
+pub struct WindowSize(Vec2);
+
+fn update_window_related_data(
+    windows_query: Query<&Window>,
+    mut pos: ResMut<CursorPosition>,
+    mut size: ResMut<WindowSize>,
+) {
+    let window = windows_query
+        .get_single()
+        .expect("Multiple windows detected, which is not allowed.");
+    pos.0 = window.cursor_position().unwrap_or_default();
+    size.0 = window.size();
 }
 
 fn check_if_initialized(
