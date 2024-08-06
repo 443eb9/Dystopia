@@ -52,10 +52,11 @@ impl Plugin for DystopiaUiPlugin {
             .add_systems(
                 Update,
                 (
-                    interaction::ui_drag_canceller,
                     interaction::ui_drag_marker,
                     interaction::ui_drag_handler,
-                ),
+                    interaction::ui_drag_canceller,
+                )
+                    .chain(),
             )
             .init_resource::<GlobalUiRoot>();
     }
