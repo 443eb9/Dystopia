@@ -9,6 +9,7 @@ opt-level = 1
 opt-level = 3
 
 [workspace.dependencies]
+avian2d = { version = "0.1" }
 bevy = { version = "0.14", default-features = false, features = [
     "bevy_sprite",
     "bevy_state",

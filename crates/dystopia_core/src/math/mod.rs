@@ -3,7 +3,6 @@ use std::ops::Range;
 use bevy::math::DVec2;
 use rand::Rng;
 
-pub mod raycasting;
 pub mod shape;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

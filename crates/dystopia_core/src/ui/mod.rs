@@ -10,8 +10,7 @@ use bevy::{
 };
 
 use crate::{
-    math::raycasting::RayTransparent, schedule::state::GameState,
-    ui::body_data_panel::BodyDataPanelPlugin,
+    input::RayTransparent, schedule::state::GameState, ui::body_data_panel::BodyDataPanelPlugin,
 };
 
 pub mod body_data_panel;

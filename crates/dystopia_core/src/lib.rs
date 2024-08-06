@@ -24,7 +24,6 @@ impl Plugin for DystopiaCorePlugin {
             input::DystopiaInputPlugin,
             localization::DystopiaLocalizationPlugin,
             map::DystopiaMapPlugin,
-            math::raycasting::DystopiaRaycastingPlugin,
             schedule::DystopiaSchedulePlugin,
             simulation::DystopiaSimulationPlugin,
             ui::DystopiaUiPlugin,

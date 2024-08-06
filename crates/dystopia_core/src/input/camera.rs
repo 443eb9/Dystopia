@@ -12,8 +12,7 @@ use bevy::{
 };
 
 use crate::{
-    input::{SceneCursorPosition, SceneMouseClick},
-    math::raycasting::scene::EntityOnDrag,
+    input::{scene::EntityOnDrag, SceneCursorPosition, SceneMouseClick},
     simulation::{MainCamera, ViewScale},
 };
 

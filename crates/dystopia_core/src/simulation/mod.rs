@@ -2,25 +2,29 @@
 //! in corresponding modules.
 
 use bevy::{
-    app::{App, FixedUpdate, Plugin, Update},
+    app::{App, FixedUpdate, Plugin, Startup, Update},
     log::info,
     math::Vec2,
     prelude::{
-        Component, Deref, DerefMut, DetectChanges, IntoSystemConfigs, Query, Res, ResMut, Resource,
-        With,
+        Camera2dBundle, Commands, Component, Deref, DerefMut, IntoSystemConfigs, Query, Res,
+        ResMut, Resource, With,
     },
     render::{
         camera::OrthographicProjection,
         extract_component::{ExtractComponent, ExtractComponentPlugin},
     },
     state::{condition::in_state, state::NextState},
+    ui::IsDefaultUiCamera,
     window::Window,
 };
 use rand::rngs::StdRng;
 
-use crate::schedule::{
-    signal::InitializationSignal,
-    state::{AssetState, GameState},
+use crate::{
+    input::camera::CameraBehavior,
+    schedule::{
+        signal::InitializationSignal,
+        state::{AssetState, GameState},
+    },
 };
 
 pub struct DystopiaSimulationPlugin;
@@ -28,6 +32,7 @@ pub struct DystopiaSimulationPlugin;
 impl Plugin for DystopiaSimulationPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ExtractComponentPlugin::<MainCamera>::default())
+            .add_systems(Startup, setup_camera)
             .add_systems(Update, (update_window_related_data, sync_view_scale))
             .add_systems(
                 FixedUpdate,
@@ -49,6 +54,20 @@ impl Plugin for DystopiaSimulationPlugin {
 #[derive(Component, ExtractComponent, Default, Clone)]
 pub struct MainCamera;
 
+pub fn setup_camera(mut commands: Commands) {
+    commands.spawn((
+        Camera2dBundle::default(),
+        MainCamera,
+        IsDefaultUiCamera,
+        CameraBehavior {
+            zoom_ratio: 0.005,
+            zoom_max: 10.,
+            zoom_min: 0.1,
+            zoom_smooth: 30.,
+        },
+    ));
+}
+
 /// The only choice in this game if you want to scale the camera. It is
 /// not allowed to directly change the `scale` in
 /// [`OrthographicProjection`](bevy::render::camera::OrthographicProjection)
@@ -67,10 +86,6 @@ fn sync_view_scale(
     view_scale: Res<ViewScale>,
     mut camera: Query<&mut OrthographicProjection, With<MainCamera>>,
 ) {
-    if !view_scale.is_changed() {
-        return;
-    }
-
     let Ok(mut camera) = camera.get_single_mut() else {
         panic!("Exactly one main camera can exist at a time.")
     };

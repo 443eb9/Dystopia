@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+avian2d.workspace = true
 bevy.workspace = true
 bevy-inspector-egui.workspace = true
 dystopia_core = { version = "0.1.0", path = "../dystopia_core" }

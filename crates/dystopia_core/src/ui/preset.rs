@@ -4,13 +4,14 @@ use bevy::{
         Color, Srgba,
     },
     text::TextStyle,
-    ui::{BackgroundColor, FlexDirection, Style, UiRect, Val},
+    ui::{BackgroundColor, FlexDirection, PositionType, Style, UiRect, Val},
 };
 
 use crate::ui::FUSION_PIXEL;
 
 pub fn default_panel_style() -> Style {
     Style {
+        position_type: PositionType::Absolute,
         flex_direction: FlexDirection::Column,
         border: UiRect::all(Val::Px(2.)),
         ..Default::default()
@@ -66,3 +67,5 @@ pub const PANEL_ELEM_FONT_SIZE: f32 = 14.;
 
 pub const PANEL_BORDER_COLOR: Color = Color::Srgba(Srgba::rgb(68. / 255., 62. / 255., 185. / 255.));
 pub const SECTION_BORDER_COLOR: Color = Color::Srgba(Srgba::new(0., 0., 0., 0.2));
+
+pub const FULLSCREEN_UI_CORNERS: UiRect = UiRect::all(Val::Px(10.));

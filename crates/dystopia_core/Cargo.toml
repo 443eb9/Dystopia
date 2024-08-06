@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+avian2d.workspace = true
 bevy.workspace = true
 bitflags.workspace = true
 dystopia_derive = { version = "0.1.0", path = "../dystopia_derive" }

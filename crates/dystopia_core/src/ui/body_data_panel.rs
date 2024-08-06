@@ -1,29 +1,30 @@
 use bevy::{
     app::{App, Plugin, Update},
     core::Name,
+    input::ButtonState,
     log::warn,
     prelude::{
         in_state, BuildChildren, ChildBuilder, Commands, Component, DetectChanges, Entity,
-        IntoSystemConfigs, NodeBundle, Query, Res, ResMut, Resource, TextBundle,
+        IntoSystemConfigs, MouseButton, NodeBundle, Query, Res, ResMut, Resource, TextBundle, With,
     },
     text::{Text, TextStyle},
-    ui::{FlexDirection, Style, Val},
+    ui::{FlexDirection, PositionType, Style, Val},
 };
 use dystopia_derive::{AsBuiltComponent, LocalizableEnum, LocalizableStruct};
 
 use crate::{
     cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, Planet, Star, StarType},
     distributed_list_element, gen_localizable_enum,
+    input::{Dragable, MouseInput},
     localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
-    math::raycasting::Dragable,
     merge_list,
     schedule::state::GameState,
     sci::unit::{Length, Time, Unit},
     ui::{
         ext::DefaultWithStyle,
         preset::{
-            default_panel_style, default_section_style, default_title_style, PANEL_BACKGROUND,
-            PANEL_BORDER_COLOR, PANEL_ELEM_TEXT_STYLE, PANEL_SUBTITLE_TEXT_STYLE,
+            default_panel_style, default_section_style, default_title_style, FULLSCREEN_UI_CORNERS,
+            PANEL_BACKGROUND, PANEL_BORDER_COLOR, PANEL_ELEM_TEXT_STYLE, PANEL_SUBTITLE_TEXT_STYLE,
             PANEL_TITLE_BACKGROUND, PANEL_TITLE_FONT_SIZE, PANEL_TITLE_HEIGHT,
             PANEL_TITLE_TEXT_COLOR, SECTION_MARGIN,
         },
@@ -55,7 +56,12 @@ impl Plugin for BodyDataPanelPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (pack_body_data_panel_data, update_ui_panel_data).run_if(in_state(GameState::Simulate)),
+            (
+                pack_body_data_panel_data,
+                update_ui_panel_data,
+                body_click_handler,
+            )
+                .run_if(in_state(GameState::Simulate)),
         )
         .init_resource::<BodyDataPanel>();
     }
@@ -97,6 +103,8 @@ impl UiAggregate for BodyDataPanelData {
                     style: Style {
                         width: Val::Px(style.width),
                         height: Val::Px(style.height),
+                        bottom: FULLSCREEN_UI_CORNERS.bottom,
+                        right: FULLSCREEN_UI_CORNERS.right,
                         ..default_panel_style()
                     },
                     background_color: PANEL_BACKGROUND,
@@ -348,5 +356,18 @@ fn update_ui_panel_data(
         });
         panel.panel = built;
         commands.entity(entity).despawn();
+    }
+}
+
+fn body_click_handler(
+    clicked_query: Query<(Entity, &MouseInput), With<BodyIndex>>,
+    mut panel: ResMut<BodyDataPanel>,
+) {
+    let Some((target, input)) = clicked_query.iter().nth(0) else {
+        return;
+    };
+
+    if input.button == MouseButton::Left && input.state == ButtonState::Pressed {
+        panel.target_body = Some(target);
     }
 }

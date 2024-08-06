@@ -1,5 +1,6 @@
 #![allow(unused)]
 
+use avian2d::{prelude::PhysicsDebugPlugin, PhysicsPlugins};
 use bevy::{
     app::{App, Plugin, PluginGroup, Startup, Update},
     asset::AssetServer,
@@ -75,7 +76,9 @@ fn main() {
             DystopiaDebugPlugin {
                 inspector: true,
                 ui_debug: true,
+                physics_debug: true,
             },
+            PhysicsPlugins::default(),
         ))
         .run();
 }
@@ -83,6 +86,7 @@ fn main() {
 pub struct DystopiaDebugPlugin {
     pub inspector: bool,
     pub ui_debug: bool,
+    pub physics_debug: bool,
 }
 
 impl Plugin for DystopiaDebugPlugin {
@@ -95,8 +99,11 @@ impl Plugin for DystopiaDebugPlugin {
             app.add_plugins(DebugUiPlugin);
         }
 
+        if self.physics_debug {
+            app.add_plugins(PhysicsDebugPlugin::default());
+        }
+
         app.add_plugins((FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin::default()))
-            .add_systems(Update, debug_sync_scale)
             .add_systems(OnEnter(AssetState::Finish), debug_skip_menu)
             // .add_systems(OnEnter(GameState::Simulate), debug_ui)
             // .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
@@ -106,29 +113,7 @@ impl Plugin for DystopiaDebugPlugin {
     }
 }
 
-fn setup_debug(mut commands: Commands) {
-    commands.spawn((
-        Camera2dBundle::default(),
-        MainCamera,
-        IsDefaultUiCamera,
-        CameraBehavior {
-            zoom_ratio: 0.005,
-            zoom_max: 10.,
-            zoom_min: 0.1,
-            zoom_smooth: 30.,
-        },
-    ));
-}
-
-fn debug_sync_scale(
-    mut view_scale: ResMut<ViewScale>,
-    camera: Query<&OrthographicProjection, Changed<OrthographicProjection>>,
-) {
-    let Ok(camera) = camera.get_single() else {
-        return;
-    };
-    **view_scale = camera.scale;
-}
+fn setup_debug(mut commands: Commands) {}
 
 fn debug_skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
     commands.insert_resource(CosmosGenerationSettings {

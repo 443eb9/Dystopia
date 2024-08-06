@@ -4,6 +4,7 @@ use std::{
     time::Instant,
 };
 
+use avian2d::prelude::Collider;
 use bevy::{
     asset::{Assets, Handle},
     color::LinearRgba,
@@ -550,6 +551,7 @@ fn spawn_bodies(
             transform: Transform::from_scale(Vec3::splat(
                 Length::SolarRadius(star.body.radius * 2.).to_si() as f32,
             )),
+            collider: Collider::circle(0.5),
             ..Default::default()
         });
         statistics.num_stars += 1;
@@ -571,6 +573,7 @@ fn spawn_bodies(
                         transform: Transform::from_scale(Vec3::splat(
                             Length::Meter(planet.body.radius * 2.).to_si() as f32,
                         )),
+                        collider: Collider::circle(0.5),
                         ..Default::default()
                     },
                     Planet,
@@ -588,6 +591,7 @@ fn spawn_bodies(
                         transform: Transform::from_scale(Vec3::splat(
                             Length::Meter(planet.body.radius * 2.).to_si() as f32,
                         )),
+                        collider: Collider::circle(0.5),
                         ..Default::default()
                     },
                     Planet,
@@ -609,6 +613,7 @@ fn spawn_bodies(
                         transform: Transform::from_scale(Vec3::splat(
                             Length::Meter(moon.body.radius * 2.).to_si() as f32,
                         )),
+                        collider: Collider::circle(0.5),
                         ..Default::default()
                     },
                     Moon,

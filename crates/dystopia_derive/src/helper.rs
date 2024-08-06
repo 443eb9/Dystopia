@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 macro_rules! impl_meta_unpack {
     ($fn_name: ident, $target: ident, $non_target_a: ident, $non_target_b: ident, $hint: literal, $returns: ty) => {
         pub fn $fn_name(meta: &syn::Meta) -> &$returns {

@@ -1,46 +1,39 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use bevy::{
     input::{mouse::MouseButtonInput, ButtonInput, ButtonState},
     log::error,
     math::Vec2,
     prelude::{
-        Component, Entity, EventReader, EventWriter, GlobalTransform, KeyCode, MouseButton,
-        ParallelCommands, Query, Res, ResMut, ViewVisibility, With, Without,
+        Commands, Component, Entity, EventReader, EventWriter, GlobalTransform, KeyCode,
+        MouseButton, ParallelCommands, Query, Res, ResMut, ViewVisibility, With, Without,
     },
     ui::{Node, Style, Val},
 };
 use thiserror::Error;
 
 use crate::{
-    input::{SceneCursorPosition, SceneMouseClick},
-    math::{
-        raycasting::{Dragable, MouseHovering, MouseInput, RayTransparent},
-        Axis, Direction,
+    input::{
+        Dragable, MouseHovering, MouseInput, RayTransparent, SceneCursorPosition, SceneMouseClick,
     },
+    math::{Axis, Direction},
     simulation::{CursorPosition, WindowSize},
 };
 
 pub fn ui_mouse_event_reset(
-    commands: ParallelCommands,
+    mut commands: Commands,
     hovering_query: Query<Entity, With<MouseHovering>>,
     input_query: Query<Entity, With<MouseInput>>,
 ) {
-    hovering_query.par_iter().for_each(|e| {
-        commands.command_scope(|mut c| {
-            c.entity(e).remove::<MouseHovering>();
-        });
+    hovering_query.iter().for_each(|entity| {
+        commands.entity(entity).remove::<MouseHovering>();
     });
 
-    input_query.par_iter().for_each(|e| {
-        commands.command_scope(|mut c| {
-            c.entity(e).remove::<MouseInput>();
-        });
+    input_query.iter().for_each(|entity| {
+        commands.entity(entity).remove::<MouseInput>();
     });
 }
 
 pub fn ui_mouse_hover_filterer(
-    commands: ParallelCommands,
+    mut commands: Commands,
     cursor_pos: Res<CursorPosition>,
     nodes_query: Query<(Entity, &Node, &GlobalTransform, &ViewVisibility), Without<RayTransparent>>,
     mut scene_cursor_pos: ResMut<SceneCursorPosition>,
@@ -49,29 +42,24 @@ pub fn ui_mouse_hover_filterer(
         return;
     };
 
-    let blocked = AtomicBool::default();
+    let mut blocked = false;
 
-    nodes_query
-        .par_iter()
-        .for_each(|(entity, node, transform, vis)| {
-            if vis.get() && node.logical_rect(transform).contains(cursor_pos) {
-                blocked.store(true, Ordering::Relaxed);
+    for (entity, node, transform, vis) in &nodes_query {
+        if vis.get() && node.logical_rect(transform).contains(cursor_pos) {
+            blocked = true;
+            commands.entity(entity).insert(MouseHovering);
+        }
+    }
 
-                commands.command_scope(|mut c| {
-                    c.entity(entity).insert(MouseHovering);
-                });
-            }
-        });
-
-    if !blocked.load(Ordering::Relaxed) {
+    if !blocked {
         **scene_cursor_pos = Some(cursor_pos);
     }
 }
 
 pub fn ui_mouse_input_filterer(
-    commands: ParallelCommands,
+    mut commands: Commands,
     cursor_pos: Res<CursorPosition>,
-    nodes_query: Query<(Entity, &Node, &GlobalTransform, &ViewVisibility), Without<RayTransparent>>,
+    nodes_query: Query<Entity, With<MouseHovering>>,
     mut mouse: EventReader<MouseButtonInput>,
     mut event: EventWriter<SceneMouseClick>,
 ) {
@@ -80,28 +68,18 @@ pub fn ui_mouse_input_filterer(
     };
 
     for ev in mouse.read() {
-        let blocked = AtomicBool::default();
-
-        nodes_query
-            .par_iter()
-            .for_each(|(entity, node, transform, vis)| {
-                if vis.get() && node.logical_rect(transform).contains(cursor_pos) {
-                    blocked.store(true, Ordering::Relaxed);
-
-                    commands.command_scope(|mut c| {
-                        c.entity(entity).insert(MouseInput {
-                            button: ev.button,
-                            state: ev.state,
-                        });
-                    });
-                }
-            });
-
-        if !blocked.load(Ordering::Relaxed) {
+        if nodes_query.is_empty() {
             event.send(SceneMouseClick {
                 cursor_pos,
                 button: ev.button,
                 state: ev.state,
+            });
+        } else {
+            nodes_query.iter().for_each(|entity| {
+                commands.entity(entity).insert(MouseInput {
+                    button: ev.button,
+                    state: ev.state,
+                });
             });
         }
     }
