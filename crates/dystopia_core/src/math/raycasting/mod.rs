@@ -1,10 +1,11 @@
 use bevy::{
-    app::{App, Plugin, PreUpdate},
+    app::{App, Plugin, PreUpdate, Update},
     input::ButtonState,
+    math::Vec2,
     prelude::{Component, IntoSystemConfigs, MouseButton},
 };
 
-use crate::math::raycasting::scene::{SceneCursorPosition, SceneMouseClick};
+use crate::input::{SceneCursorPosition, SceneMouseClick};
 
 pub mod scene;
 pub mod ui;
@@ -19,6 +20,15 @@ impl Plugin for DystopiaRaycastingPlugin {
                 (
                     ui::ui_mouse_event_reset,
                     (ui::ui_mouse_hover_filterer, ui::ui_mouse_input_filterer),
+                )
+                    .chain(),
+            )
+            .add_systems(
+                Update,
+                (
+                    ui::ui_drag_marker,
+                    ui::ui_drag_handler,
+                    ui::ui_drag_canceller,
                 )
                     .chain(),
             )
@@ -39,4 +49,35 @@ pub struct MouseHovering;
 pub struct MouseInput {
     pub button: MouseButton,
     pub state: ButtonState,
+}
+
+#[derive(Component)]
+pub struct Dragable {
+    pub button: MouseButton,
+    pub constraint: Vec2,
+}
+
+impl Default for Dragable {
+    fn default() -> Self {
+        Self {
+            button: MouseButton::Left,
+            constraint: Vec2::ONE,
+        }
+    }
+}
+
+impl Dragable {
+    pub fn left_btn_x_only() -> Self {
+        Self {
+            button: MouseButton::Left,
+            constraint: Vec2::X,
+        }
+    }
+
+    pub fn left_btn_y_only() -> Self {
+        Self {
+            button: MouseButton::Left,
+            constraint: Vec2::Y,
+        }
+    }
 }

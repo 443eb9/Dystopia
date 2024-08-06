@@ -5,7 +5,10 @@ use bevy::{
     app::{App, FixedUpdate, Plugin, Update},
     log::info,
     math::Vec2,
-    prelude::{Component, Deref, DerefMut, IntoSystemConfigs, Query, Res, ResMut, Resource, With},
+    prelude::{
+        Component, Deref, DerefMut, DetectChanges, IntoSystemConfigs, Query, Res, ResMut, Resource,
+        With,
+    },
     render::{
         camera::OrthographicProjection,
         extract_component::{ExtractComponent, ExtractComponentPlugin},
@@ -60,20 +63,19 @@ impl Default for ViewScale {
     }
 }
 
-// TODO uncomment this after finishing camera management.
 fn sync_view_scale(
     view_scale: Res<ViewScale>,
     mut camera: Query<&mut OrthographicProjection, With<MainCamera>>,
 ) {
-    // if !view_scale.is_changed() {
-    //     return;
-    // }
+    if !view_scale.is_changed() {
+        return;
+    }
 
-    // let Ok(mut camera) = camera.get_single_mut() else {
-    //     panic!("Exactly one main camera can exist at a time.")
-    // };
+    let Ok(mut camera) = camera.get_single_mut() else {
+        panic!("Exactly one main camera can exist at a time.")
+    };
 
-    // camera.scale = *view_scale.get();
+    camera.scale = **view_scale;
 }
 
 /// The RNG used across the entire game.
@@ -97,7 +99,7 @@ pub fn global_clock(mut ticker: ResMut<Ticker>) {
 }
 
 #[derive(Resource, Default, Deref)]
-pub struct CursorPosition(Vec2);
+pub struct CursorPosition(Option<Vec2>);
 
 #[derive(Resource, Default, Deref)]
 pub struct WindowSize(Vec2);
@@ -110,7 +112,7 @@ fn update_window_related_data(
     let window = windows_query
         .get_single()
         .expect("Multiple windows detected, which is not allowed.");
-    pos.0 = window.cursor_position().unwrap_or_default();
+    pos.0 = window.cursor_position();
     size.0 = window.size();
 }
 

@@ -29,10 +29,10 @@ use bevy::{
     DefaultPlugins,
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_pancam::{PanCam, PanCamPlugin};
 use dystopia_core::{
     cosmos::{celestial::BodyIndex, gen::CosmosGenerationSettings},
     distributed_list_element,
+    input::camera::CameraBehavior,
     map::{
         bundle::{TileBundle, TilemapBundle},
         tilemap::{
@@ -72,7 +72,6 @@ fn main() {
                     ..Default::default()
                 }),
             DystopiaCorePlugin,
-            PanCamPlugin::default(),
             DystopiaDebugPlugin {
                 inspector: true,
                 ui_debug: true,
@@ -110,9 +109,14 @@ impl Plugin for DystopiaDebugPlugin {
 fn setup_debug(mut commands: Commands) {
     commands.spawn((
         Camera2dBundle::default(),
-        PanCam::default(),
         MainCamera,
         IsDefaultUiCamera,
+        CameraBehavior {
+            zoom_ratio: 0.005,
+            zoom_max: 10.,
+            zoom_min: 0.1,
+            zoom_smooth: 30.,
+        },
     ));
 }
 

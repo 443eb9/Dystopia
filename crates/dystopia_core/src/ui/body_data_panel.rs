@@ -15,12 +15,12 @@ use crate::{
     cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, Planet, Star, StarType},
     distributed_list_element, gen_localizable_enum,
     localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
+    math::raycasting::Dragable,
     merge_list,
     schedule::state::GameState,
     sci::unit::{Length, Time, Unit},
     ui::{
         ext::DefaultWithStyle,
-        interaction::Dragable,
         preset::{
             default_panel_style, default_section_style, default_title_style, PANEL_BACKGROUND,
             PANEL_BORDER_COLOR, PANEL_ELEM_TEXT_STYLE, PANEL_SUBTITLE_TEXT_STYLE,

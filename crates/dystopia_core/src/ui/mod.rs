@@ -9,11 +9,13 @@ use bevy::{
     ui::{Style, UiImage, Val},
 };
 
-use crate::{schedule::state::GameState, ui::body_data_panel::BodyDataPanelPlugin};
+use crate::{
+    math::raycasting::RayTransparent, schedule::state::GameState,
+    ui::body_data_panel::BodyDataPanelPlugin,
+};
 
 pub mod body_data_panel;
 pub mod ext;
-pub mod interaction;
 pub mod macros;
 pub mod preset;
 pub mod primitive;
@@ -49,15 +51,6 @@ impl Plugin for DystopiaUiPlugin {
                 )
                     .run_if(in_state(GameState::Simulate)),
             )
-            .add_systems(
-                Update,
-                (
-                    interaction::ui_drag_marker,
-                    interaction::ui_drag_handler,
-                    interaction::ui_drag_canceller,
-                )
-                    .chain(),
-            )
             .init_resource::<GlobalUiRoot>();
     }
 }
@@ -69,14 +62,17 @@ impl FromWorld for GlobalUiRoot {
     fn from_world(world: &mut World) -> Self {
         Self(
             world
-                .spawn(NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.),
-                        height: Val::Percent(100.),
+                .spawn((
+                    NodeBundle {
+                        style: Style {
+                            width: Val::Percent(100.),
+                            height: Val::Percent(100.),
+                            ..Default::default()
+                        },
                         ..Default::default()
                     },
-                    ..Default::default()
-                })
+                    RayTransparent,
+                ))
                 .id(),
         )
     }

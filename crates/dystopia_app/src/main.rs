@@ -8,7 +8,6 @@ use bevy::{
     window::{PresentMode, Window, WindowPlugin},
     DefaultPlugins,
 };
-use bevy_pancam::PanCamPlugin;
 use dystopia_core::DystopiaCorePlugin;
 
 fn main() {
@@ -31,7 +30,6 @@ fn main() {
                     ..Default::default()
                 }),
             DystopiaCorePlugin,
-            PanCamPlugin::default(),
         ))
         .run();
 }

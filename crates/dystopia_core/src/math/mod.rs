@@ -1,4 +1,4 @@
-use std::{fmt::Display, ops::Range};
+use std::ops::Range;
 
 use bevy::math::DVec2;
 use rand::Rng;
@@ -14,11 +14,18 @@ pub enum Axis {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UiDirection {
-    Top,
+pub enum Direction {
+    Up,
     Right,
-    Bottom,
+    Down,
     Left,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TriangularDirection {
+    Left,
+    Right,
+    Down,
 }
 
 pub fn polar_to_cartesian(theta: f64, r: f64) -> DVec2 {

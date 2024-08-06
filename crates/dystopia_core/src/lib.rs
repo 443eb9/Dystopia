@@ -21,6 +21,7 @@ impl Plugin for DystopiaCorePlugin {
         app.add_plugins((
             assets::DystopiaAssetsPlugin,
             cosmos::DystopiaCosmosPlugin,
+            input::DystopiaInputPlugin,
             localization::DystopiaLocalizationPlugin,
             map::DystopiaMapPlugin,
             math::raycasting::DystopiaRaycastingPlugin,

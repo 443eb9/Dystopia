@@ -1,17 +1,10 @@
-use bevy::{
-    input::ButtonState,
-    math::Vec2,
-    prelude::{Deref, DerefMut, Event, MouseButton, Res, Resource},
-};
+use bevy::{math::Vec2, prelude::Component};
 
-#[derive(Resource, Default, Deref, DerefMut)]
-pub struct SceneCursorPosition(Option<Vec2>);
+#[derive(Component)]
+pub struct EntityDragable;
 
-#[derive(Event)]
-pub struct SceneMouseClick {
-    pub cursor_pos: Vec2,
-    pub button: MouseButton,
-    pub state: ButtonState,
+#[derive(Component)]
+pub struct EntityOnDrag {
+    pub initial_cursor_pos: Vec2,
+    pub initial_elem_world_pos: Vec2,
 }
-
-pub fn scene_mouse_hover(cursor_pos: Res<SceneCursorPosition>) {}
