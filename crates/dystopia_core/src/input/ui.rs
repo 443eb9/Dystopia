@@ -59,7 +59,7 @@ pub fn ui_mouse_hover_filterer(
 pub fn ui_mouse_input_filterer(
     mut commands: Commands,
     cursor_pos: Res<CursorPosition>,
-    nodes_query: Query<Entity, With<MouseHovering>>,
+    nodes_query: Query<Entity, (With<MouseHovering>, With<Node>)>,
     mut mouse: EventReader<MouseButtonInput>,
     mut event: EventWriter<SceneMouseClick>,
 ) {

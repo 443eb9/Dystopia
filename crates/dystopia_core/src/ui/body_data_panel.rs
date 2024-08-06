@@ -8,7 +8,7 @@ use bevy::{
         IntoSystemConfigs, MouseButton, NodeBundle, Query, Res, ResMut, Resource, TextBundle, With,
     },
     text::{Text, TextStyle},
-    ui::{FlexDirection, PositionType, Style, Val},
+    ui::{FlexDirection, Style, Val},
 };
 use dystopia_derive::{AsBuiltComponent, LocalizableEnum, LocalizableStruct};
 
