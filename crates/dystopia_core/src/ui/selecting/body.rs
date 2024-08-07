@@ -1,7 +1,7 @@
 use bevy::{
     asset::{Asset, Assets},
     color::{ColorToComponents, LinearRgba},
-    math::Vec3,
+    math::{Vec2, Vec3},
     prelude::{
         Commands, Deref, Entity, EventReader, FromWorld, MaterialNodeBundle, Res, Resource,
         Visibility, World,
@@ -15,7 +15,7 @@ use crate::{
     input::RayTransparent,
     ui::{
         panel::{body_data::BodyDataPanel, PanelTargetChange},
-        sync::{SyncWhenInvisibleOptions, UiSyncCameraScaleWithSceneEntity, UiSyncWithSceneEntity},
+        sync::{ScaleMethod, SyncWhenInvisibleOptions, UiSyncFilter, UiSyncWithSceneEntity},
     },
 };
 
@@ -85,20 +85,15 @@ pub fn handle_target_change(
                 UiSyncWithSceneEntity {
                     target,
                     ui_offset: [Val::Percent(-50.), Val::Percent(-50.)],
+                    filter: UiSyncFilter::TRANSLATION | UiSyncFilter::SCALE,
+                    scale_method: Some(ScaleMethod::Calculated {
+                        initial_elem_size: Some(Vec2::splat(2.)),
+                    }),
                     invis: SyncWhenInvisibleOptions {
                         sync_when_invisible: true,
                         ..Default::default()
                     },
                     ..Default::default()
-                },
-                UiSyncCameraScaleWithSceneEntity {
-                    target,
-                    initial_elem_size: Some(bevy::math::Vec2::splat(100.)),
-                    initial_view_scale: Some(1.),
-                    invis: SyncWhenInvisibleOptions {
-                        sync_when_invisible: true,
-                        ..Default::default()
-                    },
                 },
                 Visibility::Visible,
             )),

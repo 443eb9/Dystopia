@@ -70,14 +70,7 @@ impl Plugin for DystopiaUiPlugin {
                 )
                     .run_if(in_state(GameState::Simulate)),
             )
-            .add_systems(
-                PostUpdate,
-                (
-                    sync::scene_ui_sync_tranlation,
-                    sync::scene_ui_sync_camera_scale,
-                    sync::cursor_ui_sync,
-                ),
-            )
+            .add_systems(PostUpdate, (sync::scene_ui_sync, sync::cursor_ui_sync))
             .init_resource::<GlobalUiRoot>()
             .init_resource::<UiStack>();
     }
