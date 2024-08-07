@@ -17,6 +17,7 @@ use crate::{
         panel::{body_data::BodyDataPanel, PanelTargetChange},
         sync::{ScaleMethod, SyncWhenInvisibleOptions, UiSyncFilter, UiSyncWithSceneEntity},
     },
+    util::DeferredVisibilityChange,
 };
 
 #[derive(AsBindGroup, Asset, TypePath, Clone)]
@@ -95,7 +96,10 @@ pub fn handle_target_change(
                     },
                     ..Default::default()
                 },
-                Visibility::Visible,
+                DeferredVisibilityChange {
+                    frames: 1,
+                    vis: Visibility::Visible,
+                },
             )),
             None => commands.entity(**indicator).insert(Visibility::Hidden),
         };

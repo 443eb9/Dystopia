@@ -27,6 +27,7 @@ impl Plugin for DystopiaCorePlugin {
             schedule::DystopiaSchedulePlugin,
             simulation::DystopiaSimulationPlugin,
             ui::DystopiaUiPlugin,
+            util::DystopiaUtilPlugin,
         ));
     }
 }
