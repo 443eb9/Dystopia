@@ -7,8 +7,9 @@ use bevy::{
     },
 };
 
-use crate::input::{
-    MouseHovering, MouseInput, RayTransparent, SceneCursorPosition, SceneMouseClick,
+use crate::{
+    input::{MouseHovering, MouseInput, RayTransparent, SceneCursorPosition, SceneMouseClick},
+    simulation::MainCamera,
 };
 
 #[derive(Component)]
@@ -38,7 +39,7 @@ pub fn scene_mouse_hover(
     commands: ParallelCommands,
     cursor_pos: Res<SceneCursorPosition>,
     colliders_query: Query<(Entity, &Collider, &Position, &Rotation), Without<RayTransparent>>,
-    main_camera: Query<(&Camera, &GlobalTransform)>,
+    main_camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
 ) {
     let (camera, transform) = main_camera.single();
     let Some(cursor_pos) = (**cursor_pos).and_then(|p| camera.viewport_to_world_2d(transform, p))

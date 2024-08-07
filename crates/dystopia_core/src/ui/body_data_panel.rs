@@ -5,10 +5,11 @@ use bevy::{
     log::warn,
     prelude::{
         in_state, BuildChildren, ChildBuilder, Commands, Component, DetectChanges, Entity,
-        IntoSystemConfigs, MouseButton, NodeBundle, Query, Res, ResMut, Resource, TextBundle, With,
+        IntoSystemConfigs, MouseButton, NodeBundle, Query, Res, ResMut, Resource, TextBundle,
+        Visibility, With,
     },
     text::{Text, TextStyle},
-    ui::{FlexDirection, Style, Val},
+    ui::{AlignItems, FlexDirection, JustifyContent, Style, Val},
 };
 use dystopia_derive::{AsBuiltComponent, LocalizableEnum, LocalizableStruct};
 
@@ -21,6 +22,7 @@ use crate::{
     schedule::state::GameState,
     sci::unit::{Length, Time, Unit},
     ui::{
+        button::{ButtonClose, ButtonCloseStyle},
         ext::DefaultWithStyle,
         preset::{
             default_panel_style, default_section_style, default_title_style, FULLSCREEN_UI_CORNERS,
@@ -97,124 +99,141 @@ impl UiAggregate for BodyDataPanelData {
     fn build(&self, parent: &mut ChildBuilder, style: Self::Style) -> Entity {
         let mut entities = Vec::with_capacity(Self::NUM_FIELDS);
 
-        parent
-            .spawn((
-                NodeBundle {
-                    style: Style {
-                        width: Val::Px(style.width),
-                        height: Val::Px(style.height),
-                        bottom: FULLSCREEN_UI_CORNERS.bottom,
-                        right: FULLSCREEN_UI_CORNERS.right,
-                        ..default_panel_style()
-                    },
-                    background_color: PANEL_BACKGROUND,
-                    border_color: PANEL_BORDER_COLOR.into(),
-                    ..Default::default()
+        let mut root = parent.spawn((
+            NodeBundle {
+                style: Style {
+                    width: Val::Px(style.width),
+                    height: Val::Px(style.height),
+                    bottom: FULLSCREEN_UI_CORNERS.bottom,
+                    right: FULLSCREEN_UI_CORNERS.right,
+                    ..default_panel_style()
                 },
-                Name::new("BodyDataPanel"),
-                Dragable::default(),
-            ))
-            .with_children(|root| {
-                // Title Bar
+                background_color: PANEL_BACKGROUND,
+                border_color: PANEL_BORDER_COLOR.into(),
+                ..Default::default()
+            },
+            Name::new("BodyDataPanel"),
+            Dragable::default(),
+        ));
+        let panel_entity = root.id();
+
+        root.with_children(|root| {
+            // Title Bar
+            root.spawn(NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.),
+                    height: Val::Px(PANEL_TITLE_HEIGHT),
+                    justify_content: JustifyContent::SpaceBetween,
+                    align_items: AlignItems::Center,
+                    ..default_title_style()
+                },
+                background_color: PANEL_TITLE_BACKGROUND,
+                ..Default::default()
+            })
+            .with_children(|title_root| {
                 entities.push(
-                    root.spawn(TextBundle {
-                        text: Text::default_with_style(TextStyle {
-                            font: FUSION_PIXEL,
-                            font_size: PANEL_TITLE_FONT_SIZE,
-                            color: PANEL_TITLE_TEXT_COLOR,
-                        }),
-                        style: default_title_style(),
-                        background_color: PANEL_TITLE_BACKGROUND,
-                        ..Default::default()
-                    })
-                    .id(),
+                    title_root
+                        .spawn(TextBundle {
+                            text: Text::default_with_style(TextStyle {
+                                font: FUSION_PIXEL,
+                                font_size: PANEL_TITLE_FONT_SIZE,
+                                color: PANEL_TITLE_TEXT_COLOR,
+                            }),
+                            ..Default::default()
+                        })
+                        .id(),
                 );
 
-                // Data
-                root.spawn((
-                    NodeBundle {
-                        style: Style {
-                            width: Val::Percent(100.),
-                            height: Val::Px(style.height - PANEL_TITLE_HEIGHT - SECTION_MARGIN),
-                            flex_direction: FlexDirection::Column,
-                            ..Default::default()
-                        },
+                ButtonClose.build(
+                    title_root,
+                    ButtonCloseStyle {
+                        size: Val::Px(PANEL_TITLE_HEIGHT - 5.),
+                        target: panel_entity,
+                    },
+                );
+            });
+
+            // Data
+            root.spawn((
+                NodeBundle {
+                    style: Style {
+                        width: Val::Percent(100.),
+                        height: Val::Px(style.height - PANEL_TITLE_HEIGHT - SECTION_MARGIN),
+                        flex_direction: FlexDirection::Column,
                         ..Default::default()
                     },
-                    ScrollableList,
-                ))
-                .with_children(|list_root| {
-                    // TODO Add a icon for different types of bodies.
-                    // Body info section
-                    list_root
-                        .spawn(NodeBundle {
-                            style: default_section_style(),
-                            ..Default::default()
-                        })
-                        .with_children(|section_root| {
-                            entities.push(
-                                section_root
-                                    .spawn(TextBundle::default_with_style(
-                                        PANEL_SUBTITLE_TEXT_STYLE,
-                                    ))
-                                    .id(),
-                            );
+                    ..Default::default()
+                },
+                ScrollableList,
+            ))
+            .with_children(|list_root| {
+                // TODO Add a icon for different types of bodies.
+                // Body info section
+                list_root
+                    .spawn(NodeBundle {
+                        style: default_section_style(),
+                        ..Default::default()
+                    })
+                    .with_children(|section_root| {
+                        entities.push(
+                            section_root
+                                .spawn(TextBundle::default_with_style(PANEL_SUBTITLE_TEXT_STYLE))
+                                .id(),
+                        );
 
-                            entities.extend(distributed_list_element!(
+                        entities.extend(distributed_list_element!(
+                            section_root,
+                            Val::Percent(20.),
+                            // body_name
+                            TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                            // body_ty
+                            TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                            // detailed_body_ty
+                            TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                        ));
+                    });
+
+                // Orbit info section
+                list_root
+                    .spawn(NodeBundle {
+                        style: default_section_style(),
+                        ..Default::default()
+                    })
+                    .with_children(|section_root| {
+                        entities.push(
+                            section_root
+                                .spawn(TextBundle::default_with_style(PANEL_SUBTITLE_TEXT_STYLE))
+                                .id(),
+                        );
+
+                        entities.extend(merge_list!(
+                            // orbit_radius
+                            distributed_list_element!(
                                 section_root,
-                                Val::Percent(20.),
-                                // body_name
+                                Val::Px(20.),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
-                                // body_ty
-                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
-                                // detailed_body_ty
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
-                            ));
-                        });
-
-                    // Orbit info section
-                    list_root
-                        .spawn(NodeBundle {
-                            style: default_section_style(),
-                            ..Default::default()
-                        })
-                        .with_children(|section_root| {
-                            entities.push(
-                                section_root
-                                    .spawn(TextBundle::default_with_style(
-                                        PANEL_SUBTITLE_TEXT_STYLE,
-                                    ))
-                                    .id(),
-                            );
-
-                            entities.extend(merge_list!(
-                                // orbit_radius
-                                distributed_list_element!(
-                                    section_root,
-                                    Val::Px(20.),
-                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
-                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
-                                ),
-                                // sidereal_period
-                                distributed_list_element!(
-                                    section_root,
-                                    Val::Px(20.),
-                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
-                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
-                                ),
-                                // rotation_period
-                                distributed_list_element!(
-                                    section_root,
-                                    Val::Px(20.),
-                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
-                                    TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
-                                )
-                            ));
-                        });
-                });
-            })
-            .insert(BuiltBodyDataPanelData::from_entities(entities))
-            .id()
+                            ),
+                            // sidereal_period
+                            distributed_list_element!(
+                                section_root,
+                                Val::Px(20.),
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                            ),
+                            // rotation_period
+                            distributed_list_element!(
+                                section_root,
+                                Val::Px(20.),
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                            )
+                        ));
+                    });
+            });
+        })
+        .insert(BuiltBodyDataPanelData::from_entities(entities))
+        .id()
     }
 }
 
@@ -312,7 +331,7 @@ pub(super) fn pack_body_data_panel_data(
     };
 
     if let Some(panel) = panel.panel {
-        commands.entity(panel).insert(data);
+        commands.entity(panel).insert((data, Visibility::Inherited));
     } else {
         panel.panel = Some(commands.spawn(data).id());
     }

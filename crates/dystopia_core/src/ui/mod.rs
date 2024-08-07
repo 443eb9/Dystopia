@@ -14,6 +14,7 @@ use crate::{
 };
 
 pub mod body_data_panel;
+pub mod button;
 pub mod ext;
 pub mod macros;
 pub mod preset;
@@ -39,6 +40,7 @@ impl Plugin for DystopiaUiPlugin {
                 (
                     scrollable_list::init_structure,
                     scrollable_list::handle_scroll,
+                    button::handle_button_close_click,
                 )
                     .run_if(in_state(GameState::Simulate)),
             )

@@ -251,36 +251,40 @@ pub fn ui_drag_canceller(
 }
 
 pub fn ui_drag_handler(
-    mut nodes_query: Query<(&mut Style, &UiOnDrag, &Dragable)>,
+    mut commands: Commands,
+    mut nodes_query: Query<(Entity, &mut Style, &UiOnDrag, &Dragable, &ViewVisibility)>,
     cursor_pos: Res<CursorPosition>,
 ) {
     let Some(cursor_pos) = **cursor_pos else {
         return;
     };
 
-    nodes_query
-        .par_iter_mut()
-        .for_each(|(mut style, on_drag, dragable)| {
-            let offset = (cursor_pos - on_drag.initial_cursor_pos) * dragable.constraint;
+    for (entity, mut style, on_drag, dragable, vis) in &mut nodes_query {
+        if !vis.get() {
+            commands.entity(entity).remove::<UiOnDrag>();
+            return;
+        }
 
-            match on_drag.initial_elem_pos.original_param[0] {
-                Direction::Left => {
-                    style.left = Val::Px(on_drag.initial_elem_pos.original_pos.x + offset.x)
-                }
-                Direction::Right => {
-                    style.right = Val::Px(on_drag.initial_elem_pos.original_pos.x - offset.x)
-                }
-                _ => unreachable!(),
-            }
+        let offset = (cursor_pos - on_drag.initial_cursor_pos) * dragable.constraint;
 
-            match on_drag.initial_elem_pos.original_param[1] {
-                Direction::Up => {
-                    style.top = Val::Px(on_drag.initial_elem_pos.original_pos.y + offset.y)
-                }
-                Direction::Down => {
-                    style.bottom = Val::Px(on_drag.initial_elem_pos.original_pos.y - offset.y)
-                }
-                _ => unreachable!(),
+        match on_drag.initial_elem_pos.original_param[0] {
+            Direction::Left => {
+                style.left = Val::Px(on_drag.initial_elem_pos.original_pos.x + offset.x)
             }
-        });
+            Direction::Right => {
+                style.right = Val::Px(on_drag.initial_elem_pos.original_pos.x - offset.x)
+            }
+            _ => unreachable!(),
+        }
+
+        match on_drag.initial_elem_pos.original_param[1] {
+            Direction::Up => {
+                style.top = Val::Px(on_drag.initial_elem_pos.original_pos.y + offset.y)
+            }
+            Direction::Down => {
+                style.bottom = Val::Px(on_drag.initial_elem_pos.original_pos.y - offset.y)
+            }
+            _ => unreachable!(),
+        }
+    }
 }
