@@ -3,14 +3,17 @@ use bevy::{
     prelude::{Commands, KeyCode, Query, Res, ResMut, Visibility, With},
 };
 
-use crate::{input::ui::UiOnDrag, ui::UiStack};
+use crate::{
+    input::Dragable,
+    ui::{sync::UiSyncWithCursor, UiStack},
+};
 
 pub mod body_data;
 
 pub fn handle_esc_panel_close(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
-    on_drag: Query<(), With<UiOnDrag>>,
+    on_drag: Query<(), (With<UiSyncWithCursor>, With<Dragable>)>,
     mut stack: ResMut<UiStack>,
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {

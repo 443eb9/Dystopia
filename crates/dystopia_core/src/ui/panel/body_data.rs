@@ -32,6 +32,8 @@ use crate::{
         },
         primitive::AsBuiltComponent,
         scrollable_list::ScrollableList,
+        selecting::body::BodySelectingIndicator,
+        sync::{UiSyncCameraScaleWithSceneEntity, UiSyncWithSceneEntity},
         GlobalUiRoot, UiAggregate, UiBuilder, UiStack, FUSION_PIXEL,
     },
 };
@@ -378,8 +380,10 @@ fn update_ui_panel_data(
 }
 
 fn body_click_handler(
+    mut commands: Commands,
     clicked_query: Query<(Entity, &MouseInput), With<BodyIndex>>,
     mut panel: ResMut<BodyDataPanel>,
+    indicator: Res<BodySelectingIndicator>,
 ) {
     let Some((target, input)) = clicked_query.iter().nth(0) else {
         return;
@@ -387,5 +391,19 @@ fn body_click_handler(
 
     if input.button == MouseButton::Left && input.state == ButtonState::Pressed {
         panel.target_body = Some(target);
+        commands.entity(**indicator).insert((
+            UiSyncWithSceneEntity {
+                target,
+                ui_offset: [Val::Percent(-50.), Val::Percent(-50.)],
+                ..Default::default()
+            },
+            UiSyncCameraScaleWithSceneEntity {
+                target,
+                initial_elem_size: Some(bevy::math::Vec2::splat(100.)),
+                initial_view_scale: Some(1.),
+                ..Default::default()
+            },
+            Visibility::Inherited,
+        ));
     }
 }

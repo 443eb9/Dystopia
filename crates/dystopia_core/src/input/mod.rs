@@ -44,7 +44,6 @@ impl Plugin for DystopiaInputPlugin {
                 Update,
                 (
                     ui::ui_drag_marker,
-                    ui::ui_drag_handler,
                     ui::ui_drag_canceller,
                 )
                     .chain(),

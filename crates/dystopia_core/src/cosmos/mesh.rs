@@ -1,7 +1,7 @@
 use bevy::{
     asset::Asset,
     color::{ColorToComponents, LinearRgba},
-    math::{Vec3, Vec4Swizzles},
+    math::Vec3,
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
     sprite::Material2d,
@@ -21,7 +21,7 @@ pub struct StarMaterial {
 impl From<&StarMaterial> for StarMaterialUniform {
     fn from(value: &StarMaterial) -> Self {
         Self {
-            color: value.color.to_vec4().xyz(),
+            color: value.color.to_vec3(),
         }
     }
 }
@@ -46,7 +46,7 @@ pub struct RockyBodyMaterial {
 impl From<&RockyBodyMaterial> for RockyBodyMaterialUniform {
     fn from(value: &RockyBodyMaterial) -> Self {
         Self {
-            color: value.color.to_vec4().xyz(),
+            color: value.color.to_vec3(),
         }
     }
 }
@@ -71,7 +71,7 @@ pub struct GiantBodyMaterial {
 impl From<&GiantBodyMaterial> for GiantBodyMaterialUniform {
     fn from(value: &GiantBodyMaterial) -> Self {
         Self {
-            color: value.color.to_vec4().xyz(),
+            color: value.color.to_vec3(),
         }
     }
 }
@@ -100,7 +100,7 @@ pub struct OrbitMaterial {
 impl From<&OrbitMaterial> for OrbitMaterialUniform {
     fn from(value: &OrbitMaterial) -> Self {
         Self {
-            color: value.color.to_vec4().xyz(),
+            color: value.color.to_vec3(),
             width: value.width,
             radius: value.radius,
         }
