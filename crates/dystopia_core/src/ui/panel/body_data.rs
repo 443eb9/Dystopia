@@ -4,9 +4,9 @@ use bevy::{
     input::ButtonState,
     log::warn,
     prelude::{
-        in_state, BuildChildren, ChildBuilder, Commands, Component, DetectChanges, Entity,
-        IntoSystemConfigs, MouseButton, NodeBundle, Query, Res, ResMut, Resource, TextBundle,
-        Visibility, With,
+        in_state, BuildChildren, ChildBuilder, Commands, Component, Deref, DerefMut, Entity,
+        EventReader, EventWriter, IntoSystemConfigs, MouseButton, NodeBundle, Query, Res, ResMut,
+        Resource, TextBundle, Visibility,
     },
     text::{Text, TextStyle},
     ui::{AlignItems, FlexDirection, JustifyContent, Style, Val},
@@ -16,7 +16,7 @@ use dystopia_derive::{AsBuiltComponent, LocalizableEnum, LocalizableStruct};
 use crate::{
     cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, Planet, Star, StarType},
     distributed_list_element, gen_localizable_enum,
-    input::{Dragable, MouseInput},
+    input::{Dragable, MouseInput, SceneMouseClick},
     localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
     merge_list,
     schedule::state::GameState,
@@ -24,6 +24,7 @@ use crate::{
     ui::{
         button::{ButtonClose, ButtonCloseStyle},
         ext::DefaultWithStyle,
+        panel::PanelTargetChange,
         preset::{
             default_panel_style, default_section_style, default_title_style, FULLSCREEN_UI_CORNERS,
             PANEL_BACKGROUND, PANEL_BORDER_COLOR, PANEL_ELEM_TEXT_STYLE, PANEL_SUBTITLE_TEXT_STYLE,
@@ -32,17 +33,12 @@ use crate::{
         },
         primitive::AsBuiltComponent,
         scrollable_list::ScrollableList,
-        selecting::body::BodySelectingIndicator,
-        sync::{UiSyncCameraScaleWithSceneEntity, UiSyncWithSceneEntity},
         GlobalUiRoot, UiAggregate, UiBuilder, UiStack, FUSION_PIXEL,
     },
 };
 
-#[derive(Resource, Default)]
-pub struct BodyDataPanel {
-    pub panel: Option<Entity>,
-    pub target_body: Option<Entity>,
-}
+#[derive(Resource, Default, Deref, DerefMut)]
+pub struct BodyDataPanel(Option<Entity>);
 
 gen_localizable_enum!(LBodyType, Star, Planet, Moon);
 gen_localizable_enum!(LDetailedBodyType, O, B, A, F, G, K, M, Rocky, Gas, Ice);
@@ -58,16 +54,17 @@ pub struct BodyDataPanelPlugin;
 
 impl Plugin for BodyDataPanelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (
-                pack_body_data_panel_data,
-                update_ui_panel_data,
-                body_click_handler,
+        app.add_event::<PanelTargetChange<BodyDataPanel>>()
+            .add_systems(
+                Update,
+                (
+                    pack_body_data_panel_data,
+                    update_ui_panel_data,
+                    potential_body_click_handler,
+                )
+                    .run_if(in_state(GameState::Simulate)),
             )
-                .run_if(in_state(GameState::Simulate)),
-        )
-        .init_resource::<BodyDataPanel>();
+            .init_resource::<BodyDataPanel>();
     }
 }
 
@@ -239,7 +236,7 @@ impl UiAggregate for BodyDataPanelData {
     }
 }
 
-pub(super) fn pack_body_data_panel_data(
+fn pack_body_data_panel_data(
     mut commands: Commands,
     mut panel: ResMut<BodyDataPanel>,
     body_query: Query<(
@@ -252,158 +249,147 @@ pub(super) fn pack_body_data_panel_data(
         Option<&BodyType>,
     )>,
     cosmos: Res<Cosmos>,
+    mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
+    global_root: Res<GlobalUiRoot>,
 ) {
-    if !panel.is_changed() {
-        return;
-    }
+    for target in target_change.read() {
+        let Some(target) = **target else {
+            panel.inspect(|entity| {
+                commands.entity(*entity).insert(Visibility::Hidden);
+            });
+            continue;
+        };
 
-    let Some(target_body) = panel.target_body else {
-        return;
-    };
+        let Ok((
+            body_name,
+            body_index,
+            maybe_star,
+            maybe_star_ty,
+            maybe_planet,
+            maybe_moon,
+            maybe_body_ty,
+        )) = body_query.get(target)
+        else {
+            warn!("Failed to find the target body.");
+            continue;
+        };
 
-    let Ok((
-        body_name,
-        body_index,
-        maybe_star,
-        maybe_star_ty,
-        maybe_planet,
-        maybe_moon,
-        maybe_body_ty,
-    )) = body_query.get(target_body)
-    else {
-        warn!("Failed to find the target body.");
-        return;
-    };
+        // body indices should be equal to orbit indices
+        let Some(orbit) = cosmos.orbits.get(**body_index) else {
+            warn!(
+                "Failed to get orbit data for body {}, named {}",
+                **body_index,
+                body_name.as_str()
+            );
+            continue;
+        };
 
-    // body indices should be equal to orbit indices
-    let Some(orbit) = cosmos.orbits.get(**body_index) else {
-        warn!(
-            "Failed to get orbit data for body {}, named {}",
-            **body_index,
-            body_name.as_str()
-        );
-        return;
-    };
-
-    let body_ty = if maybe_star.is_some() {
-        LBodyType::Star
-    } else if maybe_planet.is_some() {
-        LBodyType::Planet
-    } else if maybe_moon.is_some() {
-        LBodyType::Moon
-    } else {
-        unreachable!()
-    }
-    .into();
-
-    let detailed_body_ty = if let Some(st) = maybe_star_ty {
-        match st {
-            StarType::O => LDetailedBodyType::O,
-            StarType::B => LDetailedBodyType::B,
-            StarType::A => LDetailedBodyType::A,
-            StarType::F => LDetailedBodyType::F,
-            StarType::G => LDetailedBodyType::G,
-            StarType::K => LDetailedBodyType::K,
-            StarType::M => LDetailedBodyType::M,
+        let body_ty = if maybe_star.is_some() {
+            LBodyType::Star
+        } else if maybe_planet.is_some() {
+            LBodyType::Planet
+        } else if maybe_moon.is_some() {
+            LBodyType::Moon
+        } else {
+            unreachable!()
         }
-    } else if let Some(bt) = maybe_body_ty {
-        match bt {
-            BodyType::Rocky => LDetailedBodyType::Rocky,
-            BodyType::GasGiant => LDetailedBodyType::Gas,
-            BodyType::IceGiant => LDetailedBodyType::Ice,
+        .into();
+
+        let detailed_body_ty = if let Some(st) = maybe_star_ty {
+            match st {
+                StarType::O => LDetailedBodyType::O,
+                StarType::B => LDetailedBodyType::B,
+                StarType::A => LDetailedBodyType::A,
+                StarType::F => LDetailedBodyType::F,
+                StarType::G => LDetailedBodyType::G,
+                StarType::K => LDetailedBodyType::K,
+                StarType::M => LDetailedBodyType::M,
+            }
+        } else if let Some(bt) = maybe_body_ty {
+            match bt {
+                BodyType::Rocky => LDetailedBodyType::Rocky,
+                BodyType::GasGiant => LDetailedBodyType::Gas,
+                BodyType::IceGiant => LDetailedBodyType::Ice,
+            }
+        } else {
+            unreachable!()
         }
-    } else {
-        unreachable!()
-    }
-    .into();
+        .into();
 
-    let data = BodyDataPanelData {
-        title: LUiPanel::BodyData.into(),
-        section_body_info: LBodyDataPanelSectionType::BodyInfo.into(),
-        body_name: body_name.to_string(),
-        body_ty,
-        detailed_body_ty,
-        section_orbit_info: LBodyDataPanelSectionType::OrbitInfo.into(),
-        title_orbit_radius: LBodyOrbitInfoType::OrbitRadius.into(),
-        orbit_radius: Length::wrap_with_si(orbit.radius).into(),
-        title_sidereal_period: LBodyOrbitInfoType::SiderealPeriod.into(),
-        sidereal_period: Time::wrap_with_si(orbit.sidereal_period).into(),
-        title_rotation_period: LBodyOrbitInfoType::RotationPeriod.into(),
-        rotation_period: Time::wrap_with_si(orbit.rotation_period).into(),
-    };
+        let data = BodyDataPanelData {
+            title: LUiPanel::BodyData.into(),
+            section_body_info: LBodyDataPanelSectionType::BodyInfo.into(),
+            body_name: body_name.to_string(),
+            body_ty,
+            detailed_body_ty,
+            section_orbit_info: LBodyDataPanelSectionType::OrbitInfo.into(),
+            title_orbit_radius: LBodyOrbitInfoType::OrbitRadius.into(),
+            orbit_radius: Length::wrap_with_si(orbit.radius).into(),
+            title_sidereal_period: LBodyOrbitInfoType::SiderealPeriod.into(),
+            sidereal_period: Time::wrap_with_si(orbit.sidereal_period).into(),
+            title_rotation_period: LBodyOrbitInfoType::RotationPeriod.into(),
+            rotation_period: Time::wrap_with_si(orbit.rotation_period).into(),
+        };
 
-    if let Some(panel) = panel.panel {
-        commands.entity(panel).insert((data, Visibility::Inherited));
-    } else {
-        panel.panel = Some(commands.spawn(data).id());
+        if let Some(panel) = **panel {
+            commands.entity(panel).insert((data, Visibility::Inherited));
+        } else {
+            let mut built = None;
+            commands.entity(**global_root).with_children(|root| {
+                built = Some(root.build_ui(
+                    &data,
+                    BodyDataPanelStyle {
+                        width: 250.,
+                        height: 250.,
+                    },
+                ));
+            });
+
+            **panel = built;
+            commands.entity(built.unwrap()).insert(data);
+        }
     }
 }
 
 fn update_ui_panel_data(
     mut commands: Commands,
     lang: Res<LangFile>,
-    mut panel: ResMut<BodyDataPanel>,
-    mut panel_query: Query<(
-        Entity,
-        &mut BodyDataPanelData,
-        Option<&BuiltBodyDataPanelData>,
-    )>,
-    global_root: Res<GlobalUiRoot>,
+    panel: ResMut<BodyDataPanel>,
+    mut panel_query: Query<(Entity, &mut BodyDataPanelData, &BuiltBodyDataPanelData)>,
     mut stack: ResMut<UiStack>,
 ) {
-    let Some((entity, mut data, built)) = panel.panel.and_then(|e| panel_query.get_mut(e).ok())
+    let Some((entity, mut data, built)) = (**panel).and_then(|e| panel_query.get_mut(e).ok())
     else {
         return;
     };
 
     data.localize(&lang);
 
-    if let Some(built) = built {
-        built.update(&data, &mut commands);
-        stack.push(entity);
-        commands.entity(entity).remove::<BodyDataPanelData>();
-    } else {
-        let mut built = None;
-        commands.entity(**global_root).with_children(|root| {
-            built = Some(root.build_ui(
-                &*data,
-                BodyDataPanelStyle {
-                    width: 250.,
-                    height: 250.,
-                },
-            ));
-        });
-        panel.panel = built;
-        stack.push(built.unwrap());
-        commands.entity(entity).despawn();
-    }
+    built.update(&data, &mut commands);
+    stack.push(entity);
+    commands.entity(entity).remove::<BodyDataPanelData>();
 }
 
-fn body_click_handler(
-    mut commands: Commands,
-    clicked_query: Query<(Entity, &MouseInput), With<BodyIndex>>,
-    mut panel: ResMut<BodyDataPanel>,
-    indicator: Res<BodySelectingIndicator>,
+fn potential_body_click_handler(
+    clicked_query: Query<(Entity, &MouseInput, Option<&BodyIndex>)>,
+    mut scene_mouse_input: EventReader<SceneMouseClick>,
+    mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
 ) {
-    let Some((target, input)) = clicked_query.iter().nth(0) else {
-        return;
-    };
+    for input in scene_mouse_input.read() {
+        let Some((target, input, body)) = clicked_query.iter().nth(0) else {
+            if input.button == MouseButton::Left && input.state == ButtonState::Pressed {
+                target_change.send(PanelTargetChange::none());
+            }
+            return;
+        };
 
-    if input.button == MouseButton::Left && input.state == ButtonState::Pressed {
-        panel.target_body = Some(target);
-        commands.entity(**indicator).insert((
-            UiSyncWithSceneEntity {
-                target,
-                ui_offset: [Val::Percent(-50.), Val::Percent(-50.)],
-                ..Default::default()
-            },
-            UiSyncCameraScaleWithSceneEntity {
-                target,
-                initial_elem_size: Some(bevy::math::Vec2::splat(100.)),
-                initial_view_scale: Some(1.),
-                ..Default::default()
-            },
-            Visibility::Inherited,
-        ));
+        if input.button == MouseButton::Left && input.state == ButtonState::Pressed {
+            if body.is_none() {
+                target_change.send(PanelTargetChange::none());
+                return;
+            }
+
+            target_change.send(PanelTargetChange::some(target));
+        }
     }
 }

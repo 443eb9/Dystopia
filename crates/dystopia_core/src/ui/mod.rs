@@ -1,7 +1,7 @@
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use bevy::{
-    app::{App, Plugin, Update},
+    app::{App, Plugin, PostUpdate, Update},
     asset::{load_internal_binary_asset, Handle},
     math::Vec2,
     prelude::{
@@ -19,7 +19,10 @@ use crate::{
     schedule::state::GameState,
     ui::{
         panel::body_data::BodyDataPanelPlugin,
-        selecting::body::{BodySelectingIconMaterial, BodySelectingIndicator},
+        selecting::{
+            body::{BodySelectingIconMaterial, BodySelectingIndicator},
+            SelectingUiPlugin,
+        },
     },
 };
 
@@ -47,6 +50,7 @@ impl Plugin for DystopiaUiPlugin {
         );
 
         app.add_plugins(BodyDataPanelPlugin)
+            .add_plugins(SelectingUiPlugin)
             .add_plugins(UiMaterialPlugin::<BodySelectingIconMaterial>::default())
             .add_systems(
                 Update,
@@ -67,7 +71,7 @@ impl Plugin for DystopiaUiPlugin {
                     .run_if(in_state(GameState::Simulate)),
             )
             .add_systems(
-                Update,
+                PostUpdate,
                 (
                     sync::scene_ui_sync_tranlation,
                     sync::scene_ui_sync_camera_scale,

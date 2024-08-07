@@ -2,13 +2,22 @@ use bevy::{
     asset::{Asset, Assets},
     color::{ColorToComponents, LinearRgba},
     math::Vec3,
-    prelude::{Deref, Entity, FromWorld, MaterialNodeBundle, Resource, Visibility, World},
+    prelude::{
+        Commands, Deref, Entity, EventReader, FromWorld, MaterialNodeBundle, Res, Resource,
+        Visibility, World,
+    },
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
-    ui::UiMaterial,
+    ui::{UiMaterial, Val},
 };
 
-use crate::input::RayTransparent;
+use crate::{
+    input::RayTransparent,
+    ui::{
+        panel::{body_data::BodyDataPanel, PanelTargetChange},
+        sync::{SyncWhenInvisibleOptions, UiSyncCameraScaleWithSceneEntity, UiSyncWithSceneEntity},
+    },
+};
 
 #[derive(AsBindGroup, Asset, TypePath, Clone)]
 #[uniform(0, BodySelectingIconMaterialUniform)]
@@ -62,5 +71,38 @@ impl FromWorld for BodySelectingIndicator {
             .id();
 
         Self(entity)
+    }
+}
+
+pub fn handle_target_change(
+    mut commands: Commands,
+    mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
+    indicator: Res<BodySelectingIndicator>,
+) {
+    for change in target_change.read() {
+        match **change {
+            Some(target) => commands.entity(**indicator).insert((
+                UiSyncWithSceneEntity {
+                    target,
+                    ui_offset: [Val::Percent(-50.), Val::Percent(-50.)],
+                    invis: SyncWhenInvisibleOptions {
+                        sync_when_invisible: true,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+                UiSyncCameraScaleWithSceneEntity {
+                    target,
+                    initial_elem_size: Some(bevy::math::Vec2::splat(100.)),
+                    initial_view_scale: Some(1.),
+                    invis: SyncWhenInvisibleOptions {
+                        sync_when_invisible: true,
+                        ..Default::default()
+                    },
+                },
+                Visibility::Visible,
+            )),
+            None => commands.entity(**indicator).insert(Visibility::Hidden),
+        };
     }
 }

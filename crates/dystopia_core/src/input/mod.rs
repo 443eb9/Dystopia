@@ -2,7 +2,10 @@ use bevy::{
     app::{App, Plugin, PreUpdate, Update},
     input::ButtonState,
     math::Vec2,
-    prelude::{Component, Deref, DerefMut, Event, IntoSystemConfigs, MouseButton, Resource},
+    prelude::{
+        Commands, Component, Deref, DerefMut, Entity, Event, IntoSystemConfigs, MouseButton, Query,
+        Resource, With,
+    },
 };
 
 use crate::{
@@ -25,29 +28,14 @@ impl Plugin for DystopiaInputPlugin {
             .add_systems(
                 PreUpdate,
                 (
-                    ui::ui_mouse_event_reset,
+                    mouse_event_reset,
                     ui::ui_mouse_hover_filterer,
-                    ui::ui_mouse_input_filterer,
-                )
-                    .chain(),
-            )
-            .add_systems(
-                PreUpdate,
-                (
-                    scene::scene_mouse_event_reset,
-                    scene::scene_mouse_hover,
+                    (ui::ui_mouse_input_filterer, scene::scene_mouse_hover),
                     scene::scene_mouse_click,
                 )
                     .chain(),
             )
-            .add_systems(
-                Update,
-                (
-                    ui::ui_drag_marker,
-                    ui::ui_drag_canceller,
-                )
-                    .chain(),
-            )
+            .add_systems(Update, (ui::ui_drag_marker, ui::ui_drag_canceller).chain())
             .add_systems(
                 Update,
                 (
@@ -59,6 +47,20 @@ impl Plugin for DystopiaInputPlugin {
             .init_resource::<KeyboardEventCenter>()
             .init_resource::<SceneCursorPosition>();
     }
+}
+
+pub fn mouse_event_reset(
+    mut commands: Commands,
+    hovering_query: Query<Entity, With<MouseHovering>>,
+    input_query: Query<Entity, With<MouseInput>>,
+) {
+    hovering_query.iter().for_each(|entity| {
+        commands.entity(entity).remove::<MouseHovering>();
+    });
+
+    input_query.iter().for_each(|entity| {
+        commands.entity(entity).remove::<MouseInput>();
+    });
 }
 
 /// Mark an entity to be invisible to rays.

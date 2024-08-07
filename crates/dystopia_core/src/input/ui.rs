@@ -15,20 +15,6 @@ use crate::{
     ui::sync::UiSyncWithCursor,
 };
 
-pub fn ui_mouse_event_reset(
-    mut commands: Commands,
-    hovering_query: Query<Entity, With<MouseHovering>>,
-    input_query: Query<Entity, With<MouseInput>>,
-) {
-    hovering_query.iter().for_each(|entity| {
-        commands.entity(entity).remove::<MouseHovering>();
-    });
-
-    input_query.iter().for_each(|entity| {
-        commands.entity(entity).remove::<MouseInput>();
-    });
-}
-
 pub fn ui_mouse_hover_filterer(
     mut commands: Commands,
     cursor_pos: Res<CursorPosition>,

@@ -109,7 +109,7 @@ impl Plugin for DystopiaDebugPlugin {
             // .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
             // .add_systems(Update, debug_rm_vis)
             .add_systems(Startup, setup_debug)
-            .add_systems(Update, (toggle_ui_debug, debug_body_panel_ui));
+            .add_systems(Update, toggle_ui_debug);
     }
 }
 
@@ -351,19 +351,4 @@ fn debug_ui(mut commands: Commands) {
                 }
             });
         });
-}
-
-fn debug_body_panel_ui(
-    mut panel: ResMut<BodyDataPanel>,
-    body_query: Query<Entity, With<BodyIndex>>,
-    mut index: Local<usize>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-) {
-    if keyboard.just_pressed(KeyCode::Enter) {
-        if let Some(body) = body_query.iter().nth(*index) {
-            panel.target_body = Some(body);
-        }
-
-        *index = (*index + 1) % body_query.iter().len();
-    }
 }

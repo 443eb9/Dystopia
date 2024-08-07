@@ -21,20 +21,6 @@ pub struct EntityOnDrag {
     pub initial_elem_world_pos: Vec2,
 }
 
-pub fn scene_mouse_event_reset(
-    mut commands: Commands,
-    hovering_query: Query<Entity, With<MouseHovering>>,
-    input_query: Query<Entity, With<MouseInput>>,
-) {
-    hovering_query.iter().for_each(|entity| {
-        commands.entity(entity).remove::<MouseHovering>();
-    });
-
-    input_query.iter().for_each(|entity| {
-        commands.entity(entity).remove::<MouseInput>();
-    });
-}
-
 pub fn scene_mouse_hover(
     commands: ParallelCommands,
     cursor_pos: Res<SceneCursorPosition>,
