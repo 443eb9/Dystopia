@@ -32,7 +32,7 @@ use crate::{
         },
         primitive::AsBuiltComponent,
         scrollable_list::ScrollableList,
-        GlobalUiRoot, UiAggregate, UiBuilder, FUSION_PIXEL,
+        GlobalUiRoot, UiAggregate, UiBuilder, UiStack, FUSION_PIXEL,
     },
 };
 
@@ -347,11 +347,8 @@ fn update_ui_panel_data(
         Option<&BuiltBodyDataPanelData>,
     )>,
     global_root: Res<GlobalUiRoot>,
+    mut stack: ResMut<UiStack>,
 ) {
-    if panel_query.is_empty() {
-        return;
-    }
-
     let Some((entity, mut data, built)) = panel.panel.and_then(|e| panel_query.get_mut(e).ok())
     else {
         return;
@@ -361,6 +358,7 @@ fn update_ui_panel_data(
 
     if let Some(built) = built {
         built.update(&data, &mut commands);
+        stack.push(entity);
         commands.entity(entity).remove::<BodyDataPanelData>();
     } else {
         let mut built = None;
@@ -374,6 +372,7 @@ fn update_ui_panel_data(
             ));
         });
         panel.panel = built;
+        stack.push(built.unwrap());
         commands.entity(entity).despawn();
     }
 }

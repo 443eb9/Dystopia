@@ -47,7 +47,7 @@ use dystopia_core::{
     sci::unit::Length,
     simulation::{MainCamera, ViewScale},
     ui::{
-        body_data_panel::BodyDataPanel, scrollable_list::ScrollableList, UiBuilder, FUSION_PIXEL,
+        panel::body_data::BodyDataPanel, scrollable_list::ScrollableList, UiBuilder, FUSION_PIXEL,
     },
     DystopiaCorePlugin,
 };

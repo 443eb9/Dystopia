@@ -2,21 +2,21 @@ use bevy::{
     app::{App, Plugin, Update},
     asset::{load_internal_binary_asset, Handle},
     prelude::{
-        in_state, ChildBuilder, Deref, Entity, FromWorld, IntoSystemConfigs, NodeBundle, Resource,
-        World,
+        in_state, ChildBuilder, Deref, DerefMut, Entity, FromWorld, IntoSystemConfigs, NodeBundle,
+        Resource, World,
     },
     text::{Font, Text},
     ui::{Style, UiImage, Val},
 };
 
 use crate::{
-    input::RayTransparent, schedule::state::GameState, ui::body_data_panel::BodyDataPanelPlugin,
+    input::RayTransparent, schedule::state::GameState, ui::panel::body_data::BodyDataPanelPlugin,
 };
 
-pub mod body_data_panel;
 pub mod button;
 pub mod ext;
 pub mod macros;
+pub mod panel;
 pub mod preset;
 pub mod primitive;
 pub mod scrollable_list;
@@ -40,6 +40,7 @@ impl Plugin for DystopiaUiPlugin {
                 (
                     scrollable_list::init_structure,
                     scrollable_list::handle_scroll,
+                    panel::handle_esc_panel_close,
                     button::handle_button_close_click,
                 )
                     .run_if(in_state(GameState::Simulate)),
@@ -52,9 +53,13 @@ impl Plugin for DystopiaUiPlugin {
                 )
                     .run_if(in_state(GameState::Simulate)),
             )
-            .init_resource::<GlobalUiRoot>();
+            .init_resource::<GlobalUiRoot>()
+            .init_resource::<UiStack>();
     }
 }
+
+#[derive(Resource, Default, Deref, DerefMut)]
+pub struct UiStack(Vec<Entity>);
 
 #[derive(Resource, Deref)]
 pub struct GlobalUiRoot(Entity);
