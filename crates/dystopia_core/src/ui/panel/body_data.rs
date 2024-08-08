@@ -16,7 +16,7 @@ use dystopia_derive::{AsBuiltComponent, LocalizableEnum, LocalizableStruct};
 use crate::{
     cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, Planet, Star, StarType},
     distributed_list_element, gen_localizable_enum,
-    input::{Dragable, MouseInput, SceneMouseClick},
+    input::{MouseInput, SceneMouseClick},
     localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
     merge_list,
     schedule::state::GameState,
@@ -112,7 +112,6 @@ impl UiAggregate for BodyDataPanelData {
                 ..Default::default()
             },
             Name::new("BodyDataPanel"),
-            Dragable::default(),
         ));
         let panel_entity = root.id();
 

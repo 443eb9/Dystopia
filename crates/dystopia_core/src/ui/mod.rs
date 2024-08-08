@@ -57,7 +57,6 @@ impl Plugin for DystopiaUiPlugin {
                 (
                     scrollable_list::init_structure,
                     scrollable_list::handle_scroll,
-                    panel::handle_esc_panel_close,
                     button::handle_button_close_click,
                 )
                     .run_if(in_state(GameState::Simulate)),
