@@ -113,9 +113,11 @@ pub fn global_clock(mut ticker: ResMut<Ticker>) {
     ticker.0 += 1;
 }
 
+/// Current position of the cursor. Updated each frame by [`update_window_related_data`].
 #[derive(Resource, Default, Deref)]
 pub struct CursorPosition(Option<Vec2>);
 
+/// Current size of the window. Updated each frame by [`update_window_related_data`].
 #[derive(Resource, Default, Deref)]
 pub struct WindowSize(Vec2);
 

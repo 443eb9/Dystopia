@@ -24,7 +24,7 @@ pub struct DystopiaInputPlugin;
 impl Plugin for DystopiaInputPlugin {
     fn build(&self, app: &mut App) {
         app.add_config::<RawInputMappingConfig>()
-            .add_event::<SceneMouseClick>()
+            .add_event::<SceneMouseInput>()
             .add_systems(
                 PreUpdate,
                 (
@@ -69,15 +69,22 @@ pub fn mouse_event_reset(
 #[derive(Component)]
 pub struct RayTransparent;
 
+/// Assigned by [`ui_mouse_hover_filterer`](ui::ui_mouse_hover_filterer)
+/// and [`scene_mouse_hover`](scene::scene_mouse_hover). Means the cursor
+/// is hovering over this entity.
 #[derive(Component)]
 pub struct MouseHovering;
 
+/// Assigned by [`ui_mouse_input_filterer`](ui::ui_mouse_input_filterer)
+/// and [`scene_mouse_click`](scene::scene_mouse_click). Means this entity
+/// is clicked by some mouse key.
 #[derive(Component)]
 pub struct MouseInput {
     pub button: MouseButton,
     pub state: ButtonState,
 }
 
+/// Mark an entity able to be dragged.
 #[derive(Component)]
 pub struct Dragable {
     pub button: MouseButton,
@@ -109,11 +116,17 @@ impl Dragable {
     }
 }
 
+/// Being different to [`CursorPosition`](crate::simulation::CursorPosition),
+/// this value is only [`Some`](Option::Some) when the cursor is not over any
+/// UI, or the cursor is over some UI, but the UI is [`RayTransparent`].
 #[derive(Resource, Default, Deref, DerefMut)]
 pub struct SceneCursorPosition(Option<Vec2>);
 
+/// An event fired by [`ui_mouse_input_filterer`](ui::ui_mouse_input_filterer),
+/// which indicates that player clicked on some where not covered by UI, or covered
+/// by UI with [`RayTransparent`] component.
 #[derive(Event)]
-pub struct SceneMouseClick {
+pub struct SceneMouseInput {
     pub cursor_pos: Vec2,
     pub button: MouseButton,
     pub state: ButtonState,

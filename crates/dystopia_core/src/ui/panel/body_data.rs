@@ -16,7 +16,7 @@ use dystopia_derive::{AsBuiltComponent, LocalizableEnum, LocalizableStruct};
 use crate::{
     cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, Planet, Star, StarType},
     distributed_list_element, gen_localizable_enum,
-    input::{MouseInput, SceneMouseClick},
+    input::{MouseInput, SceneMouseInput},
     localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
     merge_list,
     schedule::state::GameState,
@@ -371,7 +371,7 @@ fn update_ui_panel_data(
 
 fn potential_body_click_handler(
     clicked_query: Query<(Entity, &MouseInput, Option<&BodyIndex>)>,
-    mut scene_mouse_input: EventReader<SceneMouseClick>,
+    mut scene_mouse_input: EventReader<SceneMouseInput>,
     mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
 ) {
     for input in scene_mouse_input.read() {

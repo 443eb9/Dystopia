@@ -8,12 +8,9 @@ use bevy::{
 };
 
 use crate::{
-    input::{MouseHovering, MouseInput, RayTransparent, SceneCursorPosition, SceneMouseClick},
+    input::{MouseHovering, MouseInput, RayTransparent, SceneCursorPosition, SceneMouseInput},
     simulation::MainCamera,
 };
-
-#[derive(Component)]
-pub struct EntityDragable;
 
 #[derive(Component)]
 pub struct EntityOnDrag {
@@ -47,7 +44,7 @@ pub fn scene_mouse_hover(
 pub fn scene_mouse_click(
     mut commands: Commands,
     colliders_query: Query<Entity, With<MouseHovering>>,
-    mut event: EventReader<SceneMouseClick>,
+    mut event: EventReader<SceneMouseInput>,
 ) {
     for click in event.read() {
         colliders_query.iter().for_each(|entity| {

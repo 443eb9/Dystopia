@@ -9,7 +9,7 @@ use bevy::{
 
 use crate::{
     input::{
-        Dragable, MouseHovering, MouseInput, RayTransparent, SceneCursorPosition, SceneMouseClick,
+        Dragable, MouseHovering, MouseInput, RayTransparent, SceneCursorPosition, SceneMouseInput,
     },
     simulation::CursorPosition,
     ui::sync::UiSyncWithCursor,
@@ -44,7 +44,7 @@ pub fn ui_mouse_input_filterer(
     cursor_pos: Res<CursorPosition>,
     nodes_query: Query<Entity, (With<MouseHovering>, With<Node>)>,
     mut mouse: EventReader<MouseButtonInput>,
-    mut event: EventWriter<SceneMouseClick>,
+    mut event: EventWriter<SceneMouseInput>,
 ) {
     let Some(cursor_pos) = **cursor_pos else {
         return;
@@ -52,7 +52,7 @@ pub fn ui_mouse_input_filterer(
 
     for ev in mouse.read() {
         if nodes_query.is_empty() {
-            event.send(SceneMouseClick {
+            event.send(SceneMouseInput {
                 cursor_pos,
                 button: ev.button,
                 state: ev.state,

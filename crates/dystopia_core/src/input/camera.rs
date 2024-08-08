@@ -12,8 +12,8 @@ use bevy::{
 };
 
 use crate::{
-    input::{scene::EntityOnDrag, SceneCursorPosition, SceneMouseClick},
-    simulation::{MainCamera, ViewScale},
+    input::{scene::EntityOnDrag, SceneCursorPosition, SceneMouseInput},
+    simulation::{CursorPosition, MainCamera, ViewScale},
 };
 
 #[derive(Component)]
@@ -27,7 +27,7 @@ pub struct CameraBehavior {
 pub fn toggle_camera_move(
     mut commands: Commands,
     main_camera: Query<Entity, With<MainCamera>>,
-    mut mouse_click: EventReader<SceneMouseClick>,
+    mut mouse_click: EventReader<SceneMouseInput>,
 ) {
     for click in mouse_click.read() {
         if click.button == MouseButton::Right {
