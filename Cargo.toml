@@ -20,6 +20,7 @@ bevy = { version = "0.14", default-features = false, features = [
     "serialize",
 ] }
 bevy-inspector-egui = "0.25"
+bincode = "2.0.0-rc.3"
 bitflags = "2.6"
 enum-map = "2.7"
 hashbrown = { version = "0.14", features = ["rayon"] }

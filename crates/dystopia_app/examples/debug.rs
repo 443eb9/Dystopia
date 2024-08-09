@@ -31,7 +31,10 @@ use bevy::{
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use dystopia_core::{
-    cosmos::{celestial::BodyIndex, gen::CosmosGenerationSettings},
+    cosmos::{
+        celestial::{BodyIndex, ToSaveTilemap},
+        gen::CosmosGenerationSettings,
+    },
     distributed_list_element,
     input::camera::CameraBehavior,
     map::{
@@ -44,7 +47,7 @@ use dystopia_core::{
     math::shape::icosahedron,
     schedule::state::{AssetState, GameState},
     sci::unit::Length,
-    simulation::{MainCamera, ViewScale},
+    simulation::{MainCamera, SaveName, ViewScale},
     ui::{
         panel::body_data::BodyDataPanel, scrollable_list::ScrollableList, UiBuilder, FUSION_PIXEL,
     },
@@ -123,13 +126,21 @@ fn debug_skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<Game
         num_stars: 1..2,
     });
     game_state.set(GameState::Initialize);
+    commands.insert_resource(SaveName::new("debug_save".to_string()));
     info!("Skipped menu");
 }
 
-fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn debug_tilemap(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    bodies: Query<Entity, With<BodyIndex>>,
+) {
+    let Some(entity) = bodies.iter().nth(0) else {
+        return;
+    };
+
     const CHUNK_SIZE: u32 = 8;
 
-    let entity = commands.spawn_empty().id();
     let mut tilemap = TilemapBundle {
         tile_render_size: TileRenderSize(Vec2::splat(32.)),
         storgae: TilemapStorage::new(CHUNK_SIZE),
@@ -202,7 +213,7 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
     );
 
     let mut rng = rand::thread_rng();
-    for (i_tri, tri) in icosahedron(2, IVec3::Y).into_iter().enumerate() {
+    for (i_tri, tri) in icosahedron(4, IVec3::Y).into_iter().enumerate() {
         let texture = if i_tri % 2 == 0 { 0 } else { 1 };
         let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
         tilemap.storgae.set(Tile {
@@ -226,43 +237,41 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 fn debug_rm_vis(
     mut commands: Commands,
-    mut tilemaps_query: Query<&mut TilemapStorage>,
+    mut tilemaps_query: Query<(Entity, &mut TilemapStorage)>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut visible: Local<bool>,
     time: Res<Time<Real>>,
     mut twinkled: Local<bool>,
 ) {
+    let Some((entity, mut storage)) = tilemaps_query.iter_mut().nth(0) else {
+        return;
+    };
+
     let mut rng = rand::thread_rng();
 
     if keyboard.just_pressed(KeyCode::Digit1) {
-        for mut storage in &mut tilemaps_query {
-            for tri in icosahedron(2, IVec3::Y) {
-                if rng.gen_range(0.0..1.0) > 0.5 {
-                    storage.remove(tri);
-                }
+        for tri in icosahedron(2, IVec3::Y) {
+            if rng.gen_range(0.0..1.0) > 0.5 {
+                storage.remove(tri);
             }
         }
     }
 
     if keyboard.just_pressed(KeyCode::Digit2) {
-        for mut storage in &mut tilemaps_query {
-            let chunks = icosahedron(2, IVec3::Y)
-                .into_iter()
-                .map(|i| FlattenedTileIndex::from_direct(i, storage.chunk_size()).chunk_index)
-                .collect::<HashSet<_>>();
+        let chunks = icosahedron(2, IVec3::Y)
+            .into_iter()
+            .map(|i| FlattenedTileIndex::from_direct(i, storage.chunk_size()).chunk_index)
+            .collect::<HashSet<_>>();
 
-            for chunk in chunks {
-                if rng.gen_range(0.0..1.0) > 0.5 {
-                    storage.remove_chunk(chunk);
-                }
+        for chunk in chunks {
+            if rng.gen_range(0.0..1.0) > 0.5 {
+                storage.remove_chunk(chunk);
             }
         }
     }
 
     if keyboard.just_pressed(KeyCode::Digit3) {
-        for mut storage in &mut tilemaps_query {
-            storage.clear();
-        }
+        storage.clear();
     }
 
     if keyboard.pressed(KeyCode::Digit4) {
@@ -273,30 +282,34 @@ fn debug_rm_vis(
             return;
         }
 
-        for mut storage in &mut tilemaps_query {
-            unsafe {
-                let cell = storage.as_unsafe_cell();
-                if *visible {
-                    (*cell.internal).values_mut().for_each(|c| {
-                        c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
-                            t.visible = *visible;
-                        });
+        unsafe {
+            let cell = storage.as_unsafe_cell();
+            if *visible {
+                (*cell.internal).values_mut().for_each(|c| {
+                    c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
+                        t.visible = *visible;
                     });
-                } else {
-                    (*cell.internal).values_mut().for_each(|c| {
-                        c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
-                            if rng.gen_range(0.0..1.0) > 0.5 {
-                                t.visible = false;
-                            }
-                        });
+                });
+            } else {
+                (*cell.internal).values_mut().for_each(|c| {
+                    c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
+                        if rng.gen_range(0.0..1.0) > 0.5 {
+                            t.visible = false;
+                        }
                     });
-                }
-                *visible = !*visible;
-                (*cell.changed_chunks).extend((*cell.internal).keys());
+                });
             }
+            *visible = !*visible;
+            (*cell.changed_chunks).extend((*cell.internal).keys());
         }
 
         *twinkled = !t;
+    }
+
+    if keyboard.just_pressed(KeyCode::Digit5) {
+        commands.entity(entity).insert(ToSaveTilemap {
+            remove_after_done: true,
+        });
     }
 }
 

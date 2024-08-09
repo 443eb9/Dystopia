@@ -105,9 +105,12 @@ impl BodyTilemap {
 #[derive(Component)]
 pub struct ToLoadTilemap;
 
-/// Marks a body needs to unload tilemap for better performance.
+/// Marks a body needs to save the tilemap onto disk.
 #[derive(Component)]
-pub struct ToUnloadTilemap;
+pub struct ToSaveTilemap {
+    /// Whether to remove tilemap from the entity.
+    pub remove_after_done: bool,
+}
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Orbit {

@@ -186,7 +186,7 @@ pub fn prepare_buffers(
 
         if let Some(changed_animations) = &tilemap.changed_animations {
             individual.animations.clear();
-            *individual.animations.values_mut() = changed_animations.to_vec();
+            *individual.animations.values_mut() = changed_animations.bytes().clone();
             individual
                 .animations
                 .write_buffer(&render_device, &render_queue);

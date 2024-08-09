@@ -143,3 +143,15 @@ fn check_if_initialized(
         info!("Game initialized! Start Simulating...");
     }
 }
+
+/// The name of current game save.
+/// 
+/// This resource only exists in [`GameState::Simulate`].
+#[derive(Resource, Deref, DerefMut)]
+pub struct SaveName(String);
+
+impl SaveName {
+    pub fn new(name: String) -> Self {
+        Self(name)
+    }
+}

@@ -1,6 +1,6 @@
 use bevy::{
     asset::Handle,
-    color::{Color, LinearRgba},
+    color::Color,
     math::{IVec3, UVec2, UVec3, Vec2},
     prelude::{Component, Deref, DerefMut},
     render::{render_resource::FilterMode, texture::Image},
@@ -391,10 +391,10 @@ impl TilemapTilesets {
 }
 
 #[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
-pub struct TilemapTint(pub LinearRgba);
+pub struct TilemapTint(Color);
 
 /// Layout: `[fps, frame_1_tex, frame_1_atl, frame_2_tex, frame_2_atl, fps, frame_1_tex, frame_1_atl, ...]`
-#[derive(Component, Debug, Clone, Deref, DerefMut)]
+#[derive(Component, Debug, Clone)]
 pub struct TilemapAnimations(Vec<u32>);
 
 impl Default for TilemapAnimations {
@@ -406,6 +406,10 @@ impl Default for TilemapAnimations {
 }
 
 impl TilemapAnimations {
+    pub fn bytes(&self) -> &Vec<u32> {
+        &self.0
+    }
+
     pub fn register(
         &mut self,
         animation: impl IntoIterator<IntoIter: Iterator<Item = impl Into<TileStaticAtlas>>>,
@@ -416,12 +420,12 @@ impl TilemapAnimations {
             .map(Into::into)
             .map(|f| f.encode())
             .collect::<Vec<_>>();
-        self.push(fps);
+        self.0.push(fps);
         let anim = TileAnimation {
-            start: self.len(),
+            start: self.0.len(),
             len: animation.len(),
         };
-        self.extend(
+        self.0.extend(
             animation
                 .into_iter()
                 .flat_map(|frame| [frame.texture, frame.atlas]),

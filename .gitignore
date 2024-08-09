@@ -1,3 +1,9 @@
+# Rust compile
 /target
-/.venv
 Cargo.lock
+
+# Python
+/.venv
+
+# Generated data
+/data

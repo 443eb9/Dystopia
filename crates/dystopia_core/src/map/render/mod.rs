@@ -49,9 +49,9 @@ pub mod mesh;
 pub mod resource;
 pub mod texture;
 
-pub struct DystopiaMapRenderPlugin;
+pub(super) struct TilemapRenderPlugin;
 
-impl Plugin for DystopiaMapRenderPlugin {
+impl Plugin for TilemapRenderPlugin {
     fn build(&self, app: &mut App) {
         app.add_plugins(ExtractInstancesPlugin::<ExtractedTilemap>::new())
             .add_systems(Update, texture::change_texture_usage)
@@ -169,17 +169,10 @@ impl ExtractInstance for ExtractedTilemap {
             Self::QueryData,
         >,
     ) -> Option<Self> {
-        if !storage.changed_tiles().is_empty() {
-            dbg!(storage.changed_tiles().len());
-        }
-        if !storage.changed_chunks().is_empty() {
-            dbg!(storage.changed_chunks().len());
-        }
-
         Some(Self {
             tile_render_size: *tile_render_size,
             transform: *transform,
-            tint: **tint,
+            tint: tint.to_linear(),
             tilesets: tilesets.clone(),
             chunk_size: storage.chunk_size(),
             changed_animations: if animations.is_changed() {

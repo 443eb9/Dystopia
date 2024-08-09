@@ -10,7 +10,6 @@ use bevy::{
 };
 use serde::de::DeserializeOwned;
 use thiserror::Error;
-use uuid::Uuid;
 
 use crate::schedule::state::AssetState;
 
@@ -26,34 +25,6 @@ impl Plugin for DystopiaAssetsPlugin {
             Update,
             manifest::check_if_manifest_finished.run_if(in_state(AssetState::Load)),
         );
-    }
-}
-
-/// A unique identifier for objects like items, structures etc.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Id<T> {
-    id: Uuid,
-    _markder: PhantomData<T>,
-}
-
-impl<T> Id<T> {
-    pub fn from_str(s: &str) -> Self {
-        // Algorithm adopted from <https://cp-algorithms.com/string/string-hashing.html>
-
-        const P: u128 = 31;
-        const M: u128 = 1000000009;
-        let mut hash_value = 0;
-        let mut p_pow = 1;
-
-        s.bytes().for_each(|c| {
-            hash_value = (hash_value + (c as u128 + 1) * p_pow) % M;
-            p_pow = (p_pow * P) % M;
-        });
-
-        Self {
-            id: Uuid::from_u128(hash_value),
-            _markder: PhantomData::default(),
-        }
     }
 }
 
@@ -89,5 +60,9 @@ impl<A: Asset + DeserializeOwned> AssetLoader for JsonLoader<A> {
         let mut buf = Vec::new();
         reader.read_to_end(&mut buf).await?;
         serde_json::from_slice(&buf).map_err(Into::into)
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["json"]
     }
 }
