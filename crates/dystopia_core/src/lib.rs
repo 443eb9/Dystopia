@@ -11,6 +11,7 @@ pub mod math;
 pub mod schedule;
 pub mod sci;
 pub mod simulation;
+pub mod transition;
 pub mod ui;
 pub mod util;
 
@@ -26,6 +27,7 @@ impl Plugin for DystopiaCorePlugin {
             map::DystopiaMapPlugin,
             schedule::DystopiaSchedulePlugin,
             simulation::DystopiaSimulationPlugin,
+            transition::DystopiaTransitionPlugin,
             ui::DystopiaUiPlugin,
             util::DystopiaUtilPlugin,
         ));

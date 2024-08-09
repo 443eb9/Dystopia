@@ -1,6 +1,6 @@
 use bevy::{
     math::DVec2,
-    prelude::{Component, Deref, DerefMut, Resource},
+    prelude::{Component, Deref, DerefMut, Entity, Resource},
 };
 use serde::{Deserialize, Serialize};
 
@@ -86,6 +86,28 @@ pub enum BodyType {
     GasGiant,
     IceGiant,
 }
+
+/// The corresponding tilemap to the body.
+///
+/// This won't be added to the body when they're spawned, as it will cause too much
+/// performance overhead.
+#[derive(Component, Deref)]
+pub struct BodyTilemap(Entity);
+
+impl BodyTilemap {
+    pub fn new(tilemap: Entity) -> Self {
+        Self(tilemap)
+    }
+}
+
+/// Marks a body needs to generate/load tilemap. The generation process will happen
+/// asynchronously.
+#[derive(Component)]
+pub struct ToLoadTilemap;
+
+/// Marks a body needs to unload tilemap for better performance.
+#[derive(Component)]
+pub struct ToUnloadTilemap;
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Orbit {

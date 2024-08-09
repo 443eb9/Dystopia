@@ -127,5 +127,5 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
 
 @fragment
 fn fragment(in: TilemapVertexOutput) -> @location(0) vec4f {
-    return textureSample(texture, texture_sampler, in.uv, in.texture_index);
+    return textureSample(texture, texture_sampler, in.uv, in.texture_index) * tilemap.tint;
 }

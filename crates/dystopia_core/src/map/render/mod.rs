@@ -1,5 +1,6 @@
 use bevy::{
-    app::{App, Plugin, Update},
+    app::{App, Plugin, PreUpdate, Update},
+    color::LinearRgba,
     core_pipeline::core_2d::Transparent2d,
     ecs::{
         query::{QueryItem, ROQueryItem},
@@ -8,10 +9,10 @@ use bevy::{
             SystemParamItem,
         },
     },
-    math::FloatOrd,
+    math::{FloatOrd, IVec3},
     prelude::{
-        Changed, Commands, Component, DetectChanges, Entity, IntoSystemConfigs, Or, Query, Ref,
-        Res, ResMut, With,
+        Commands, Component, DetectChanges, Entity, IntoSystemConfigs, Query, Ref, Res, ResMut,
+        With,
     },
     render::{
         extract_instances::{ExtractInstance, ExtractInstancesPlugin},
@@ -26,6 +27,7 @@ use bevy::{
     },
     transform::components::GlobalTransform,
 };
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::{
     map::{
@@ -34,9 +36,10 @@ use crate::{
             resource::{TilemapBindGroups, TilemapBuffers, TilemapPipeline, TilemapPipelineKey},
             texture::TilemapTextureStorage,
         },
+        storage::Chunk,
         tilemap::{
-            TileAtlasIndex, TileBindedTilemap, TileIndex, TileRenderSize, TileTint,
-            TilemapAnimations, TilemapStorage, TilemapTilesets, TilemapTint,
+            FlattenedTileIndex, Tile, TileRenderSize, TilemapAnimations, TilemapStorage,
+            TilemapTilesets, TilemapTint,
         },
     },
     simulation::MainCamera,
@@ -50,11 +53,18 @@ pub struct DystopiaMapRenderPlugin;
 
 impl Plugin for DystopiaMapRenderPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
-            ExtractInstancesPlugin::<ExtractedTilemap>::new(),
-            ExtractInstancesPlugin::<ExtractedTile>::new(),
-        ))
-        .add_systems(Update, texture::change_texture_usage);
+        app.add_plugins(ExtractInstancesPlugin::<ExtractedTilemap>::new())
+            .add_systems(Update, texture::change_texture_usage)
+            .add_systems(
+                PreUpdate,
+                |mut tilemaps_query: Query<&mut TilemapStorage>| {
+                    tilemaps_query.iter_mut().for_each(|mut t| unsafe {
+                        let cell = t.as_unsafe_cell();
+                        (*cell.changed_tiles).clear();
+                        (*cell.changed_chunks).clear();
+                    });
+                },
+            );
 
         let render_app = app.sub_app_mut(RenderApp);
 
@@ -134,9 +144,11 @@ pub struct ExtractedTilemap {
     pub chunk_size: u32,
     pub tile_render_size: TileRenderSize,
     pub transform: GlobalTransform,
-    pub tint: TilemapTint,
+    pub tint: LinearRgba,
     pub tilesets: TilemapTilesets,
     pub changed_animations: Option<TilemapAnimations>,
+    pub changed_tiles: Vec<(FlattenedTileIndex, Option<Tile>)>,
+    pub changed_chunks: Vec<(IVec3, Option<Chunk<Tile>>)>,
 }
 
 impl ExtractInstance for ExtractedTilemap {
@@ -151,56 +163,40 @@ impl ExtractInstance for ExtractedTilemap {
 
     type QueryFilter = ();
 
-    fn extract(item: QueryItem<'_, Self::QueryData>) -> Option<Self> {
+    fn extract(
+        (tile_render_size, transform, tint, tilesets, storage, animations): QueryItem<
+            '_,
+            Self::QueryData,
+        >,
+    ) -> Option<Self> {
+        if !storage.changed_tiles().is_empty() {
+            dbg!(storage.changed_tiles().len());
+        }
+        if !storage.changed_chunks().is_empty() {
+            dbg!(storage.changed_chunks().len());
+        }
+
         Some(Self {
-            tile_render_size: *item.0,
-            transform: *item.1,
-            tint: *item.2,
-            tilesets: item.3.clone(),
-            chunk_size: item.4.chunk_size(),
-            changed_animations: if item.5.is_changed() {
-                Some(item.5.clone())
+            tile_render_size: *tile_render_size,
+            transform: *transform,
+            tint: **tint,
+            tilesets: tilesets.clone(),
+            chunk_size: storage.chunk_size(),
+            changed_animations: if animations.is_changed() {
+                Some(animations.clone())
             } else {
                 None
             },
-        })
-    }
-}
-
-pub struct ExtractedTile {
-    pub binded_tilemap: Entity,
-    pub index: TileIndex,
-    pub atlas_index: TileAtlasIndex,
-    pub tint: TileTint,
-    pub changed_vis: Option<bool>,
-}
-
-impl ExtractInstance for ExtractedTile {
-    type QueryData = (
-        Read<TileBindedTilemap>,
-        Read<TileIndex>,
-        Read<TileAtlasIndex>,
-        Read<TileTint>,
-        Ref<'static, Visibility>,
-    );
-
-    type QueryFilter = Or<(
-        Changed<TileAtlasIndex>,
-        Changed<TileTint>,
-        Changed<Visibility>,
-    )>;
-
-    fn extract(item: QueryItem<'_, Self::QueryData>) -> Option<Self> {
-        Some(Self {
-            binded_tilemap: item.0 .0,
-            index: *item.1,
-            atlas_index: *item.2,
-            tint: *item.3,
-            changed_vis: if item.4.is_changed() {
-                Some(*item.4 != Visibility::Hidden)
-            } else {
-                None
-            },
+            changed_tiles: storage
+                .changed_tiles()
+                .par_iter()
+                .map(|t| (*t, storage.flattened_get(*t).cloned()))
+                .collect(),
+            changed_chunks: storage
+                .changed_chunks()
+                .iter()
+                .map(|c| (*c, storage.get_chunk(*c).cloned()))
+                .collect(),
         })
     }
 }

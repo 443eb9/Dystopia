@@ -166,7 +166,7 @@ pub fn prepare_buffers(
         let offset = buffers.uniform.push(TilemapUniform {
             tile_render_size: tilemap.tile_render_size.0,
             world_from_model: tilemap.transform.compute_matrix(),
-            tint: tilemap.tint.0.to_vec4(),
+            tint: tilemap.tint.to_vec4(),
         });
 
         let individual = buffers.individual.entry(*entity).or_default();

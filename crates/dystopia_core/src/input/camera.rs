@@ -13,7 +13,7 @@ use bevy::{
 
 use crate::{
     input::{scene::EntityOnDrag, SceneCursorPosition, SceneMouseInput},
-    simulation::{CursorPosition, MainCamera, ViewScale},
+    simulation::{MainCamera, ViewScale},
 };
 
 #[derive(Component)]

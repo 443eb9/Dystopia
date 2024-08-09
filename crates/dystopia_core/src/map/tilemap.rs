@@ -1,27 +1,34 @@
 use bevy::{
     asset::Handle,
-    color::LinearRgba,
+    color::{Color, LinearRgba},
     math::{IVec3, UVec2, UVec3, Vec2},
-    prelude::{Commands, Component, Deref, DerefMut, Entity},
+    prelude::{Component, Deref, DerefMut},
     render::{render_resource::FilterMode, texture::Image},
+    utils::HashSet,
 };
 
-use crate::map::{
-    bundle::TileBundle,
-    removal::{DespawnMe, RemoveTilemapChunk},
-    storage::{Chunk, ChunkableIndex, ChunkedStorage, DEFAULT_CHUNK_SIZE},
-};
+use crate::map::storage::{Chunk, ChunkableIndex, ChunkedStorage, DEFAULT_CHUNK_SIZE};
 
-#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Deref, DerefMut)]
-pub struct TileBindedTilemap(pub Entity);
+#[derive(Clone)]
+pub struct Tile {
+    pub index: TileIndex,
+    pub atlas_index: TileAtlasIndex,
+    pub tint: Color,
+    pub visible: bool,
+}
 
-impl Default for TileBindedTilemap {
+impl Default for Tile {
     fn default() -> Self {
-        Self(Entity::PLACEHOLDER)
+        Self {
+            index: Default::default(),
+            atlas_index: Default::default(),
+            tint: Default::default(),
+            visible: true,
+        }
     }
 }
 
-#[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
+#[derive(Debug, Default, Clone, Copy, Deref, DerefMut)]
 pub struct TileIndex {
     direct: IVec3,
     #[deref]
@@ -51,7 +58,7 @@ impl TileIndex {
     }
 }
 
-#[derive(Component, Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub enum TileAtlasIndex {
     Static(TileStaticAtlas),
     Animated {
@@ -127,9 +134,6 @@ bitflags::bitflags! {
     }
 }
 
-#[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
-pub struct TileTint(pub LinearRgba);
-
 /// Rendered size of a single tile.
 #[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
 pub struct TileRenderSize(pub Vec2);
@@ -141,7 +145,7 @@ pub struct ChunkedTileIndex {
 }
 
 /// The fastest index for looking up tiles.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FlattenedTileIndex {
     pub chunk_index: IVec3,
     pub in_chunk_index: usize,
@@ -187,24 +191,29 @@ impl FlattenedTileIndex {
 /// Stores all entities on this tilemap.
 #[derive(Component)]
 pub struct TilemapStorage {
-    tilemap: Entity,
-    internal: ChunkedStorage<FlattenedTileIndex, Entity, 3>,
+    internal: ChunkedStorage<FlattenedTileIndex, Tile, 3>,
+    changed_tiles: HashSet<FlattenedTileIndex>,
+    changed_chunks: HashSet<IVec3>,
+}
+
+pub struct UnsafePubTilemapStorageCell {
+    pub internal: *mut ChunkedStorage<FlattenedTileIndex, Tile, 3>,
+    pub changed_tiles: *mut HashSet<FlattenedTileIndex>,
+    pub changed_chunks: *mut HashSet<IVec3>,
 }
 
 impl Default for TilemapStorage {
     fn default() -> Self {
-        Self {
-            tilemap: Entity::PLACEHOLDER,
-            internal: ChunkedStorage::new(DEFAULT_CHUNK_SIZE),
-        }
+        Self::new(DEFAULT_CHUNK_SIZE)
     }
 }
 
 impl TilemapStorage {
-    pub fn new(binded_tilemap: Entity, chunk_size: u32) -> Self {
+    pub fn new(chunk_size: u32) -> Self {
         Self {
-            tilemap: binded_tilemap,
             internal: ChunkedStorage::new(chunk_size),
+            changed_chunks: Default::default(),
+            changed_tiles: Default::default(),
         }
     }
 
@@ -214,84 +223,113 @@ impl TilemapStorage {
     }
 
     #[inline]
-    pub fn get(&self, index: IVec3) -> Option<Entity> {
+    pub fn changed_tiles(&self) -> &HashSet<FlattenedTileIndex> {
+        &self.changed_tiles
+    }
+
+    #[inline]
+    pub fn changed_chunks(&self) -> &HashSet<IVec3> {
+        &self.changed_chunks
+    }
+
+    #[inline]
+    pub unsafe fn as_unsafe_cell_readonly(&self) -> UnsafePubTilemapStorageCell {
+        UnsafePubTilemapStorageCell {
+            internal: std::ptr::from_ref(&self.internal).cast_mut(),
+            changed_tiles: std::ptr::from_ref(&self.changed_tiles).cast_mut(),
+            changed_chunks: std::ptr::from_ref(&self.changed_chunks).cast_mut(),
+        }
+    }
+
+    #[inline]
+    pub unsafe fn as_unsafe_cell(&mut self) -> UnsafePubTilemapStorageCell {
+        UnsafePubTilemapStorageCell {
+            internal: std::ptr::from_mut(&mut self.internal),
+            changed_tiles: std::ptr::from_mut(&mut self.changed_tiles),
+            changed_chunks: std::ptr::from_mut(&mut self.changed_chunks),
+        }
+    }
+
+    #[inline]
+    pub fn get(&self, index: IVec3) -> Option<&Tile> {
         self.flattened_get(FlattenedTileIndex::from_direct(index, self.chunk_size()))
     }
 
     #[inline]
-    pub fn chunked_get(&self, index: ChunkedTileIndex) -> Option<Entity> {
+    pub fn chunked_get(&self, index: ChunkedTileIndex) -> Option<&Tile> {
         self.flattened_get(FlattenedTileIndex::from_chunked(index, self.chunk_size()))
     }
 
     #[inline]
-    pub fn flattened_get(&self, index: FlattenedTileIndex) -> Option<Entity> {
-        self.internal.get(&index).cloned()
+    pub fn flattened_get(&self, index: FlattenedTileIndex) -> Option<&Tile> {
+        self.internal.get(&index)
     }
 
     #[inline]
-    pub fn get_chunk(&self, index: IVec3) -> Option<&Chunk<Entity>> {
+    pub fn get_mut(&mut self, index: IVec3) -> Option<&mut Tile> {
+        self.flattened_get_mut(FlattenedTileIndex::from_direct(index, self.chunk_size()))
+    }
+
+    #[inline]
+    pub fn chunked_get_mut(&mut self, index: ChunkedTileIndex) -> Option<&mut Tile> {
+        self.flattened_get_mut(FlattenedTileIndex::from_chunked(index, self.chunk_size()))
+    }
+
+    #[inline]
+    pub fn flattened_get_mut(&mut self, index: FlattenedTileIndex) -> Option<&mut Tile> {
+        self.changed_tiles.insert(index);
+        self.internal.get_mut(&index)
+    }
+
+    #[inline]
+    pub fn set(&mut self, tile: Tile) -> Option<Tile> {
+        self.changed_tiles.insert(tile.index.flattend);
+        self.internal.set(tile.index.flattend, tile)
+    }
+
+    #[inline]
+    pub fn remove(&mut self, index: IVec3) -> Option<Tile> {
+        self.flattened_remove(FlattenedTileIndex::from_direct(index, self.chunk_size()))
+    }
+
+    #[inline]
+    pub fn chunked_remove(&mut self, index: ChunkedTileIndex) -> Option<Tile> {
+        self.flattened_remove(FlattenedTileIndex::from_chunked(index, self.chunk_size()))
+    }
+
+    #[inline]
+    pub fn flattened_remove(&mut self, index: FlattenedTileIndex) -> Option<Tile> {
+        self.changed_tiles.insert(index);
+        self.internal.remove(&index)
+    }
+
+    #[inline]
+    pub fn get_chunk(&self, index: IVec3) -> Option<&Chunk<Tile>> {
         self.internal.get_chunk(&index)
     }
 
     #[inline]
-    pub fn get_chunk_mut(&mut self, index: IVec3) -> Option<&mut Chunk<Entity>> {
+    pub fn get_chunk_mut(&mut self, index: IVec3) -> Option<&mut Chunk<Tile>> {
+        self.changed_chunks.insert(index);
         self.internal.get_chunk_mut(&index)
     }
 
     #[inline]
-    pub fn set(&mut self, commands: &mut Commands, tile: TileBundle) -> Option<Entity> {
-        self.internal
-            .set(tile.index.flattend, commands.spawn(tile).id())
+    pub fn set_chunk(&mut self, index: IVec3, chunk: Chunk<Tile>) -> Option<Chunk<Tile>> {
+        self.changed_chunks.insert(index);
+        self.internal.set_chunk(index, chunk)
     }
 
     #[inline]
-    pub fn set_chunk(&mut self, index: IVec3, chunk: Chunk<Entity>) {
-        self.internal.set_chunk(&index, chunk);
-    }
-
-    #[inline]
-    pub fn remove(&mut self, commands: &mut Commands, index: IVec3) -> Option<Entity> {
-        self.flattened_remove(
-            commands,
-            FlattenedTileIndex::from_direct(index, self.chunk_size()),
-        )
-    }
-
-    #[inline]
-    pub fn chunked_remove(
-        &mut self,
-        commands: &mut Commands,
-        index: ChunkedTileIndex,
-    ) -> Option<Entity> {
-        self.flattened_remove(
-            commands,
-            FlattenedTileIndex::from_chunked(index, self.chunk_size()),
-        )
-    }
-
-    #[inline]
-    pub fn flattened_remove(
-        &mut self,
-        commands: &mut Commands,
-        index: FlattenedTileIndex,
-    ) -> Option<Entity> {
-        self.internal.remove(&index).inspect(|e| {
-            commands.entity(*e).insert(DespawnMe);
-        })
-    }
-
-    #[inline]
-    pub fn remove_chunk(&mut self, commands: &mut Commands, index: IVec3) -> Option<Chunk<Entity>> {
-        commands.spawn(RemoveTilemapChunk {
-            tilemap: self.tilemap,
-            index,
-        });
+    pub fn remove_chunk(&mut self, index: IVec3) -> Option<Chunk<Tile>> {
+        self.changed_chunks.insert(index);
         self.internal.remove_chunk(&index)
     }
 
     #[inline]
-    pub fn despawn(&self, commands: &mut Commands) {
-        commands.entity(self.tilemap).insert(DespawnMe);
+    pub fn clear(&mut self) {
+        self.changed_chunks.extend(self.internal.keys());
+        self.internal.clear();
     }
 }
 

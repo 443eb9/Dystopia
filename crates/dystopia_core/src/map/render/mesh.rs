@@ -18,8 +18,8 @@ use bevy::{
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::map::{
-    render::{ExtractedTile, ExtractedTilemap},
-    tilemap::TileAtlasIndex,
+    render::ExtractedTilemap,
+    tilemap::{FlattenedTileIndex, Tile, TileAtlasIndex},
 };
 
 pub const TILEMAP_MESH_ATLAS_INDEX_ATTR: MeshVertexAttribute =
@@ -102,40 +102,69 @@ pub fn register_tilemaps_in_storage(
 }
 
 pub fn prepare_tile_mesh_data(
-    tiles: Res<ExtractedInstances<ExtractedTile>>,
+    tilemaps: Res<ExtractedInstances<ExtractedTilemap>>,
     mut mesh_storage: ResMut<TilemapMeshStorage>,
 ) {
-    for tile in tiles.values() {
-        let index = tile.index.flattend();
-        let chunks = mesh_storage.storage.get_mut(&tile.binded_tilemap).unwrap();
-        let chunk = chunks
-            .chunks
-            .entry(index.chunk_index)
-            .or_insert_with(|| TilemapRenderChunk::new(chunks.chunk_size));
+    for (tilemap_entity, tilemap) in tilemaps.iter() {
+        let chunks = mesh_storage.storage.get_mut(tilemap_entity).unwrap();
 
-        let data = {
-            if tile.changed_vis.is_some_and(|v| !v) {
-                None
+        for (index, tile) in &tilemap.changed_tiles {
+            update_tile_mesh(index, tile, chunks);
+        }
+
+        for (index, chunk) in &tilemap.changed_chunks {
+            if let Some(chunk) = chunk {
+                for (i, tile) in chunk.iter().enumerate() {
+                    update_tile_mesh(
+                        &FlattenedTileIndex {
+                            chunk_index: *index,
+                            in_chunk_index: i,
+                        },
+                        tile,
+                        chunks,
+                    );
+                }
             } else {
-                Some(TileMeshData {
-                    tint: tile.tint.0.to_vec4(),
-                    atlas_index: match tile.atlas_index {
-                        TileAtlasIndex::Static(mut s) => {
-                            s = s.encode();
-                            [s.texture, s.atlas, 0, 0]
-                        }
-                        TileAtlasIndex::Animated {
-                            anim,
-                            offset_milisec,
-                        } => [anim.start as u32, anim.len as u32, 1, offset_milisec],
-                    },
-                    tile_index: tile.index.direct(),
-                })
+                chunks.chunks.remove(index);
             }
-        };
-
-        chunk.set(index.in_chunk_index, data);
+        }
     }
+}
+
+fn update_tile_mesh(
+    index: &FlattenedTileIndex,
+    tile: &Option<Tile>,
+    chunks: &mut TilemapRenderChunks,
+) {
+    let Some(tile) = tile else {
+        if let Some(chunk) = chunks.chunks.get_mut(&index.chunk_index) {
+            chunk.set(index.in_chunk_index, None);
+        }
+        return;
+    };
+
+    let index = tile.index.flattend();
+    let chunk = chunks
+        .chunks
+        .entry(index.chunk_index)
+        .or_insert_with(|| TilemapRenderChunk::new(chunks.chunk_size));
+
+    let data = tile.visible.then_some(TileMeshData {
+        tint: tile.tint.to_linear().to_vec4(),
+        atlas_index: match tile.atlas_index {
+            TileAtlasIndex::Static(mut s) => {
+                s = s.encode();
+                [s.texture, s.atlas, 0, 0]
+            }
+            TileAtlasIndex::Animated {
+                anim,
+                offset_milisec,
+            } => [anim.start as u32, anim.len as u32, 1, offset_milisec],
+        },
+        tile_index: tile.index.direct(),
+    });
+
+    chunk.set(index.in_chunk_index, data);
 }
 
 pub fn prepare_tilemap_meshes(

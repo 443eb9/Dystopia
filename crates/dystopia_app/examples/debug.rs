@@ -35,11 +35,10 @@ use dystopia_core::{
     distributed_list_element,
     input::camera::CameraBehavior,
     map::{
-        bundle::{TileBundle, TilemapBundle},
+        bundle::TilemapBundle,
         tilemap::{
-            FlattenedTileIndex, TileAtlasIndex, TileBindedTilemap, TileFlip, TileIndex,
-            TileRenderSize, TilemapStorage, TilemapTexture, TilemapTextureDescriptor,
-            TilemapTilesets,
+            FlattenedTileIndex, Tile, TileAtlasIndex, TileFlip, TileIndex, TileRenderSize,
+            TilemapStorage, TilemapTexture, TilemapTextureDescriptor, TilemapTilesets,
         },
     },
     math::shape::icosahedron,
@@ -106,10 +105,11 @@ impl Plugin for DystopiaDebugPlugin {
         app.add_plugins((FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin::default()))
             .add_systems(OnEnter(AssetState::Finish), debug_skip_menu)
             // .add_systems(OnEnter(GameState::Simulate), debug_ui)
-            // .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
+            .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
             // .add_systems(Update, debug_rm_vis)
             .add_systems(Startup, setup_debug)
-            .add_systems(Update, toggle_ui_debug);
+            .add_systems(Update, toggle_ui_debug)
+            .add_systems(Update, debug_rm_vis);
     }
 }
 
@@ -132,7 +132,7 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
     let entity = commands.spawn_empty().id();
     let mut tilemap = TilemapBundle {
         tile_render_size: TileRenderSize(Vec2::splat(32.)),
-        storgae: TilemapStorage::new(entity, CHUNK_SIZE),
+        storgae: TilemapStorage::new(CHUNK_SIZE),
         tilesets: TilemapTilesets::new(
             vec![
                 TilemapTexture {
@@ -205,24 +205,20 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
     for (i_tri, tri) in icosahedron(2, IVec3::Y).into_iter().enumerate() {
         let texture = if i_tri % 2 == 0 { 0 } else { 1 };
         let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
-        tilemap.storgae.set(
-            &mut commands,
-            TileBundle {
-                binded_tilemap: TileBindedTilemap(entity),
-                index: TileIndex::new(tri, CHUNK_SIZE),
-                // atlas_index: TileAtlasIndex::Static((texture, atlas, TileFlip::HORIZONTAL).into()),
-                atlas_index: TileAtlasIndex::Animated {
-                    anim: if tri.element_sum() == 1 {
-                        anim_dn
-                    } else {
-                        anim_up
-                    },
-                    offset_milisec: rng.gen_range(0..2000),
-                    // offset_milisec: 0,
+        tilemap.storgae.set(Tile {
+            index: TileIndex::new(tri, CHUNK_SIZE),
+            // atlas_index: TileAtlasIndex::Static((texture, atlas, TileFlip::HORIZONTAL).into()),
+            atlas_index: TileAtlasIndex::Animated {
+                anim: if tri.element_sum() == 1 {
+                    anim_dn
+                } else {
+                    anim_up
                 },
-                ..Default::default()
+                offset_milisec: rng.gen_range(0..2000),
+                // offset_milisec: 0,
             },
-        );
+            ..Default::default()
+        });
     }
 
     commands.entity(entity).insert(tilemap);
@@ -231,9 +227,8 @@ fn debug_tilemap(mut commands: Commands, asset_server: Res<AssetServer>) {
 fn debug_rm_vis(
     mut commands: Commands,
     mut tilemaps_query: Query<&mut TilemapStorage>,
-    mut tiles_query: Query<&mut Visibility, With<TileIndex>>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut visible: Local<Visibility>,
+    mut visible: Local<bool>,
     time: Res<Time<Real>>,
     mut twinkled: Local<bool>,
 ) {
@@ -243,7 +238,7 @@ fn debug_rm_vis(
         for mut storage in &mut tilemaps_query {
             for tri in icosahedron(2, IVec3::Y) {
                 if rng.gen_range(0.0..1.0) > 0.5 {
-                    storage.remove(&mut commands, tri);
+                    storage.remove(tri);
                 }
             }
         }
@@ -258,15 +253,15 @@ fn debug_rm_vis(
 
             for chunk in chunks {
                 if rng.gen_range(0.0..1.0) > 0.5 {
-                    storage.remove_chunk(&mut commands, chunk);
+                    storage.remove_chunk(chunk);
                 }
             }
         }
     }
 
     if keyboard.just_pressed(KeyCode::Digit3) {
-        for storage in &tilemaps_query {
-            storage.despawn(&mut commands);
+        for mut storage in &mut tilemaps_query {
+            storage.clear();
         }
     }
 
@@ -278,18 +273,27 @@ fn debug_rm_vis(
             return;
         }
 
-        if *visible != Visibility::Hidden {
-            tiles_query.iter_mut().for_each(|mut visibility| {
-                *visibility = Visibility::Inherited;
-            });
-            *visible = Visibility::Hidden;
-        } else {
-            tiles_query.iter_mut().for_each(|mut visibility| {
-                if rng.gen_range(0.0..1.0) > 0.5 {
-                    *visibility = Visibility::Hidden;
+        for mut storage in &mut tilemaps_query {
+            unsafe {
+                let cell = storage.as_unsafe_cell();
+                if *visible {
+                    (*cell.internal).values_mut().for_each(|c| {
+                        c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
+                            t.visible = *visible;
+                        });
+                    });
+                } else {
+                    (*cell.internal).values_mut().for_each(|c| {
+                        c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
+                            if rng.gen_range(0.0..1.0) > 0.5 {
+                                t.visible = false;
+                            }
+                        });
+                    });
                 }
-            });
-            *visible = Visibility::Inherited;
+                *visible = !*visible;
+                (*cell.changed_chunks).extend((*cell.internal).keys());
+            }
         }
 
         *twinkled = !t;
