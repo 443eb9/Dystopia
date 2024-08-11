@@ -19,6 +19,13 @@ pub struct DystopiaCorePlugin;
 
 impl Plugin for DystopiaCorePlugin {
     fn build(&self, app: &mut App) {
+        match dotenvy::dotenv() {
+            Ok(_) => {}
+            Err(err) => {
+                panic!("Failed to load .env file: {}", err)
+            }
+        }
+
         app.add_plugins((
             assets::DystopiaAssetsPlugin,
             cosmos::DystopiaCosmosPlugin,

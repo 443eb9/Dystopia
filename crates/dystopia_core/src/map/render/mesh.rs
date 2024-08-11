@@ -143,7 +143,7 @@ fn update_tile_mesh(
         return;
     };
 
-    let index = tile.index.flattend();
+    let index = tile.index.flattened();
     let chunk = chunks
         .chunks
         .entry(index.chunk_index)

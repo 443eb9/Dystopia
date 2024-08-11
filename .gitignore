@@ -6,4 +6,4 @@ Cargo.lock
 /.venv
 
 # Generated data
-/data
+/crates/dystopia_app/assets/data

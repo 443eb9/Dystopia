@@ -32,11 +32,15 @@ impl Default for Tile {
 pub struct TileIndex {
     direct: IVec3,
     #[deref]
-    flattend: FlattenedTileIndex,
+    flattened: FlattenedTileIndex,
 }
 
 impl TileIndex {
-    pub fn new(direct: IVec3, chunk_size: u32) -> Self {
+    pub fn new(direct: IVec3, flattened: FlattenedTileIndex) -> Self {
+        Self { direct, flattened }
+    }
+
+    pub fn from_direct(direct: IVec3, chunk_size: u32) -> Self {
         assert!(
             matches!(direct.element_sum(), 1 | 2),
             "Invalid tile index {}. The element-wise sum of index must be 1 or 2.",
@@ -45,7 +49,7 @@ impl TileIndex {
 
         Self {
             direct,
-            flattend: FlattenedTileIndex::from_direct(direct, chunk_size),
+            flattened: FlattenedTileIndex::from_direct(direct, chunk_size),
         }
     }
 
@@ -53,8 +57,8 @@ impl TileIndex {
         self.direct
     }
 
-    pub fn flattend(&self) -> FlattenedTileIndex {
-        self.flattend
+    pub fn flattened(&self) -> FlattenedTileIndex {
+        self.flattened
     }
 }
 
@@ -283,8 +287,8 @@ impl TilemapStorage {
 
     #[inline]
     pub fn set(&mut self, tile: Tile) -> Option<Tile> {
-        self.changed_tiles.insert(tile.index.flattend);
-        self.internal.set(tile.index.flattend, tile)
+        self.changed_tiles.insert(tile.index.flattened);
+        self.internal.set(tile.index.flattened, tile)
     }
 
     #[inline]
@@ -333,6 +337,16 @@ impl TilemapStorage {
     }
 }
 
+impl From<ChunkedStorage<FlattenedTileIndex, Tile, 3>> for TilemapStorage {
+    fn from(value: ChunkedStorage<FlattenedTileIndex, Tile, 3>) -> Self {
+        Self {
+            internal: value,
+            changed_tiles: Default::default(),
+            changed_chunks: Default::default(),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy)]
 pub struct TilemapTextureDescriptor {
     pub size: UVec2,
@@ -347,9 +361,9 @@ pub struct TilemapTexture {
 
 #[derive(Component, Debug, Default, Clone)]
 pub struct TilemapTilesets {
-    size: UVec2,
-    filter_mode: FilterMode,
-    textures: Vec<TilemapTexture>,
+    pub(crate) size: UVec2,
+    pub(crate) filter_mode: FilterMode,
+    pub(crate) textures: Vec<TilemapTexture>,
 }
 
 impl TilemapTilesets {
@@ -391,7 +405,7 @@ impl TilemapTilesets {
 }
 
 #[derive(Component, Debug, Default, Clone, Copy, Deref, DerefMut)]
-pub struct TilemapTint(Color);
+pub struct TilemapTint(pub Color);
 
 /// Layout: `[fps, frame_1_tex, frame_1_atl, frame_2_tex, frame_2_atl, fps, frame_1_tex, frame_1_atl, ...]`
 #[derive(Component, Debug, Clone)]

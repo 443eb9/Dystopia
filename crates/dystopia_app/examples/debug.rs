@@ -32,7 +32,7 @@ use bevy::{
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use dystopia_core::{
     cosmos::{
-        celestial::{BodyIndex, ToSaveTilemap},
+        celestial::{BodyIndex, ToLoadTilemap, ToSaveTilemap},
         gen::CosmosGenerationSettings,
     },
     distributed_list_element,
@@ -217,7 +217,7 @@ fn debug_tilemap(
         let texture = if i_tri % 2 == 0 { 0 } else { 1 };
         let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
         tilemap.storgae.set(Tile {
-            index: TileIndex::new(tri, CHUNK_SIZE),
+            index: TileIndex::from_direct(tri, CHUNK_SIZE),
             // atlas_index: TileAtlasIndex::Static((texture, atlas, TileFlip::HORIZONTAL).into()),
             atlas_index: TileAtlasIndex::Animated {
                 anim: if tri.element_sum() == 1 {
@@ -237,79 +237,85 @@ fn debug_tilemap(
 
 fn debug_rm_vis(
     mut commands: Commands,
-    mut tilemaps_query: Query<(Entity, &mut TilemapStorage)>,
+    mut tilemaps_query: Query<(Entity, Option<&mut TilemapStorage>, &BodyIndex)>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut visible: Local<bool>,
     time: Res<Time<Real>>,
     mut twinkled: Local<bool>,
 ) {
-    let Some((entity, mut storage)) = tilemaps_query.iter_mut().nth(0) else {
-        return;
-    };
-
-    let mut rng = rand::thread_rng();
-
-    if keyboard.just_pressed(KeyCode::Digit1) {
-        for tri in icosahedron(2, IVec3::Y) {
-            if rng.gen_range(0.0..1.0) > 0.5 {
-                storage.remove(tri);
-            }
+    for (entity, mut storage, _) in &mut tilemaps_query {
+        if keyboard.just_pressed(KeyCode::Digit5) {
+            commands.entity(entity).insert(ToSaveTilemap {
+                remove_after_done: true,
+            });
         }
-    }
 
-    if keyboard.just_pressed(KeyCode::Digit2) {
-        let chunks = icosahedron(2, IVec3::Y)
-            .into_iter()
-            .map(|i| FlattenedTileIndex::from_direct(i, storage.chunk_size()).chunk_index)
-            .collect::<HashSet<_>>();
-
-        for chunk in chunks {
-            if rng.gen_range(0.0..1.0) > 0.5 {
-                storage.remove_chunk(chunk);
-            }
+        if keyboard.just_pressed(KeyCode::Digit6) {
+            commands.entity(entity).insert(ToLoadTilemap);
         }
-    }
 
-    if keyboard.just_pressed(KeyCode::Digit3) {
-        storage.clear();
-    }
-
-    if keyboard.pressed(KeyCode::Digit4) {
-        const CYCLE: f32 = 0.25;
-        let t = (time.elapsed_seconds() / CYCLE) as u32 % 2 == 0;
-
-        if t != *twinkled {
+        let Some(mut storage) = storage else {
             return;
-        }
+        };
 
-        unsafe {
-            let cell = storage.as_unsafe_cell();
-            if *visible {
-                (*cell.internal).values_mut().for_each(|c| {
-                    c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
-                        t.visible = *visible;
-                    });
-                });
-            } else {
-                (*cell.internal).values_mut().for_each(|c| {
-                    c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
-                        if rng.gen_range(0.0..1.0) > 0.5 {
-                            t.visible = false;
-                        }
-                    });
-                });
+        let mut rng = rand::thread_rng();
+
+        if keyboard.just_pressed(KeyCode::Digit1) {
+            for tri in icosahedron(2, IVec3::Y) {
+                if rng.gen_range(0.0..1.0) > 0.5 {
+                    storage.remove(tri);
+                }
             }
-            *visible = !*visible;
-            (*cell.changed_chunks).extend((*cell.internal).keys());
         }
 
-        *twinkled = !t;
-    }
+        if keyboard.just_pressed(KeyCode::Digit2) {
+            let chunks = icosahedron(2, IVec3::Y)
+                .into_iter()
+                .map(|i| FlattenedTileIndex::from_direct(i, storage.chunk_size()).chunk_index)
+                .collect::<HashSet<_>>();
 
-    if keyboard.just_pressed(KeyCode::Digit5) {
-        commands.entity(entity).insert(ToSaveTilemap {
-            remove_after_done: true,
-        });
+            for chunk in chunks {
+                if rng.gen_range(0.0..1.0) > 0.5 {
+                    storage.remove_chunk(chunk);
+                }
+            }
+        }
+
+        if keyboard.just_pressed(KeyCode::Digit3) {
+            storage.clear();
+        }
+
+        if keyboard.pressed(KeyCode::Digit4) {
+            const CYCLE: f32 = 0.25;
+            let t = (time.elapsed_seconds() / CYCLE) as u32 % 2 == 0;
+
+            if t != *twinkled {
+                return;
+            }
+
+            unsafe {
+                let cell = storage.as_unsafe_cell();
+                if *visible {
+                    (*cell.internal).values_mut().for_each(|c| {
+                        c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
+                            t.visible = *visible;
+                        });
+                    });
+                } else {
+                    (*cell.internal).values_mut().for_each(|c| {
+                        c.iter_mut().filter_map(|t| t.as_mut()).for_each(|t| {
+                            if rng.gen_range(0.0..1.0) > 0.5 {
+                                t.visible = false;
+                            }
+                        });
+                    });
+                }
+                *visible = !*visible;
+                (*cell.changed_chunks).extend((*cell.internal).keys());
+            }
+
+            *twinkled = !t;
+        }
     }
 }
 

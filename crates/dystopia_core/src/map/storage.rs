@@ -53,6 +53,13 @@ where
         }
     }
 
+    pub fn new_init(chunk_size: u32, storage: HashMap<I::ChunkIndex, Chunk<T>>) -> Self {
+        Self {
+            chunk_size,
+            storage,
+        }
+    }
+
     #[inline]
     pub fn chunk_size(&self) -> u32 {
         self.chunk_size

@@ -8,6 +8,7 @@ avian2d.workspace = true
 bevy.workspace = true
 bincode.workspace = true
 bitflags.workspace = true
+dotenvy.workspace = true
 dystopia_derive = { version = "0.1.0", path = "../dystopia_derive" }
 enum-map.workspace = true
 hashbrown.workspace = true
