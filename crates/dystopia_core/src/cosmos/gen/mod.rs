@@ -251,7 +251,7 @@ fn generate_planets(rng: &mut impl Rng, star: &StarData) -> Vec<PlanetData> {
             }
         };
 
-        let radius = (Mass::EarthMass(mass).to_si() / density * 0.75 / PI).cbrt() * 0.05;
+        let radius = (Mass::EarthMass(mass).to_si() / density * 0.75 / PI).cbrt() * 0.02;
 
         planets.push(PlanetData {
             body: CelestialBodyData {
@@ -282,7 +282,7 @@ fn generate_moon(rng: &mut impl Rng, planet: &PlanetData) -> Vec<MoonData> {
 
     // Unit: Earth mass
     for (mass, density) in masses.into_iter().zip(density) {
-        let radius = (Mass::EarthMass(mass).to_si() / density * 0.75 / PI).cbrt() * 0.05;
+        let radius = (Mass::EarthMass(mass).to_si() / density * 0.75 / PI).cbrt() * 0.02;
 
         moons.push(MoonData {
             body: CelestialBodyData {
@@ -303,6 +303,7 @@ fn convert_units(stars: &mut Vec<StarData>) {
     for star in stars {
         star.body.mass = Mass::SolarMass(star.body.mass).to_si();
         star.body.radius = Length::SolarRadius(star.body.radius).to_si();
+        star.luminosity = RadiantFlux::SolarLuminosity(star.luminosity).to_si();
 
         for planet in &mut star.children {
             planet.body.mass = Mass::EarthMass(planet.body.mass).to_si();
@@ -334,11 +335,14 @@ fn place_stars(rng: &mut impl Rng, settings: &CosmosGenerationSettings, stars: &
 fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
     let mut cur_planet = 0;
 
+    // Calculate boundaries
+    let farthest = physics::dist_when_cycle(star.body.mass, 10800.);
+    let closest = physics::dist_when_cycle(star.body.mass, 300.).max(star.body.radius * 5.);
+
     // --- Planets inside CHZ ---
     // Circumstellar Habitable Zone
-    let star_luminosity = RadiantFlux::SolarLuminosity(star.luminosity).to_si();
-    let chz_near = physics::planet_dist_when_temp(star_luminosity, 400., 0.5);
-    let chz_far = physics::planet_dist_when_temp(star_luminosity, 200., 0.5);
+    let chz_near = physics::planet_dist_when_temp(star.luminosity, 400., 0.5).max(closest);
+    let chz_far = physics::planet_dist_when_temp(star.luminosity, 200., 0.5).min(farthest);
 
     let n_chz = rng.sample(Normal::<f64>::new(0., 0.8).unwrap()).round() as usize;
 
@@ -352,12 +356,6 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
         [chz_near, chz_far],
         10,
     );
-
-    // Calculate boundaries
-    let star_mass = Mass::SolarMass(star.body.mass).to_si();
-    let farthest = physics::dist_when_cycle(star_mass, 7200.);
-    let closest = physics::dist_when_cycle(star_mass, 300.)
-        .max(Length::SolarRadius(star.body.radius).to_si() * 2.);
 
     let proportion = rng.gen_range(0.2..0.8);
     let remaining_planets = star.children.len() as u32 - cur_planet;
@@ -400,21 +398,13 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
         info!("Discarding planet with parent star {}: {}", star_index, i);
         star.children.pop();
     });
-
-    // dbg!(
-    //     closest,
-    //     chz_near,
-    //     chz_far,
-    //     farthest,
-    //     n_too_close,
-    //     n_chz,
-    //     n_too_far
-    // );
 }
 
 fn place_moons(rng: &mut impl Rng, planet: &mut PlanetData, planet_index: usize) {
     let closest = physics::dist_when_cycle(planet.body.mass, 600.).max(planet.body.radius * 2.);
     let farthest = physics::dist_when_cycle(planet.body.mass, 3600.);
+
+    dbg!(closest, farthest);
 
     let succeeded = scatter_bodies_in_range(
         rng,
@@ -445,10 +435,10 @@ fn scatter_bodies_in_range(
     let mut cur_failed = 0;
 
     while cur_body < bodies.len() {
-        let t = rng.gen_range(0f64..1f64 / (bodies.len() as f64 * 0.8));
+        let t = rng.gen_range(0f64..1f64 / bodies.len() as f64);
         let delta = (boundaries[1] - boundaries[0]) * t;
         if cur_dist + delta < boundaries[1] {
-            bodies[cur_body].pos = DVec2::new(cur_dist, 0.);
+            bodies[cur_body].pos = DVec2::new(cur_dist + delta, 0.);
 
             cur_body += 1;
             cur_dist += delta;
@@ -548,9 +538,7 @@ fn spawn_bodies(
             body_index: BodyIndex::new(bodies.len()),
             mesh: mesh.clone(),
             material: star_materials.add(StarMaterial { color: star.color }),
-            transform: Transform::from_scale(Vec3::splat(
-                Length::SolarRadius(star.body.radius * 2.).to_si() as f32,
-            )),
+            transform: Transform::from_scale(Vec3::splat(star.body.radius as f32 * 2.)),
             collider: Collider::circle(0.5),
             ..Default::default()
         });
@@ -571,7 +559,7 @@ fn spawn_bodies(
                             color: planet.color,
                         }),
                         transform: Transform::from_scale(Vec3::splat(
-                            Length::Meter(planet.body.radius * 2.).to_si() as f32,
+                            planet.body.radius as f32 * 2.,
                         )),
                         collider: Collider::circle(0.5),
                         ..Default::default()
@@ -589,7 +577,7 @@ fn spawn_bodies(
                             color: planet.color,
                         }),
                         transform: Transform::from_scale(Vec3::splat(
-                            Length::Meter(planet.body.radius * 2.).to_si() as f32,
+                            planet.body.radius as f32 * 2.,
                         )),
                         collider: Collider::circle(0.5),
                         ..Default::default()
@@ -610,9 +598,7 @@ fn spawn_bodies(
                         body_index: BodyIndex::new(bodies.len()),
                         mesh: mesh.clone(),
                         material: rocky_body_materials.add(RockyBodyMaterial { color: moon.color }),
-                        transform: Transform::from_scale(Vec3::splat(
-                            Length::Meter(moon.body.radius * 2.).to_si() as f32,
-                        )),
+                        transform: Transform::from_scale(Vec3::splat(moon.body.radius as f32 * 2.)),
                         collider: Collider::circle(0.5),
                         ..Default::default()
                     },

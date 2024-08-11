@@ -108,11 +108,11 @@ impl Plugin for DystopiaDebugPlugin {
         app.add_plugins((FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin::default()))
             .add_systems(OnEnter(AssetState::Finish), debug_skip_menu)
             // .add_systems(OnEnter(GameState::Simulate), debug_ui)
-            .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
+            // .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
             // .add_systems(Update, debug_rm_vis)
             .add_systems(Startup, setup_debug)
-            .add_systems(Update, toggle_ui_debug)
-            .add_systems(Update, debug_rm_vis);
+            .add_systems(Update, toggle_ui_debug);
+        // .add_systems(Update, debug_rm_vis)
     }
 }
 
