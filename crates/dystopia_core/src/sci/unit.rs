@@ -26,7 +26,7 @@ pub trait Unit {
 
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
 pub enum Length {
-    #[conversion = 48e1]
+    #[conversion = 16e1]
     SolarRadius(f64),
     #[conversion = 9.460_730_472_580_8e6]
     LightYear(f64),

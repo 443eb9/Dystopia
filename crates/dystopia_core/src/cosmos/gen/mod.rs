@@ -7,18 +7,18 @@ use std::{
 use avian2d::prelude::Collider;
 use bevy::{
     asset::{Assets, Handle},
-    color::LinearRgba,
+    color::{Alpha, LinearRgba},
     core::Name,
     log::info,
     math::{DVec2, FloatExt, Vec3, VectorSpace},
-    prelude::{Commands, Rectangle, Res, ResMut, Resource},
+    prelude::{Commands, Entity, Rectangle, Res, ResMut, Resource},
     render::mesh::Mesh,
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
     transform::components::Transform,
 };
 use indexmap::IndexSet;
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use rand_distr::Normal;
+use rand_distr::{num_traits::Float, Distribution, Normal, StandardNormal};
 
 use crate::{
     cosmos::{
@@ -144,7 +144,7 @@ pub fn generate_cosmos(
     // Shapes are implemented in shader, so we only need a square here.
     let square_mesh = Mesh2dHandle(meshes.add(Rectangle::from_length(1.)));
 
-    let (bodies, statistics) = spawn_bodies(
+    let (bodies, entities, statistics) = spawn_bodies(
         &mut commands,
         stars,
         square_mesh.clone(),
@@ -155,7 +155,11 @@ pub fn generate_cosmos(
 
     spawn_orbits(&mut commands, square_mesh.clone(), &orbits, orbit_materials);
 
-    commands.insert_resource(Cosmos { bodies, orbits });
+    commands.insert_resource(Cosmos {
+        bodies,
+        entities,
+        orbits,
+    });
     commands.insert_resource(GlobalRng::new(rng));
     commands.insert_resource(Ticker::default());
 
@@ -190,7 +194,7 @@ fn generate_stars(
         let ceil = floor.saturating_sub(1);
 
         let (floor, ceil) = (&star_props[floor], &star_props[ceil]);
-        let radius = floor.radius.lerp(ceil.radius, rng.gen_range(0f64..1f64));
+        let radius = map_star_radius(floor.radius.lerp(ceil.radius, rng.gen_range(0f64..1f64)));
         let luminosity = floor
             .luminosity
             .lerp(ceil.luminosity, rng.gen_range(0f64..1f64));
@@ -217,19 +221,19 @@ fn generate_stars(
 }
 
 fn generate_planets(rng: &mut impl Rng, star: &StarData) -> Vec<PlanetData> {
-    let n = rng.gen_range(0..=max_num_planets(star.class.index));
+    let n = rng.gen_range(1..=max_num_planets(star.class.index));
 
     let masses = reject_sampling(
         rng,
         planet_mass_pdf,
         0.02f64..300f64,
-        0f64..9.952f64,
+        0f64..2f64,
         n,
         n * 2,
     );
 
-    let rocky_density_distr = Normal::<f64>::new(0.5, 0.25).unwrap();
-    let giant_density_distr = Normal::<f64>::new(0.5, 0.25).unwrap();
+    let rocky_density_distr = Normal::<f64>::new(3.5, 0.6).unwrap();
+    let giant_density_distr = Normal::<f64>::new(1.2, 0.2).unwrap();
 
     let mut planets = Vec::with_capacity(n as usize);
 
@@ -237,21 +241,25 @@ fn generate_planets(rng: &mut impl Rng, star: &StarData) -> Vec<PlanetData> {
     for mass in masses {
         let (density, ty) = {
             if mass > 100. {
-                let density = rng.sample(giant_density_distr);
+                let density = sample_normal(rng, giant_density_distr, [0.4, 1.8]);
                 (
                     density,
-                    if density > 1.5 {
+                    if density > 1.35 {
                         BodyType::IceGiant
                     } else {
                         BodyType::GasGiant
                     },
                 )
             } else {
-                (rng.sample(rocky_density_distr), BodyType::Rocky)
+                (
+                    sample_normal(rng, rocky_density_distr, [2.5, 5.]),
+                    BodyType::Rocky,
+                )
             }
         };
 
-        let radius = (Mass::EarthMass(mass).to_si() / density * 0.75 / PI).cbrt() * 0.02;
+        let radius =
+            map_planet_radius((Mass::EarthMass(mass).to_si() / density * 0.75 / PI).cbrt());
 
         planets.push(PlanetData {
             body: CelestialBodyData {
@@ -275,14 +283,14 @@ fn generate_moon(rng: &mut impl Rng, planet: &PlanetData) -> Vec<MoonData> {
 
     let masses = reject_sampling(rng, moon_mass_pdf, 0f64..1f64, 0f64..1f64, n, n * 2);
     let density = (0..n)
-        .map(|_| rng.sample(Normal::<f64>::new(0.5, 0.25).unwrap()))
+        .map(|_| sample_normal(rng, Normal::<f64>::new(2.5, 0.6).unwrap(), [1.2, 5.]))
         .collect::<Vec<_>>();
 
     let mut moons = Vec::with_capacity(n as usize);
 
     // Unit: Earth mass
     for (mass, density) in masses.into_iter().zip(density) {
-        let radius = (Mass::EarthMass(mass).to_si() / density * 0.75 / PI).cbrt() * 0.02;
+        let radius = map_moon_radius((Mass::EarthMass(mass).to_si() / density * 0.75 / PI).cbrt());
 
         moons.push(MoonData {
             body: CelestialBodyData {
@@ -341,8 +349,10 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
 
     // --- Planets inside CHZ ---
     // Circumstellar Habitable Zone
-    let chz_near = physics::planet_dist_when_temp(star.luminosity, 400., 0.5).max(closest);
-    let chz_far = physics::planet_dist_when_temp(star.luminosity, 200., 0.5).min(farthest);
+    let chz_near = physics::planet_dist_when_temp(star.luminosity, 400., 0.5)
+        .clamp(closest * 1.2, farthest * 0.8);
+    let chz_far = physics::planet_dist_when_temp(star.luminosity, 200., 0.5)
+        .clamp(closest * 1.2, farthest * 0.8);
 
     let n_chz = rng.sample(Normal::<f64>::new(0., 0.8).unwrap()).round() as usize;
 
@@ -398,13 +408,23 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
         info!("Discarding planet with parent star {}: {}", star_index, i);
         star.children.pop();
     });
+
+    dbg!(
+        star.body.radius,
+        cur_planet,
+        closest,
+        chz_near,
+        chz_far,
+        farthest,
+        n_too_close,
+        n_chz,
+        n_too_far
+    );
 }
 
 fn place_moons(rng: &mut impl Rng, planet: &mut PlanetData, planet_index: usize) {
     let closest = physics::dist_when_cycle(planet.body.mass, 600.).max(planet.body.radius * 2.);
     let farthest = physics::dist_when_cycle(planet.body.mass, 3600.);
-
-    dbg!(closest, farthest);
 
     let succeeded = scatter_bodies_in_range(
         rng,
@@ -467,10 +487,12 @@ fn generate_orbits(
     for star in stars {
         let i_star = cur_body;
         orbits.push(Orbit {
+            center_id: usize::MAX,
             radius: -1.,
             ..Default::default()
         });
         orbit_materials.push(None);
+        cur_body += 1;
 
         for planet in &mut star.children {
             let distance = planet.body.pos.length();
@@ -487,7 +509,7 @@ fn generate_orbits(
                 rotation_period: Time::Second(rng.gen_range(100..1800)).to_si(),
             });
             orbit_materials.push(Some(orbit_material_assets.add(OrbitMaterial {
-                color: planet.color,
+                color: planet.color.with_alpha(0.5),
                 width: ORBIT_WIDTH,
                 radius: distance as f32,
             })));
@@ -507,7 +529,7 @@ fn generate_orbits(
                     rotation_period: Time::Second(rng.gen_range(100..1800)).to_si(),
                 });
                 orbit_materials.push(Some(orbit_material_assets.add(OrbitMaterial {
-                    color: moon.color,
+                    color: moon.color.with_alpha(0.5),
                     width: ORBIT_WIDTH,
                     radius: distance as f32,
                 })));
@@ -526,22 +548,27 @@ fn spawn_bodies(
     star_materials: &mut Assets<StarMaterial>,
     rocky_body_materials: &mut Assets<RockyBodyMaterial>,
     giant_body_materials: &mut Assets<GiantBodyMaterial>,
-) -> (Vec<CelestialBodyData>, CosmosBodiesStatistics) {
+) -> (Vec<CelestialBodyData>, Vec<Entity>, CosmosBodiesStatistics) {
     // Estimate the number of bodies roughly equal to star.len() * 5
     let mut bodies = Vec::with_capacity(stars.len() * 5);
+    let mut entities = Vec::with_capacity(stars.len() * 5);
     let mut statistics = CosmosBodiesStatistics::default();
 
     for star in stars {
-        commands.spawn(StarBundle {
-            star_ty: star.class.ty,
-            name: Name::new(star.name.clone()),
-            body_index: BodyIndex::new(bodies.len()),
-            mesh: mesh.clone(),
-            material: star_materials.add(StarMaterial { color: star.color }),
-            transform: Transform::from_scale(Vec3::splat(star.body.radius as f32 * 2.)),
-            collider: Collider::circle(0.5),
-            ..Default::default()
-        });
+        entities.push(
+            commands
+                .spawn(StarBundle {
+                    star_ty: star.class.ty,
+                    name: Name::new(star.name.clone()),
+                    body_index: BodyIndex::new(bodies.len()),
+                    mesh: mesh.clone(),
+                    material: star_materials.add(StarMaterial { color: star.color }),
+                    transform: Transform::from_scale(Vec3::splat(star.body.radius as f32 * 2.)),
+                    collider: Collider::circle(0.5),
+                    ..Default::default()
+                })
+                .id(),
+        );
         statistics.num_stars += 1;
         bodies.push(star.body);
 
@@ -549,41 +576,49 @@ fn spawn_bodies(
 
         for planet in star.children {
             if planet.ty == BodyType::Rocky {
-                commands.spawn((
-                    RockyBodyBundle {
-                        name: Name::new(format!("{} {}", &star.name, i_children)),
-                        ty: planet.ty,
-                        body_index: BodyIndex::new(bodies.len()),
-                        mesh: mesh.clone(),
-                        material: rocky_body_materials.add(RockyBodyMaterial {
-                            color: planet.color,
-                        }),
-                        transform: Transform::from_scale(Vec3::splat(
-                            planet.body.radius as f32 * 2.,
-                        )),
-                        collider: Collider::circle(0.5),
-                        ..Default::default()
-                    },
-                    Planet,
-                ));
+                entities.push(
+                    commands
+                        .spawn((
+                            RockyBodyBundle {
+                                name: Name::new(format!("{} {}", &star.name, i_children)),
+                                ty: planet.ty,
+                                body_index: BodyIndex::new(bodies.len()),
+                                mesh: mesh.clone(),
+                                material: rocky_body_materials.add(RockyBodyMaterial {
+                                    color: planet.color,
+                                }),
+                                transform: Transform::from_scale(Vec3::splat(
+                                    planet.body.radius as f32 * 2.,
+                                )),
+                                collider: Collider::circle(0.5),
+                                ..Default::default()
+                            },
+                            Planet,
+                        ))
+                        .id(),
+                );
             } else {
-                commands.spawn((
-                    GiantBodyBundle {
-                        name: Name::new(format!("{} {}", &star.name, i_children)),
-                        ty: planet.ty,
-                        body_index: BodyIndex::new(bodies.len()),
-                        mesh: mesh.clone(),
-                        material: giant_body_materials.add(GiantBodyMaterial {
-                            color: planet.color,
-                        }),
-                        transform: Transform::from_scale(Vec3::splat(
-                            planet.body.radius as f32 * 2.,
-                        )),
-                        collider: Collider::circle(0.5),
-                        ..Default::default()
-                    },
-                    Planet,
-                ));
+                entities.push(
+                    commands
+                        .spawn((
+                            GiantBodyBundle {
+                                name: Name::new(format!("{} {}", &star.name, i_children)),
+                                ty: planet.ty,
+                                body_index: BodyIndex::new(bodies.len()),
+                                mesh: mesh.clone(),
+                                material: giant_body_materials.add(GiantBodyMaterial {
+                                    color: planet.color,
+                                }),
+                                transform: Transform::from_scale(Vec3::splat(
+                                    planet.body.radius as f32 * 2.,
+                                )),
+                                collider: Collider::circle(0.5),
+                                ..Default::default()
+                            },
+                            Planet,
+                        ))
+                        .id(),
+                );
             }
 
             statistics.num_planets += 1;
@@ -591,19 +626,26 @@ fn spawn_bodies(
             bodies.push(planet.body);
 
             for moon in planet.children {
-                commands.spawn((
-                    RockyBodyBundle {
-                        name: Name::new(format!("{} {}", star.name, i_children)),
-                        ty: BodyType::Rocky,
-                        body_index: BodyIndex::new(bodies.len()),
-                        mesh: mesh.clone(),
-                        material: rocky_body_materials.add(RockyBodyMaterial { color: moon.color }),
-                        transform: Transform::from_scale(Vec3::splat(moon.body.radius as f32 * 2.)),
-                        collider: Collider::circle(0.5),
-                        ..Default::default()
-                    },
-                    Moon,
-                ));
+                entities.push(
+                    commands
+                        .spawn((
+                            RockyBodyBundle {
+                                name: Name::new(format!("{} {}", star.name, i_children)),
+                                ty: BodyType::Rocky,
+                                body_index: BodyIndex::new(bodies.len()),
+                                mesh: mesh.clone(),
+                                material: rocky_body_materials
+                                    .add(RockyBodyMaterial { color: moon.color }),
+                                transform: Transform::from_scale(Vec3::splat(
+                                    moon.body.radius as f32 * 2.,
+                                )),
+                                collider: Collider::circle(0.5),
+                                ..Default::default()
+                            },
+                            Moon,
+                        ))
+                        .id(),
+                );
 
                 statistics.num_moons += 1;
                 i_children += 1;
@@ -612,7 +654,7 @@ fn spawn_bodies(
         }
     }
 
-    (bodies, statistics)
+    (bodies, entities, statistics)
 }
 
 fn spawn_orbits(
@@ -647,4 +689,29 @@ fn random_color(rng: &mut impl Rng) -> LinearRgba {
         blue: rng.gen_range(0.0..1.0),
         alpha: rng.gen_range(0.0..1.0),
     }
+}
+
+fn sample_normal<T>(rng: &mut impl Rng, distr: Normal<T>, min_max: [T; 2]) -> T
+where
+    T: Float,
+    StandardNormal: Distribution<T>,
+{
+    loop {
+        let t = rng.sample(distr);
+        if t > min_max[0] && t < min_max[1] {
+            return t;
+        }
+    }
+}
+
+fn map_star_radius(x: f64) -> f64 {
+    (-x / 500. + 1.).powf(1.6)
+}
+
+fn map_planet_radius(x: f64) -> f64 {
+    x * 0.02
+}
+
+fn map_moon_radius(x: f64) -> f64 {
+    x * 0.02
 }

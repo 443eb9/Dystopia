@@ -28,8 +28,8 @@ pub mod gen;
 pub mod mesh;
 pub mod sim;
 
-pub const ORBIT_MESH_SCALE: f32 = 1.1;
-pub const ORBIT_WIDTH: f32 = 1.5;
+pub const ORBIT_MESH_SCALE: f32 = 1.5;
+pub const ORBIT_WIDTH: f32 = 1.;
 
 pub struct DystopiaCosmosPlugin;
 

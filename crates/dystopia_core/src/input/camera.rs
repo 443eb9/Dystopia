@@ -78,7 +78,7 @@ pub fn camera_zoom(
             MouseScrollUnit::Pixel => scroll.y,
         };
 
-        *target_zoom -= delta * behavior.zoom_ratio;
+        *target_zoom *= 1. - delta * behavior.zoom_ratio;
     }
 
     *target_zoom = target_zoom.clamp(behavior.zoom_min, behavior.zoom_max);

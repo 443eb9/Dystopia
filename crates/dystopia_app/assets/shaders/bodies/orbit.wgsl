@@ -9,7 +9,7 @@ struct OrbitMaterial {
 @group(2) @binding(0) var<uniform> material: OrbitMaterial;
 
 // Synced with dystopia_core::cosmos::ORBIT_MESH_SCALE
-const ORBIT_MESH_SCALE: f32 = 1.1;
+const ORBIT_MESH_SCALE: f32 = 1.5;
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4f {

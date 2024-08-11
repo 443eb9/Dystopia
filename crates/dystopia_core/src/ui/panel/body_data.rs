@@ -44,6 +44,7 @@ gen_localizable_enum!(LBodyType, Star, Planet, Moon);
 gen_localizable_enum!(LDetailedBodyType, O, B, A, F, G, K, M, Rocky, Gas, Ice);
 gen_localizable_enum!(
     LBodyOrbitInfoType,
+    ParentBody,
     OrbitRadius,
     SiderealPeriod,
     RotationPeriod
@@ -79,6 +80,9 @@ struct BodyDataPanelData {
     detailed_body_ty: LocalizableDataWrapper<LDetailedBodyType>,
 
     section_orbit_info: LocalizableDataWrapper<LBodyDataPanelSectionType>,
+    title_parent_body: LocalizableDataWrapper<LBodyOrbitInfoType>,
+    #[lang_skip]
+    parent_body: String,
     title_orbit_radius: LocalizableDataWrapper<LBodyOrbitInfoType>,
     orbit_radius: LocalizableDataWrapper<Length>,
     title_sidereal_period: LocalizableDataWrapper<LBodyOrbitInfoType>,
@@ -205,6 +209,13 @@ impl UiAggregate for BodyDataPanelData {
                         );
 
                         entities.extend(merge_list!(
+                            // parent_body
+                            distributed_list_element!(
+                                section_root,
+                                Val::Px(20.),
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                            ),
                             // orbit_radius
                             distributed_list_element!(
                                 section_root,
@@ -315,6 +326,12 @@ fn pack_body_data_panel_data(
         }
         .into();
 
+        let parent_body = cosmos
+            .entities
+            .get(orbit.center_id)
+            .map(|e| body_query.get(*e).unwrap().0.to_string())
+            .unwrap_or_else(|| "None".to_string());
+
         let data = BodyDataPanelData {
             title: LUiPanel::BodyData.into(),
             section_body_info: LBodyDataPanelSectionType::BodyInfo.into(),
@@ -322,6 +339,8 @@ fn pack_body_data_panel_data(
             body_ty,
             detailed_body_ty,
             section_orbit_info: LBodyDataPanelSectionType::OrbitInfo.into(),
+            title_parent_body: LBodyOrbitInfoType::ParentBody.into(),
+            parent_body,
             title_orbit_radius: LBodyOrbitInfoType::OrbitRadius.into(),
             orbit_radius: Length::wrap_with_si(orbit.radius).into(),
             title_sidereal_period: LBodyOrbitInfoType::SiderealPeriod.into(),

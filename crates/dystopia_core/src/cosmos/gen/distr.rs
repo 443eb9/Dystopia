@@ -12,7 +12,7 @@ pub fn star_mass_pdf(x: f64) -> f64 {
 
 /// In units of earth mass.
 pub fn planet_mass_pdf(x: f64) -> f64 {
-    2. * (-(150. * x).powi(5) + 5.).max(0.) + ((300. * x - 20.).tanh() - (3. * x - 1.).tanh()) * 0.2
+    x.tanh() - (x - 8.).tanh() + 0.1 * ((x - 100.).tanh() - (x - 200.).tanh())
 }
 
 pub fn moon_mass_pdf(x: f64) -> f64 {

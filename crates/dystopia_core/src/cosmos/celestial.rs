@@ -10,6 +10,7 @@ pub struct ShowOrbits(bool);
 #[derive(Resource)]
 pub struct Cosmos {
     pub bodies: Vec<CelestialBodyData>,
+    pub entities: Vec<Entity>,
     pub orbits: Vec<Orbit>,
 }
 

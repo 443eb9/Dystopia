@@ -15,7 +15,11 @@ use crate::{
 };
 
 pub fn update_cosmos(mut cosmos: ResMut<Cosmos>, ticker: Res<Ticker>) {
-    let Cosmos { bodies, orbits } = cosmos.as_mut();
+    let Cosmos {
+        bodies,
+        entities: _,
+        orbits,
+    } = cosmos.as_mut();
 
     bodies
         .par_iter_mut()

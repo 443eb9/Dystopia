@@ -39,6 +39,7 @@
         "Ice": "Ice Giant"
     },
     "LBodyOrbitInfoType": {
+        "ParentBody": "Parent Body",
         "OrbitRadius": "Orbit Radius",
         "SiderealPeriod": "Sidereal Period",
         "RotationPeriod": "Rotation Period"

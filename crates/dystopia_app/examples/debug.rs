@@ -120,7 +120,7 @@ fn setup_debug(mut commands: Commands) {}
 
 fn debug_skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
     commands.insert_resource(CosmosGenerationSettings {
-        seed: 2,
+        seed: 5,
         galaxy_radius: Length::LightYear(1.),
         // num_stars: 60..69,
         num_stars: 1..2,

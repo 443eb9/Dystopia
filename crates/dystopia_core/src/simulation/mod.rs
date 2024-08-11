@@ -62,7 +62,7 @@ pub fn setup_camera(mut commands: Commands) {
         CameraBehavior {
             zoom_ratio: 0.005,
             zoom_max: 10.,
-            zoom_min: 0.1,
+            zoom_min: 0.02,
             zoom_smooth: 30.,
         },
     ));
