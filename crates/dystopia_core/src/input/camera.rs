@@ -67,10 +67,15 @@ pub fn camera_zoom(
     mut main_camera: Query<&CameraBehavior, With<MainCamera>>,
     mut scroll: EventReader<MouseWheel>,
     mut current_zoom: ResMut<ViewScale>,
-    mut target_zoom: Local<f32>,
+    mut target_zoom: Local<Option<f32>>,
     time: Res<Time<Real>>,
 ) {
     let behavior = main_camera.single_mut();
+
+    if target_zoom.is_none() {
+        *target_zoom = Some(**current_zoom);
+    }
+    let target_zoom = target_zoom.as_mut().unwrap();
 
     for scroll in scroll.read() {
         let delta = match scroll.unit {
