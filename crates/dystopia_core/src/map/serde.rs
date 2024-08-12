@@ -1,4 +1,8 @@
-use std::{fs::File, io::Write, path::Path};
+use std::{
+    fs::File,
+    io::Write,
+    path::{Path, PathBuf},
+};
 
 use bevy::{
     app::{App, Plugin, Update},
@@ -16,6 +20,7 @@ use bevy::{
         in_state, Commands, Entity, IntoSystemConfigs, OnInsert, Query, Res, ResMut, Trigger,
     },
     reflect::TypePath,
+    render::render_resource::FilterMode,
 };
 use bincode::{
     config::Configuration,
@@ -26,12 +31,13 @@ use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterato
 use thiserror::Error;
 
 use crate::{
-    cosmos::celestial::{BodyIndex, ToLoadTilemap, ToSaveTilemap},
+    cosmos::celestial::{BodyIndex, BodyTilemap, ToLoadTilemap, ToSaveTilemap},
     map::{
         bundle::TilemapBundle,
         storage::ChunkedStorage,
         tilemap::{
-            Tile, TileRenderSize, TilemapAnimations, TilemapStorage, TilemapTexture,
+            FlattenedTileIndex, Tile, TileAnimation, TileAtlasIndex, TileFlip, TileIndex,
+            TileRenderSize, TileStaticAtlas, TilemapAnimations, TilemapStorage, TilemapTexture,
             TilemapTextureDescriptor, TilemapTilesets, TilemapTint,
         },
     },
@@ -178,34 +184,35 @@ impl AssetSaver for BinaryTilemapSaver {
 fn save_tilemap(
     trigger: Trigger<OnInsert, ToSaveTilemap>,
     mut commands: Commands,
-    to_unload_query: Query<(
-        Entity,
-        &BodyIndex,
+    to_save_query: Query<(Entity, &BodyIndex, &ToSaveTilemap, Option<&BodyTilemap>)>,
+    tilemaps_query: Query<(
         &TileRenderSize,
         &TilemapStorage,
         &TilemapTint,
         &TilemapTilesets,
         &TilemapAnimations,
-        &ToSaveTilemap,
     )>,
     asset_server: Res<AssetServer>,
     save_name: Res<SaveName>,
 ) {
-    let Ok((
-        entity,
-        body_index,
-        tile_render_size,
-        storage,
-        tint,
-        tilesets,
-        animations,
-        save_options,
-    )) = to_unload_query.get(trigger.entity())
+    let Ok((body_entity, body_index, save_options, body_tilemap)) =
+        to_save_query.get(trigger.entity())
     else {
         return;
     };
 
-    commands.entity(entity).remove::<ToSaveTilemap>();
+    let Some(body_tilemap) = body_tilemap else {
+        commands.entity(body_entity).remove::<BodyTilemap>();
+        return;
+    };
+
+    let Ok((tile_render_size, storage, tint, tilesets, animations)) =
+        tilemaps_query.get(**body_tilemap)
+    else {
+        return;
+    };
+
+    commands.entity(body_entity).remove::<ToSaveTilemap>();
 
     let binary = BinaryTilemap {
         version: VERSION.split('.').nth(0).unwrap().parse().unwrap(),
@@ -221,8 +228,28 @@ fn save_tilemap(
                         c.par_iter()
                             .map(|t| {
                                 t.as_ref().map(|t| BinaryTile {
-                                    indices: std::mem::transmute(t.index),
-                                    atlas: std::mem::transmute(t.atlas_index),
+                                    indices: (
+                                        t.index.direct().to_array(),
+                                        (
+                                            t.index.flattened().chunk_index.to_array(),
+                                            t.index.flattened().in_chunk_index,
+                                        ),
+                                    ),
+                                    atlas: match t.atlas_index {
+                                        TileAtlasIndex::Static(a) => BinaryAtlasIndex::Static {
+                                            texture: a.texture,
+                                            atlas: a.atlas,
+                                            flip: a.flip.bits(),
+                                        },
+                                        TileAtlasIndex::Animated {
+                                            anim,
+                                            offset_milisec,
+                                        } => BinaryAtlasIndex::Animated {
+                                            start: anim.start,
+                                            len: anim.len,
+                                            offset_milisec,
+                                        },
+                                    },
                                     tint: t.tint.to_linear().to_f32_array(),
                                     visible: t.visible,
                                 })
@@ -265,13 +292,8 @@ fn save_tilemap(
             match write_bytes(&data, &path) {
                 Ok(len) => {
                     if save_options.remove_after_done {
-                        commands.entity(entity).remove::<(
-                            TileRenderSize,
-                            TilemapStorage,
-                            TilemapTint,
-                            TilemapTilesets,
-                            TilemapAnimations,
-                        )>();
+                        commands.entity(body_entity).remove::<BodyTilemap>();
+                        commands.entity(**body_tilemap).despawn();
                     }
 
                     info!(
@@ -312,17 +334,25 @@ fn load_tilemap(
     mut binary_tilemap_assets: ResMut<Assets<BinaryTilemap>>,
     asset_server: Res<AssetServer>,
 ) {
-    for (entity, body_index, _load_options, binary_tilemap_handle) in &to_load_query {
+    for (body_entity, body_index, _load_options, binary_tilemap_handle) in &to_load_query {
         if binary_tilemap_handle.is_none() {
-            commands.entity(entity).insert(
-                asset_server.load::<BinaryTilemap>(
-                    Path::new("data")
-                        .join("saves")
-                        .join(&**save_name)
-                        .join("maps")
-                        .join(format!("{}.tmb", **body_index)),
-                ),
-            );
+            let path = construct_tmb_path(&save_name, **body_index);
+            // TODO use standard detecting way
+            if Path::new(&std::env::var("PROGRAM_ROOT").unwrap())
+                .join("assets")
+                .join(&path)
+                .exists()
+            {
+                commands
+                    .entity(body_entity)
+                    .insert(asset_server.load::<BinaryTilemap>(path));
+            } else {
+                commands.entity(body_entity).remove::<ToLoadTilemap>();
+                error!(
+                    "Failed to load tilemap for body {} in save {}.",
+                    **body_index, **save_name
+                );
+            }
             continue;
         }
 
@@ -344,8 +374,32 @@ fn load_tilemap(
                             c.into_iter()
                                 .map(|t| {
                                     t.map(|t| Tile {
-                                        index: unsafe { std::mem::transmute(t.indices) },
-                                        atlas_index: unsafe { std::mem::transmute(t.atlas) },
+                                        index: TileIndex::new(
+                                            t.indices.0.into(),
+                                            FlattenedTileIndex {
+                                                chunk_index: t.indices.1 .0.into(),
+                                                in_chunk_index: t.indices.1 .1,
+                                            },
+                                        ),
+                                        atlas_index: match t.atlas {
+                                            BinaryAtlasIndex::Static {
+                                                texture,
+                                                atlas,
+                                                flip,
+                                            } => TileAtlasIndex::Static(TileStaticAtlas {
+                                                texture,
+                                                atlas,
+                                                flip: TileFlip::from_bits(flip).unwrap(),
+                                            }),
+                                            BinaryAtlasIndex::Animated {
+                                                start,
+                                                len,
+                                                offset_milisec,
+                                            } => TileAtlasIndex::Animated {
+                                                anim: TileAnimation { start, len },
+                                                offset_milisec,
+                                            },
+                                        },
                                         tint: LinearRgba::from_f32_array(t.tint).into(),
                                         visible: t.visible,
                                     })
@@ -358,7 +412,11 @@ fn load_tilemap(
             )),
             tilesets: TilemapTilesets {
                 size: binary_tilemap.tilesets.size.into(),
-                filter_mode: unsafe { std::mem::transmute(binary_tilemap.tilesets.filter_mode) },
+                filter_mode: match binary_tilemap.tilesets.filter_mode {
+                    0 => FilterMode::Nearest,
+                    1 => FilterMode::Linear,
+                    _ => unreachable!(),
+                },
                 textures: binary_tilemap
                     .tilesets
                     .textures
@@ -373,10 +431,22 @@ fn load_tilemap(
                     .collect(),
             },
             tint: TilemapTint(LinearRgba::from_f32_array(binary_tilemap.tint).into()),
-            animations: unsafe { std::mem::transmute(binary_tilemap.animations) },
+            animations: binary_tilemap.animations.into(),
             ..Default::default()
         };
 
-        commands.entity(entity).insert(bundle);
+        let tilemap = commands.spawn(bundle).id();
+        commands
+            .entity(body_entity)
+            .insert(BodyTilemap::new(tilemap))
+            .remove::<ToLoadTilemap>();
     }
+}
+
+fn construct_tmb_path(save_name: &str, body_index: usize) -> PathBuf {
+    Path::new("data")
+        .join("saves")
+        .join(save_name)
+        .join("maps")
+        .join(format!("{}.tmb", body_index))
 }

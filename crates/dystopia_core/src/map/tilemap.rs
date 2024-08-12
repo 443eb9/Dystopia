@@ -340,9 +340,9 @@ impl TilemapStorage {
 impl From<ChunkedStorage<FlattenedTileIndex, Tile, 3>> for TilemapStorage {
     fn from(value: ChunkedStorage<FlattenedTileIndex, Tile, 3>) -> Self {
         Self {
+            changed_chunks: value.keys().cloned().collect(),
             internal: value,
             changed_tiles: Default::default(),
-            changed_chunks: Default::default(),
         }
     }
 }
@@ -410,6 +410,12 @@ pub struct TilemapTint(pub Color);
 /// Layout: `[fps, frame_1_tex, frame_1_atl, frame_2_tex, frame_2_atl, fps, frame_1_tex, frame_1_atl, ...]`
 #[derive(Component, Debug, Clone)]
 pub struct TilemapAnimations(Vec<u32>);
+
+impl From<Vec<u32>> for TilemapAnimations {
+    fn from(value: Vec<u32>) -> Self {
+        Self(value)
+    }
+}
 
 impl Default for TilemapAnimations {
     fn default() -> Self {

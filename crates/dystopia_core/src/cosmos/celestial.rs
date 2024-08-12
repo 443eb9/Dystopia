@@ -92,7 +92,7 @@ pub enum BodyType {
 ///
 /// This won't be added to the body when they're spawned, as it will cause too much
 /// performance overhead.
-#[derive(Component, Deref)]
+#[derive(Component, Deref, bevy::reflect::Reflect)]
 pub struct BodyTilemap(Entity);
 
 impl BodyTilemap {

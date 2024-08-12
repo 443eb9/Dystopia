@@ -32,7 +32,7 @@ use bevy::{
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use dystopia_core::{
     cosmos::{
-        celestial::{BodyIndex, ToLoadTilemap, ToSaveTilemap},
+        celestial::{BodyIndex, BodyTilemap, ToLoadTilemap, ToSaveTilemap},
         gen::CosmosGenerationSettings,
     },
     distributed_list_element,
@@ -108,11 +108,11 @@ impl Plugin for DystopiaDebugPlugin {
         app.add_plugins((FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin::default()))
             .add_systems(OnEnter(AssetState::Finish), debug_skip_menu)
             // .add_systems(OnEnter(GameState::Simulate), debug_ui)
-            // .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
+            .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
             // .add_systems(Update, debug_rm_vis)
             .add_systems(Startup, setup_debug)
-            .add_systems(Update, toggle_ui_debug);
-        // .add_systems(Update, debug_rm_vis)
+            .add_systems(Update, toggle_ui_debug)
+            .add_systems(Update, debug_rm_vis);
     }
 }
 
@@ -166,33 +166,6 @@ fn debug_tilemap(
         ..Default::default()
     };
 
-    // let anim_dn = tilemap.animations.register(
-    //     vec![
-    //         (0, 0),
-    //         (0, 1),
-    //         (0, 2),
-    //         (1, 1),
-    //         (1, 0),
-    //         (0, 1),
-    //         (1, 2),
-    //         (0, 1),
-    //     ],
-    //     3,
-    // );
-    // let anim_up = tilemap.animations.register(
-    //     vec![
-    //         (0, 3),
-    //         (0, 4),
-    //         (0, 5),
-    //         (1, 4),
-    //         (1, 3),
-    //         (0, 4),
-    //         (1, 5),
-    //         (0, 4),
-    //     ],
-    //     3,
-    // );
-
     let anim_dn = tilemap.animations.register(
         vec![
             (0, 0, TileFlip::NONE),
@@ -213,7 +186,7 @@ fn debug_tilemap(
     );
 
     let mut rng = rand::thread_rng();
-    for (i_tri, tri) in icosahedron(4, IVec3::Y).into_iter().enumerate() {
+    for (i_tri, tri) in icosahedron(2, IVec3::Y).into_iter().enumerate() {
         let texture = if i_tri % 2 == 0 { 0 } else { 1 };
         let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
         tilemap.storgae.set(Tile {
@@ -232,7 +205,8 @@ fn debug_tilemap(
         });
     }
 
-    commands.entity(entity).insert(tilemap);
+    let tilemap = commands.spawn(tilemap).id();
+    commands.entity(entity).insert(BodyTilemap::new(tilemap));
 }
 
 fn debug_rm_vis(

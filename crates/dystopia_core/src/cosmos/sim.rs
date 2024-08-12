@@ -25,7 +25,7 @@ pub fn update_cosmos(mut cosmos: ResMut<Cosmos>, ticker: Res<Ticker>) {
         .par_iter_mut()
         .zip(orbits.par_iter_mut())
         .for_each(|(body, orbit)| {
-            if orbit.radius < 0. {
+            if orbit.center_id == usize::MAX {
                 return;
             }
 
@@ -35,9 +35,10 @@ pub fn update_cosmos(mut cosmos: ResMut<Cosmos>, ticker: Res<Ticker>) {
         });
 
     orbits.par_iter_mut().for_each(|orbit| {
-        if orbit.radius < 0. {
+        if orbit.center_id == usize::MAX {
             return;
         }
+
         orbit.center = bodies[orbit.center_id].pos;
     });
 }

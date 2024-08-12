@@ -308,6 +308,7 @@ impl RenderCommand<Transparent2d> for DrawTilemapChunkMeshes {
                 GpuBufferInfo::NonIndexed => pass.draw(0..gpu_mesh.vertex_count, 0..1),
             }
         }
+
         RenderCommandResult::Success
     }
 }
