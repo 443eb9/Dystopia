@@ -1,14 +1,19 @@
+use std::time::Instant;
+
 use avian2d::prelude::{Collider, Position, Rotation};
 use bevy::{
     math::Vec2,
     prelude::{
-        Camera, Commands, Component, Entity, EventReader, GlobalTransform, ParallelCommands, Query,
-        Res, With, Without,
+        Camera, Commands, Component, Entity, EventReader, GlobalTransform, ParallelCommands,
+        Query, Res, With, Without,
     },
 };
 
 use crate::{
-    input::{MouseHovering, MouseInput, RayTransparent, SceneCursorPosition, SceneMouseInput},
+    input::{
+        MouseClickCounter, MouseHovering, MouseInput, MouseMultiClickCooldown, RayTransparent,
+        SceneCursorPosition, SceneMouseInput,
+    },
     simulation::MainCamera,
 };
 
@@ -43,15 +48,38 @@ pub fn scene_mouse_hover(
 
 pub fn scene_mouse_click(
     mut commands: Commands,
-    colliders_query: Query<Entity, With<MouseHovering>>,
+    colliders_query: Query<
+        (
+            Entity,
+            Option<&MouseMultiClickCooldown>,
+            Option<&MouseClickCounter>,
+        ),
+        With<MouseHovering>,
+    >,
     mut event: EventReader<SceneMouseInput>,
 ) {
-    for click in event.read() {
-        colliders_query.iter().for_each(|entity| {
-            commands.entity(entity).insert(MouseInput {
-                button: click.button,
-                state: click.state,
+    for ev in event.read() {
+        for (entity, maybe_cooldown, maybe_counter) in &colliders_query {
+            let mut entity = commands.entity(entity);
+            entity.insert(MouseInput {
+                button: ev.button,
+                state: ev.state,
             });
-        });
+
+            if !ev.state.is_pressed() {
+                continue;
+            }
+
+            if maybe_cooldown.is_none() || maybe_cooldown.is_some_and(|c| c.button != ev.button) {
+                entity.insert(MouseMultiClickCooldown {
+                    button: ev.button,
+                    latest_click: Instant::now(),
+                });
+            }
+
+            if maybe_counter.is_none() {
+                entity.insert(MouseClickCounter::default());
+            }
+        }
     }
 }

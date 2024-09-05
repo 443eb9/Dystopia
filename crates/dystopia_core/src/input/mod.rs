@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use bevy::{
     app::{App, Plugin, PreUpdate, Update},
     input::ButtonState,
@@ -32,6 +34,7 @@ impl Plugin for DystopiaInputPlugin {
                     ui::ui_mouse_hover_filterer,
                     (ui::ui_mouse_input_filterer, scene::scene_mouse_hover),
                     scene::scene_mouse_click,
+                    mouse_cooldown_counter_handler,
                 )
                     .chain(),
             )
@@ -63,6 +66,33 @@ pub fn mouse_event_reset(
     });
 }
 
+pub fn mouse_cooldown_counter_handler(
+    mut commands: Commands,
+    mut multi_click_query: Query<(
+        Entity,
+        &MouseMultiClickCooldown,
+        &mut MouseClickCounter,
+        Option<&MouseInput>,
+    )>,
+) {
+    for (entity, cooldown, mut counter, maybe_input) in &mut multi_click_query {
+        if cooldown.latest_click.elapsed().as_secs_f32() > MULTI_CLICK_INTERVAL {
+            let mut entity = commands.entity(entity);
+            entity.remove::<MouseMultiClickCooldown>();
+
+            if maybe_input.is_none() {
+                entity.remove::<MouseClickCounter>();
+            }
+        }
+
+        if maybe_input.is_some_and(|x| x.button == cooldown.button && x.state.is_pressed()) {
+            **counter += 1;
+        }
+    }
+}
+
+pub const MULTI_CLICK_INTERVAL: f32 = 0.3;
+
 /// Mark an entity to be invisible to rays.
 ///
 /// This will exclude these entities when performing raycasting.
@@ -83,6 +113,15 @@ pub struct MouseInput {
     pub button: MouseButton,
     pub state: ButtonState,
 }
+
+#[derive(Component)]
+pub struct MouseMultiClickCooldown {
+    pub button: MouseButton,
+    pub latest_click: Instant,
+}
+
+#[derive(Component, Default, Deref, DerefMut)]
+pub struct MouseClickCounter(u8);
 
 /// Mark an entity able to be dragged.
 #[derive(Component)]

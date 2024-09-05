@@ -36,7 +36,7 @@ use dystopia_core::{
         gen::CosmosGenerationSettings,
     },
     distributed_list_element,
-    input::camera::CameraBehavior,
+    input::{camera::CameraBehavior, MouseClickCounter, MouseInput},
     map::{
         bundle::TilemapBundle,
         shape::rectangle,
@@ -112,11 +112,18 @@ impl Plugin for DystopiaDebugPlugin {
             // .add_systems(Update, debug_rm_vis)
             .add_systems(Startup, setup_debug)
             .add_systems(Update, toggle_ui_debug)
-            .add_systems(Update, debug_rm_vis);
+            .add_systems(Update, debug_rm_vis)
+            .add_systems(Update, test_multi_click);
     }
 }
 
 fn setup_debug(mut commands: Commands) {}
+
+fn test_multi_click(query: Query<&MouseClickCounter, With<MouseInput>>) {
+    for click in &query {
+        dbg!(**click);
+    }
+}
 
 fn debug_skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
     commands.insert_resource(CosmosGenerationSettings {
