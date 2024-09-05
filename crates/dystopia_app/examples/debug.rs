@@ -246,7 +246,7 @@ fn debug_rm_vis(
             let chunks = rectangle(16, 9)
                 .into_iter()
                 .map(|i| {
-                    FlattenedTileIndex::from_direct(i.as_ivec2(), storage.chunk_size()).chunk_index
+                    FlattenedTileIndex::from_direct(i.as_ivec2(), storage.chunk_size()).in_chunk
                 })
                 .collect::<HashSet<_>>();
 

@@ -34,7 +34,6 @@ use crate::{
     cosmos::celestial::{BodyIndex, BodyTilemap, ToLoadTilemap, ToSaveTilemap},
     map::{
         bundle::TilemapBundle,
-        storage::ChunkedStorage,
         tilemap::{
             FlattenedTileIndex, Tile, TileAnimation, TileAtlasIndex, TileFlip, TileIndex,
             TileRenderSize, TileStaticAtlas, TilemapAnimations, TilemapStorage, TilemapTexture,
@@ -43,6 +42,7 @@ use crate::{
     },
     schedule::state::GameState,
     simulation::SaveName,
+    util::chunking::ChunkedStorage,
 };
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -231,8 +231,8 @@ fn save_tilemap(
                                     indices: (
                                         t.index.direct().to_array(),
                                         (
-                                            t.index.flattened().chunk_index.to_array(),
-                                            t.index.flattened().in_chunk_index,
+                                            t.index.flattened().in_chunk.to_array(),
+                                            t.index.flattened().in_chunk_at,
                                         ),
                                     ),
                                     atlas: match t.atlas_index {
@@ -377,8 +377,8 @@ fn load_tilemap(
                                         index: TileIndex::new(
                                             t.indices.0.into(),
                                             FlattenedTileIndex {
-                                                chunk_index: t.indices.1 .0.into(),
-                                                in_chunk_index: t.indices.1 .1,
+                                                in_chunk: t.indices.1 .0.into(),
+                                                in_chunk_at: t.indices.1 .1,
                                             },
                                         ),
                                         atlas_index: match t.atlas {

@@ -117,8 +117,8 @@ pub fn prepare_tile_mesh_data(
                 for (i, tile) in chunk.iter().enumerate() {
                     update_tile_mesh(
                         &FlattenedTileIndex {
-                            chunk_index: *index,
-                            in_chunk_index: i,
+                            in_chunk: *index,
+                            in_chunk_at: i,
                         },
                         tile,
                         chunks,
@@ -137,8 +137,8 @@ fn update_tile_mesh(
     chunks: &mut TilemapRenderChunks,
 ) {
     let Some(tile) = tile else {
-        if let Some(chunk) = chunks.chunks.get_mut(&index.chunk_index) {
-            chunk.set(index.in_chunk_index, None);
+        if let Some(chunk) = chunks.chunks.get_mut(&index.in_chunk) {
+            chunk.set(index.in_chunk_at, None);
         }
         return;
     };
@@ -146,7 +146,7 @@ fn update_tile_mesh(
     let index = tile.index.flattened();
     let chunk = chunks
         .chunks
-        .entry(index.chunk_index)
+        .entry(index.in_chunk)
         .or_insert_with(|| TilemapRenderChunk::new(chunks.chunk_size));
 
     let data = tile.visible.then_some(TileMeshData {
@@ -164,7 +164,7 @@ fn update_tile_mesh(
         tile_index: tile.index.direct(),
     });
 
-    chunk.set(index.in_chunk_index, data);
+    chunk.set(index.in_chunk_at, data);
 }
 
 pub fn prepare_tilemap_meshes(

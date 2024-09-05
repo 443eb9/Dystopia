@@ -36,13 +36,13 @@ use crate::{
             resource::{TilemapBindGroups, TilemapBuffers, TilemapPipeline, TilemapPipelineKey},
             texture::TilemapTextureStorage,
         },
-        storage::Chunk,
         tilemap::{
             FlattenedTileIndex, Tile, TileRenderSize, TilemapAnimations, TilemapStorage,
             TilemapTilesets, TilemapTint,
         },
     },
     simulation::MainCamera,
+    util::chunking::Chunk,
 };
 
 pub mod mesh;

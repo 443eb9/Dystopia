@@ -3,6 +3,7 @@ use bevy::{
     prelude::{Commands, Component, Entity, Query, Visibility},
 };
 
+pub mod chunking;
 pub mod macros;
 
 pub struct DystopiaUtilPlugin;

@@ -7,7 +7,7 @@ use bevy::{
     utils::HashSet,
 };
 
-use crate::map::storage::{Chunk, ChunkableIndex, ChunkedStorage, DEFAULT_CHUNK_SIZE};
+use crate::util::chunking::{Chunk, ChunkStorageIndex, ChunkedStorage, DEFAULT_CHUNK_SIZE};
 
 #[derive(Clone)]
 pub struct Tile {
@@ -143,25 +143,7 @@ pub struct ChunkedTileIndex {
 }
 
 /// The fastest index for looking up tiles.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct FlattenedTileIndex {
-    pub chunk_index: IVec2,
-    pub in_chunk_index: usize,
-}
-
-impl ChunkableIndex for FlattenedTileIndex {
-    type ChunkIndex = IVec2;
-
-    #[inline]
-    fn in_chunk(&self) -> Self::ChunkIndex {
-        self.chunk_index
-    }
-
-    #[inline]
-    fn in_chunk_at(&self) -> usize {
-        self.in_chunk_index
-    }
-}
+pub type FlattenedTileIndex = ChunkStorageIndex<IVec2>;
 
 impl FlattenedTileIndex {
     #[inline]
@@ -169,16 +151,16 @@ impl FlattenedTileIndex {
         let chunk_size = chunk_size as i32;
         let ic = (index % chunk_size).abs();
         Self {
-            chunk_index: index / chunk_size,
-            in_chunk_index: (ic.x + ic.y * chunk_size) as usize,
+            in_chunk: index / chunk_size,
+            in_chunk_at: (ic.x + ic.y * chunk_size) as usize,
         }
     }
 
     #[inline]
     pub fn from_chunked(index: ChunkedTileIndex, chunk_size: u32) -> Self {
         FlattenedTileIndex {
-            chunk_index: index.chunk_index,
-            in_chunk_index: (index.in_chunk_index.x
+            in_chunk: index.chunk_index,
+            in_chunk_at: (index.in_chunk_index.x
                 + index.in_chunk_index.y * chunk_size
                 + index.in_chunk_index.z * chunk_size * chunk_size)
                 as usize,
@@ -189,13 +171,13 @@ impl FlattenedTileIndex {
 /// Stores all entities on this tilemap.
 #[derive(Component)]
 pub struct TilemapStorage {
-    internal: ChunkedStorage<FlattenedTileIndex, Tile, 2>,
+    internal: ChunkedStorage<IVec2, Tile>,
     changed_tiles: HashSet<FlattenedTileIndex>,
     changed_chunks: HashSet<IVec2>,
 }
 
 pub struct UnsafePubTilemapStorageCell {
-    pub internal: *mut ChunkedStorage<FlattenedTileIndex, Tile, 2>,
+    pub internal: *mut ChunkedStorage<IVec2, Tile>,
     pub changed_tiles: *mut HashSet<FlattenedTileIndex>,
     pub changed_chunks: *mut HashSet<IVec2>,
 }
@@ -331,8 +313,8 @@ impl TilemapStorage {
     }
 }
 
-impl From<ChunkedStorage<FlattenedTileIndex, Tile, 2>> for TilemapStorage {
-    fn from(value: ChunkedStorage<FlattenedTileIndex, Tile, 2>) -> Self {
+impl From<ChunkedStorage<IVec2, Tile>> for TilemapStorage {
+    fn from(value: ChunkedStorage<IVec2, Tile>) -> Self {
         Self {
             changed_chunks: value.keys().cloned().collect(),
             internal: value,
