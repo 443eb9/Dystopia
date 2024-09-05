@@ -394,20 +394,24 @@ fn potential_body_click_handler(
     mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
 ) {
     for input in scene_mouse_input.read() {
+        if !(input.button == MouseButton::Left && input.state == ButtonState::Pressed) {
+            continue;
+        }
+
         let Some((target, input, body)) = clicked_query.iter().nth(0) else {
-            if input.button == MouseButton::Left && input.state == ButtonState::Pressed {
-                target_change.send(PanelTargetChange::none());
-            }
+            // Clicked on void
+            target_change.send(PanelTargetChange::none());
             return;
         };
 
         if input.button == MouseButton::Left && input.state == ButtonState::Pressed {
-            if body.is_none() {
-                target_change.send(PanelTargetChange::none());
-                return;
-            }
-
-            target_change.send(PanelTargetChange::some(target));
+            target_change.send(if body.is_none() {
+                // Clicked on something that is not a body
+                PanelTargetChange::none()
+            } else {
+                // Clicked on body!
+                PanelTargetChange::some(target)
+            });
         }
     }
 }

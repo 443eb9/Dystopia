@@ -1,4 +1,4 @@
-use bevy::app::{App, Plugin, Update};
+use bevy::app::{App, Plugin};
 
 pub mod body;
 
@@ -6,6 +6,6 @@ pub(super) struct SelectingUiPlugin;
 
 impl Plugin for SelectingUiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Update, body::handle_target_change);
+        app.observe(body::on_target_change);
     }
 }
