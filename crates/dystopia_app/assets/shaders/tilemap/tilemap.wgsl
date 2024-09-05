@@ -95,9 +95,8 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
     let atlas_index_2d = vec2u(decoded_atlas_index % tile_count.x, decoded_atlas_index / tile_count.x);
     let tile_uv = vec2f(atlas_index_2d) / vec2f(tile_count);
     
-    // out.uv = tile_uv + vert_uv / vec2f(tile_count);
-    out.uv = vert_uv;
-    // out.uv = vec2f(f32(corner) / 4.);
+    out.uv = tile_uv + vert_uv / vec2f(tile_count);
+    // out.uv = vert_uv;
     out.texture_index = atlas_indices[0];
 
     return out;
@@ -105,7 +104,5 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
 
 @fragment
 fn fragment(in: TilemapVertexOutput) -> @location(0) vec4f {
-    // return textureSample(texture, texture_sampler, in.uv, in.texture_index) * tilemap.tint;
-    return vec4f(in.uv, 0., 1.);
-    // return vec4f(1.);
+    return textureSample(texture, texture_sampler, in.uv, in.texture_index) * tilemap.tint;
 }

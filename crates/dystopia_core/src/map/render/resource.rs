@@ -8,7 +8,12 @@ use bevy::{
         extract_instances::ExtractedInstances,
         globals::{GlobalsBuffer, GlobalsUniform},
         render_resource::{
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState, BufferUsages, BufferVec, ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState, PrimitiveState, RawBufferVec, RenderPipelineDescriptor, SamplerBindingType, Shader, ShaderStages, ShaderType, SpecializedRenderPipeline, TextureFormat, TextureSampleType, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
+            BufferUsages, BufferVec, ColorTargetState, ColorWrites, FragmentState,
+            MultisampleState, PrimitiveState, RawBufferVec, RenderPipelineDescriptor,
+            SamplerBindingType, Shader, ShaderStages, ShaderType, SpecializedRenderPipeline,
+            TextureFormat, TextureSampleType, VertexBufferLayout, VertexFormat, VertexState,
+            VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,

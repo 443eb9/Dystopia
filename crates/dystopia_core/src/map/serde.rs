@@ -15,7 +15,7 @@ use bevy::{
     },
     color::{ColorToComponents, LinearRgba},
     log::{error, info},
-    math::{IVec2, IVec3},
+    math::IVec2,
     prelude::{
         in_state, Commands, Entity, IntoSystemConfigs, OnInsert, Query, Res, ResMut, Trigger,
     },

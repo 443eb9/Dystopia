@@ -182,7 +182,7 @@ fn debug_tilemap(
     );
 
     let mut rng = rand::thread_rng();
-    for (i_tile, index) in rectangle(1, 1).into_iter().enumerate() {
+    for (i_tile, index) in rectangle(10, 10).into_iter().enumerate() {
         let texture = if i_tile % 2 == 0 { 0 } else { 1 };
         let atlas = if index.element_sum() == 1 { 0 } else { 3 };
         tilemap.storgae.set(Tile {

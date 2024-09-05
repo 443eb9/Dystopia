@@ -3,6 +3,7 @@
 
 use bevy::{
     app::{App, FixedUpdate, Plugin, Startup, Update},
+    ecs::query::QuerySingleError,
     log::info,
     math::Vec2,
     prelude::{
@@ -126,11 +127,18 @@ fn update_window_related_data(
     mut pos: ResMut<CursorPosition>,
     mut size: ResMut<WindowSize>,
 ) {
-    let window = windows_query
-        .get_single()
-        .expect("Multiple windows detected, which is not allowed.");
-    pos.0 = window.cursor_position();
-    size.0 = window.size();
+    match windows_query.get_single() {
+        Ok(window) => {
+            pos.0 = window.cursor_position();
+            size.0 = window.size();
+        }
+        Err(err) => match err {
+            QuerySingleError::MultipleEntities(_) => {
+                panic!("Multiple windows detected, which is not allowed.");
+            }
+            _ => return,
+        },
+    }
 }
 
 fn check_if_initialized(
@@ -145,7 +153,7 @@ fn check_if_initialized(
 }
 
 /// The name of current game save.
-/// 
+///
 /// This resource only exists in [`GameState::Simulate`].
 #[derive(Resource, Deref, DerefMut)]
 pub struct SaveName(String);

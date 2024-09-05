@@ -185,8 +185,13 @@ pub fn prepare_tilemap_meshes(
                 let mut vertex_color = Vec::with_capacity(n * 4);
                 let mut tile_indices = Vec::with_capacity(n * 4);
 
+                // TODO if not adding 6 vertices, the rectangle mesh cannot be built
+                //      looks like the 3 at the back cannot be recognized.
+                //      maybe try again in next version of bevy.
                 for (i_tile, tile) in chunk.tiles.iter().filter_map(|t| t.as_ref()).enumerate() {
                     vertex_position.extend_from_slice(&[
+                        Vec3::ZERO,
+                        Vec3::ZERO,
                         Vec3::ZERO,
                         Vec3::ZERO,
                         Vec3::ZERO,
@@ -197,21 +202,26 @@ pub fn prepare_tilemap_meshes(
                         tile.atlas_index,
                         tile.atlas_index,
                         tile.atlas_index,
+                        tile.atlas_index,
+                        tile.atlas_index,
                     ]);
-                    vertex_color.extend_from_slice(&[tile.tint, tile.tint, tile.tint, tile.tint]);
+                    vertex_color.extend_from_slice(&[
+                        tile.tint, tile.tint, tile.tint, tile.tint, tile.tint, tile.tint,
+                    ]);
                     tile_indices.extend_from_slice(&[
+                        tile.tile_index,
+                        tile.tile_index,
                         tile.tile_index,
                         tile.tile_index,
                         tile.tile_index,
                         tile.tile_index,
                     ]);
 
-                    let base_index = i_tile as u32 * 4;
+                    let base_index = i_tile as u32 * 6;
                     vertex_indices.extend_from_slice(&[
                         base_index,
                         base_index + 1,
                         base_index + 3,
-                        
                         base_index + 1,
                         base_index + 2,
                         base_index + 3,
