@@ -15,7 +15,7 @@ use bevy::{
     },
     color::{ColorToComponents, LinearRgba},
     log::{error, info},
-    math::IVec3,
+    math::{IVec2, IVec3},
     prelude::{
         in_state, Commands, Entity, IntoSystemConfigs, OnInsert, Query, Res, ResMut, Trigger,
     },
@@ -85,7 +85,7 @@ struct BinaryTilesets {
 
 #[derive(Encode, Decode)]
 struct BinaryTile {
-    indices: ([i32; 3], ([i32; 3], usize)),
+    indices: ([i32; 2], ([i32; 2], usize)),
     atlas: BinaryAtlasIndex,
     tint: [f32; 4],
     visible: bool,
@@ -98,7 +98,7 @@ pub struct BinaryTilemap {
     target_body: usize,
     tile_render_size: [f32; 2],
     chunk_size: u32,
-    storgae: Vec<([i32; 3], Vec<Option<BinaryTile>>)>,
+    storgae: Vec<([i32; 2], Vec<Option<BinaryTile>>)>,
     tint: [f32; 4],
     tilesets: BinaryTilesets,
     animations: Vec<u32>,
@@ -370,7 +370,7 @@ fn load_tilemap(
                     .into_par_iter()
                     .map(|(ci, c)| {
                         (
-                            IVec3::from(ci),
+                            IVec2::from(ci),
                             c.into_iter()
                                 .map(|t| {
                                     t.map(|t| Tile {

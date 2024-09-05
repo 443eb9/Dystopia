@@ -8,11 +8,7 @@ use bevy::{
         extract_instances::ExtractedInstances,
         globals::{GlobalsBuffer, GlobalsUniform},
         render_resource::{
-            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
-            BufferUsages, BufferVec, ColorTargetState, ColorWrites, FragmentState,
-            MultisampleState, RawBufferVec, RenderPipelineDescriptor, SamplerBindingType, Shader,
-            ShaderStages, ShaderType, SpecializedRenderPipeline, TextureFormat, TextureSampleType,
-            VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
+            BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState, BufferUsages, BufferVec, ColorTargetState, ColorWrites, Face, FragmentState, FrontFace, MultisampleState, PrimitiveState, RawBufferVec, RenderPipelineDescriptor, SamplerBindingType, Shader, ShaderStages, ShaderType, SpecializedRenderPipeline, TextureFormat, TextureSampleType, VertexBufferLayout, VertexFormat, VertexState, VertexStepMode
         },
         renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
@@ -82,7 +78,7 @@ impl SpecializedRenderPipeline for TilemapPipeline {
                         // atlas_index
                         VertexFormat::Uint32x4,
                         // tile_index
-                        VertexFormat::Sint32x3,
+                        VertexFormat::Sint32x2,
                     ],
                 )],
             },
@@ -96,7 +92,11 @@ impl SpecializedRenderPipeline for TilemapPipeline {
                     write_mask: ColorWrites::ALL,
                 })],
             }),
-            primitive: Default::default(),
+            primitive: PrimitiveState {
+                // front_face: FrontFace::Cw,
+                // cull_mode: Some(Face::Back),
+                ..Default::default()
+            },
             depth_stencil: None,
             multisample: MultisampleState {
                 count: key.msaa_samples,

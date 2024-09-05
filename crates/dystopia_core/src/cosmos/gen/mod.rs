@@ -146,7 +146,8 @@ pub fn generate_cosmos(
 
     let (bodies, entities, statistics) = spawn_bodies(
         &mut commands,
-        stars,
+        // stars,
+        vec![],
         square_mesh.clone(),
         &mut star_materials,
         &mut rocky_body_materials,

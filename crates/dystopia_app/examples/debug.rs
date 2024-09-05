@@ -44,7 +44,7 @@ use dystopia_core::{
             TilemapStorage, TilemapTexture, TilemapTextureDescriptor, TilemapTilesets,
         },
     },
-    math::shape::icosahedron,
+    math::shape::icosahedron::{self, rectangle},
     schedule::state::{AssetState, GameState},
     sci::unit::Length,
     simulation::{MainCamera, SaveName, ViewScale},
@@ -135,10 +135,6 @@ fn debug_tilemap(
     asset_server: Res<AssetServer>,
     bodies: Query<Entity, With<BodyIndex>>,
 ) {
-    let Some(entity) = bodies.iter().nth(0) else {
-        return;
-    };
-
     const CHUNK_SIZE: u32 = 8;
 
     let mut tilemap = TilemapBundle {
@@ -149,15 +145,15 @@ fn debug_tilemap(
                 TilemapTexture {
                     handle: asset_server.load("images/test_tileset_a.png"),
                     desc: TilemapTextureDescriptor {
-                        size: UVec2 { x: 45, y: 26 },
-                        tile_size: UVec2 { x: 15, y: 13 },
+                        size: UVec2 { x: 48, y: 32 },
+                        tile_size: UVec2::splat(16),
                     },
                 },
                 TilemapTexture {
                     handle: asset_server.load("images/test_tileset_b.png"),
                     desc: TilemapTextureDescriptor {
-                        size: UVec2 { x: 45, y: 26 },
-                        tile_size: UVec2 { x: 15, y: 13 },
+                        size: UVec2 { x: 48, y: 32 },
+                        tile_size: UVec2::splat(16),
                     },
                 },
             ],
@@ -186,27 +182,31 @@ fn debug_tilemap(
     );
 
     let mut rng = rand::thread_rng();
-    for (i_tri, tri) in icosahedron(2, IVec3::Y).into_iter().enumerate() {
-        let texture = if i_tri % 2 == 0 { 0 } else { 1 };
-        let atlas = if tri.element_sum() == 1 { 0 } else { 3 };
+    for (i_tile, index) in rectangle(1, 1).into_iter().enumerate() {
+        let texture = if i_tile % 2 == 0 { 0 } else { 1 };
+        let atlas = if index.element_sum() == 1 { 0 } else { 3 };
         tilemap.storgae.set(Tile {
-            index: TileIndex::from_direct(tri, CHUNK_SIZE),
-            // atlas_index: TileAtlasIndex::Static((texture, atlas, TileFlip::HORIZONTAL).into()),
-            atlas_index: TileAtlasIndex::Animated {
-                anim: if tri.element_sum() == 1 {
-                    anim_dn
-                } else {
-                    anim_up
-                },
-                offset_milisec: rng.gen_range(0..2000),
-                // offset_milisec: 0,
-            },
+            index: TileIndex::from_direct(index, CHUNK_SIZE),
+            atlas_index: TileAtlasIndex::Static((texture, atlas).into()),
+            // atlas_index: TileAtlasIndex::Animated {
+            //     anim: if tri.element_sum() == 1 {
+            //         anim_dn
+            //     } else {
+            //         anim_up
+            //     },
+            //     offset_milisec: rng.gen_range(0..2000),
+            //     // offset_milisec: 0,
+            // },
             ..Default::default()
         });
     }
 
     let tilemap = commands.spawn(tilemap).id();
-    commands.entity(entity).insert(BodyTilemap::new(tilemap));
+    if let Some(body) = bodies.iter().nth(0) {
+        commands.entity(body).insert(BodyTilemap::new(tilemap));
+    } else {
+        commands.spawn(BodyTilemap::new(tilemap));
+    }
 }
 
 fn debug_rm_vis(
@@ -235,15 +235,15 @@ fn debug_rm_vis(
         let mut rng = rand::thread_rng();
 
         if keyboard.just_pressed(KeyCode::Digit1) {
-            for tri in icosahedron(2, IVec3::Y) {
+            for tile in rectangle(16, 9) {
                 if rng.gen_range(0.0..1.0) > 0.5 {
-                    storage.remove(tri);
+                    storage.remove(tile);
                 }
             }
         }
 
         if keyboard.just_pressed(KeyCode::Digit2) {
-            let chunks = icosahedron(2, IVec3::Y)
+            let chunks = rectangle(16, 9)
                 .into_iter()
                 .map(|i| FlattenedTileIndex::from_direct(i, storage.chunk_size()).chunk_index)
                 .collect::<HashSet<_>>();

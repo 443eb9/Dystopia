@@ -1,4 +1,4 @@
-use bevy::math::IVec3;
+use bevy::math::{IVec2, IVec3};
 
 const H_OFFSETS_FROM_UP: [IVec3; 2] = [IVec3::NEG_Z, IVec3::X];
 const H_OFFSETS_FROM_DN: [IVec3; 2] = [IVec3::X, IVec3::NEG_Z];
@@ -80,4 +80,11 @@ fn subdivided_triangle(shape: &mut Vec<IVec3>, layers: u32, origin: IVec3, is_up
             cur_triangle += h_offsets[(t % 2) as usize];
         }
     }
+}
+
+pub fn rectangle(width: u32, height: u32) -> Vec<IVec2> {
+    (0..width as i32)
+        .into_iter()
+        .flat_map(move |x| (0..height as i32).into_iter().map(move |y| IVec2 { x, y }))
+        .collect()
 }

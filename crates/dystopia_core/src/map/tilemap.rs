@@ -1,7 +1,7 @@
 use bevy::{
     asset::Handle,
     color::Color,
-    math::{IVec3, UVec2, UVec3, Vec2},
+    math::{IVec2, UVec2, UVec3, Vec2},
     prelude::{Component, Deref, DerefMut},
     render::{render_resource::FilterMode, texture::Image},
     utils::HashSet,
@@ -30,30 +30,24 @@ impl Default for Tile {
 
 #[derive(Debug, Default, Clone, Copy, Deref, DerefMut)]
 pub struct TileIndex {
-    direct: IVec3,
+    direct: IVec2,
     #[deref]
     flattened: FlattenedTileIndex,
 }
 
 impl TileIndex {
-    pub fn new(direct: IVec3, flattened: FlattenedTileIndex) -> Self {
+    pub fn new(direct: IVec2, flattened: FlattenedTileIndex) -> Self {
         Self { direct, flattened }
     }
 
-    pub fn from_direct(direct: IVec3, chunk_size: u32) -> Self {
-        assert!(
-            matches!(direct.element_sum(), 1 | 2),
-            "Invalid tile index {}. The element-wise sum of index must be 1 or 2.",
-            direct
-        );
-
+    pub fn from_direct(direct: IVec2, chunk_size: u32) -> Self {
         Self {
             direct,
             flattened: FlattenedTileIndex::from_direct(direct, chunk_size),
         }
     }
 
-    pub fn direct(&self) -> IVec3 {
+    pub fn direct(&self) -> IVec2 {
         self.direct
     }
 
@@ -144,19 +138,19 @@ pub struct TileRenderSize(pub Vec2);
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub struct ChunkedTileIndex {
-    pub chunk_index: IVec3,
+    pub chunk_index: IVec2,
     pub in_chunk_index: UVec3,
 }
 
 /// The fastest index for looking up tiles.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FlattenedTileIndex {
-    pub chunk_index: IVec3,
+    pub chunk_index: IVec2,
     pub in_chunk_index: usize,
 }
 
 impl ChunkableIndex for FlattenedTileIndex {
-    type ChunkIndex = IVec3;
+    type ChunkIndex = IVec2;
 
     #[inline]
     fn in_chunk(&self) -> Self::ChunkIndex {
@@ -171,12 +165,12 @@ impl ChunkableIndex for FlattenedTileIndex {
 
 impl FlattenedTileIndex {
     #[inline]
-    pub fn from_direct(index: IVec3, chunk_size: u32) -> Self {
+    pub fn from_direct(index: IVec2, chunk_size: u32) -> Self {
         let chunk_size = chunk_size as i32;
         let ic = (index % chunk_size).abs();
         Self {
             chunk_index: index / chunk_size,
-            in_chunk_index: (ic.x + ic.y * chunk_size + ic.z * chunk_size * chunk_size) as usize,
+            in_chunk_index: (ic.x + ic.y * chunk_size) as usize,
         }
     }
 
@@ -195,15 +189,15 @@ impl FlattenedTileIndex {
 /// Stores all entities on this tilemap.
 #[derive(Component)]
 pub struct TilemapStorage {
-    internal: ChunkedStorage<FlattenedTileIndex, Tile, 3>,
+    internal: ChunkedStorage<FlattenedTileIndex, Tile, 2>,
     changed_tiles: HashSet<FlattenedTileIndex>,
-    changed_chunks: HashSet<IVec3>,
+    changed_chunks: HashSet<IVec2>,
 }
 
 pub struct UnsafePubTilemapStorageCell {
-    pub internal: *mut ChunkedStorage<FlattenedTileIndex, Tile, 3>,
+    pub internal: *mut ChunkedStorage<FlattenedTileIndex, Tile, 2>,
     pub changed_tiles: *mut HashSet<FlattenedTileIndex>,
-    pub changed_chunks: *mut HashSet<IVec3>,
+    pub changed_chunks: *mut HashSet<IVec2>,
 }
 
 impl Default for TilemapStorage {
@@ -232,7 +226,7 @@ impl TilemapStorage {
     }
 
     #[inline]
-    pub fn changed_chunks(&self) -> &HashSet<IVec3> {
+    pub fn changed_chunks(&self) -> &HashSet<IVec2> {
         &self.changed_chunks
     }
 
@@ -255,7 +249,7 @@ impl TilemapStorage {
     }
 
     #[inline]
-    pub fn get(&self, index: IVec3) -> Option<&Tile> {
+    pub fn get(&self, index: IVec2) -> Option<&Tile> {
         self.flattened_get(FlattenedTileIndex::from_direct(index, self.chunk_size()))
     }
 
@@ -270,7 +264,7 @@ impl TilemapStorage {
     }
 
     #[inline]
-    pub fn get_mut(&mut self, index: IVec3) -> Option<&mut Tile> {
+    pub fn get_mut(&mut self, index: IVec2) -> Option<&mut Tile> {
         self.flattened_get_mut(FlattenedTileIndex::from_direct(index, self.chunk_size()))
     }
 
@@ -292,7 +286,7 @@ impl TilemapStorage {
     }
 
     #[inline]
-    pub fn remove(&mut self, index: IVec3) -> Option<Tile> {
+    pub fn remove(&mut self, index: IVec2) -> Option<Tile> {
         self.flattened_remove(FlattenedTileIndex::from_direct(index, self.chunk_size()))
     }
 
@@ -308,24 +302,24 @@ impl TilemapStorage {
     }
 
     #[inline]
-    pub fn get_chunk(&self, index: IVec3) -> Option<&Chunk<Tile>> {
+    pub fn get_chunk(&self, index: IVec2) -> Option<&Chunk<Tile>> {
         self.internal.get_chunk(&index)
     }
 
     #[inline]
-    pub fn get_chunk_mut(&mut self, index: IVec3) -> Option<&mut Chunk<Tile>> {
+    pub fn get_chunk_mut(&mut self, index: IVec2) -> Option<&mut Chunk<Tile>> {
         self.changed_chunks.insert(index);
         self.internal.get_chunk_mut(&index)
     }
 
     #[inline]
-    pub fn set_chunk(&mut self, index: IVec3, chunk: Chunk<Tile>) -> Option<Chunk<Tile>> {
+    pub fn set_chunk(&mut self, index: IVec2, chunk: Chunk<Tile>) -> Option<Chunk<Tile>> {
         self.changed_chunks.insert(index);
         self.internal.set_chunk(index, chunk)
     }
 
     #[inline]
-    pub fn remove_chunk(&mut self, index: IVec3) -> Option<Chunk<Tile>> {
+    pub fn remove_chunk(&mut self, index: IVec2) -> Option<Chunk<Tile>> {
         self.changed_chunks.insert(index);
         self.internal.remove_chunk(&index)
     }
@@ -337,8 +331,8 @@ impl TilemapStorage {
     }
 }
 
-impl From<ChunkedStorage<FlattenedTileIndex, Tile, 3>> for TilemapStorage {
-    fn from(value: ChunkedStorage<FlattenedTileIndex, Tile, 3>) -> Self {
+impl From<ChunkedStorage<FlattenedTileIndex, Tile, 2>> for TilemapStorage {
+    fn from(value: ChunkedStorage<FlattenedTileIndex, Tile, 2>) -> Self {
         Self {
             changed_chunks: value.keys().cloned().collect(),
             internal: value,

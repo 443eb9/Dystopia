@@ -1,7 +1,7 @@
 use bevy::{
     color::ColorToComponents,
     ecs::entity::EntityHashMap,
-    math::{IVec3, Vec3, Vec4},
+    math::{IVec2, Vec3, Vec4},
     prelude::{Res, ResMut, Resource},
     render::{
         extract_instances::ExtractedInstances,
@@ -25,7 +25,7 @@ use crate::map::{
 pub const TILEMAP_MESH_ATLAS_INDEX_ATTR: MeshVertexAttribute =
     MeshVertexAttribute::new("Atlas_Index", 1433223, VertexFormat::Uint32x4);
 pub const TILEMAP_MESH_TILE_INDEX_ATTR: MeshVertexAttribute =
-    MeshVertexAttribute::new("Tile_Index", 1433224, VertexFormat::Sint32x3);
+    MeshVertexAttribute::new("Tile_Index", 1433224, VertexFormat::Sint32x2);
 
 #[derive(Clone)]
 pub struct TileMeshData {
@@ -34,7 +34,7 @@ pub struct TileMeshData {
     ///
     /// If animated: `[start, len, 1, offset_milisec]`
     pub atlas_index: [u32; 4],
-    pub tile_index: IVec3,
+    pub tile_index: IVec2,
 }
 
 pub struct TilemapRenderChunk {
@@ -50,7 +50,7 @@ impl TilemapRenderChunk {
     pub fn new(chunk_size: u32) -> Self {
         Self {
             chunk_size,
-            tiles: vec![None; chunk_size.pow(3) as usize],
+            tiles: vec![None; chunk_size.pow(2) as usize],
             mesh: Default::default(),
             gpu_mesh: Default::default(),
             is_dirty: true,
@@ -76,7 +76,7 @@ impl TilemapRenderChunk {
 
 pub struct TilemapRenderChunks {
     pub chunk_size: u32,
-    pub chunks: HashMap<IVec3, TilemapRenderChunk>,
+    pub chunks: HashMap<IVec2, TilemapRenderChunk>,
 }
 
 #[derive(Resource, Default)]
@@ -175,40 +175,47 @@ pub fn prepare_tilemap_meshes(
         render_chunks
             .chunks
             .par_iter_mut()
+            .filter(|(_, c)| c.is_dirty)
             .for_each(|(index, chunk)| {
-                if !chunk.is_dirty {
-                    return;
-                }
+                let n = chunk.tiles.len();
+                let mut vertex_indices = Vec::with_capacity(n * 6);
 
-                let n = (chunk.chunk_size * chunk.chunk_size) as usize;
-                let mut vertex_index = 0;
-                let mut vertex_indices = Vec::with_capacity(n * 4);
+                let mut vertex_position = Vec::with_capacity(n * 4);
+                let mut atlas_indices = Vec::with_capacity(n * 4);
+                let mut vertex_color = Vec::with_capacity(n * 4);
+                let mut tile_indices = Vec::with_capacity(n * 4);
 
-                let mut vertex_position = Vec::with_capacity(n * 3);
-                let mut atlas_indices = Vec::with_capacity(n * 3);
-                let mut vertex_color = Vec::with_capacity(n * 3);
-                let mut tile_indices = Vec::with_capacity(n * 3);
-
-                for tile in chunk.tiles.iter().filter_map(|t| t.as_ref()) {
-                    vertex_position.extend_from_slice(&[Vec3::ZERO, Vec3::ZERO, Vec3::ZERO]);
+                for (i_tile, tile) in chunk.tiles.iter().filter_map(|t| t.as_ref()).enumerate() {
+                    vertex_position.extend_from_slice(&[
+                        Vec3::ZERO,
+                        Vec3::ZERO,
+                        Vec3::ZERO,
+                        Vec3::ZERO,
+                    ]);
                     atlas_indices.extend_from_slice(&[
                         tile.atlas_index,
                         tile.atlas_index,
                         tile.atlas_index,
+                        tile.atlas_index,
                     ]);
-                    vertex_color.extend_from_slice(&[tile.tint, tile.tint, tile.tint]);
-                    vertex_indices.extend_from_slice(&[
-                        vertex_index,
-                        vertex_index + 1,
-                        vertex_index + 2,
-                    ]);
+                    vertex_color.extend_from_slice(&[tile.tint, tile.tint, tile.tint, tile.tint]);
                     tile_indices.extend_from_slice(&[
+                        tile.tile_index,
                         tile.tile_index,
                         tile.tile_index,
                         tile.tile_index,
                     ]);
 
-                    vertex_index += 3;
+                    let base_index = i_tile as u32 * 4;
+                    vertex_indices.extend_from_slice(&[
+                        base_index,
+                        base_index + 1,
+                        base_index + 3,
+                        
+                        base_index + 1,
+                        base_index + 2,
+                        base_index + 3,
+                    ]);
                 }
 
                 let mesh = Mesh::new(

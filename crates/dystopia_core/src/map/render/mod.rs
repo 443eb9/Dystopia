@@ -9,7 +9,7 @@ use bevy::{
             SystemParamItem,
         },
     },
-    math::{FloatOrd, IVec3},
+    math::{FloatOrd, IVec2},
     prelude::{
         Commands, Component, DetectChanges, Entity, IntoSystemConfigs, Query, Ref, Res, ResMut,
         With,
@@ -148,7 +148,7 @@ pub struct ExtractedTilemap {
     pub tilesets: TilemapTilesets,
     pub changed_animations: Option<TilemapAnimations>,
     pub changed_tiles: Vec<(FlattenedTileIndex, Option<Tile>)>,
-    pub changed_chunks: Vec<(IVec3, Option<Chunk<Tile>>)>,
+    pub changed_chunks: Vec<(IVec2, Option<Chunk<Tile>>)>,
 }
 
 impl ExtractInstance for ExtractedTilemap {
