@@ -96,7 +96,6 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
     let tile_uv = vec2f(atlas_index_2d) / vec2f(tile_count);
     
     out.uv = tile_uv + vert_uv / vec2f(tile_count);
-    // out.uv = vert_uv;
     out.texture_index = atlas_indices[0];
 
     return out;

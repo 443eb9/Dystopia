@@ -1,6 +1,6 @@
 use bevy::app::{App, Plugin};
 
-use crate::transition::cosmos_to_body::CosmosToBodyTransitionPlugin;
+use crate::scene::transition::cosmos_to_body::CosmosToBodyTransitionPlugin;
 
 pub mod cosmos_to_body;
 

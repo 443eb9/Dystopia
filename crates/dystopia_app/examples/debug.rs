@@ -39,12 +39,12 @@ use dystopia_core::{
     input::camera::CameraBehavior,
     map::{
         bundle::TilemapBundle,
+        shape::rectangle,
         tilemap::{
             FlattenedTileIndex, Tile, TileAtlasIndex, TileFlip, TileIndex, TileRenderSize,
             TilemapStorage, TilemapTexture, TilemapTextureDescriptor, TilemapTilesets,
         },
     },
-    math::shape::icosahedron::{self, rectangle},
     schedule::state::{AssetState, GameState},
     sci::unit::Length,
     simulation::{MainCamera, SaveName, ViewScale},
@@ -186,7 +186,7 @@ fn debug_tilemap(
         let texture = if i_tile % 2 == 0 { 0 } else { 1 };
         let atlas = if index.element_sum() == 1 { 0 } else { 3 };
         tilemap.storgae.set(Tile {
-            index: TileIndex::from_direct(index, CHUNK_SIZE),
+            index: TileIndex::from_direct(index.as_ivec2(), CHUNK_SIZE),
             atlas_index: TileAtlasIndex::Static((texture, atlas).into()),
             // atlas_index: TileAtlasIndex::Animated {
             //     anim: if tri.element_sum() == 1 {
@@ -237,7 +237,7 @@ fn debug_rm_vis(
         if keyboard.just_pressed(KeyCode::Digit1) {
             for tile in rectangle(16, 9) {
                 if rng.gen_range(0.0..1.0) > 0.5 {
-                    storage.remove(tile);
+                    storage.remove(tile.as_ivec2());
                 }
             }
         }
@@ -245,7 +245,9 @@ fn debug_rm_vis(
         if keyboard.just_pressed(KeyCode::Digit2) {
             let chunks = rectangle(16, 9)
                 .into_iter()
-                .map(|i| FlattenedTileIndex::from_direct(i, storage.chunk_size()).chunk_index)
+                .map(|i| {
+                    FlattenedTileIndex::from_direct(i.as_ivec2(), storage.chunk_size()).chunk_index
+                })
                 .collect::<HashSet<_>>();
 
             for chunk in chunks {

@@ -9,7 +9,7 @@ pub enum ProcessState {
     Prepare,
 
     /// From the first frame of main menu to the last frame when
-    /// player presses "exit" or the game crashes. 
+    /// player presses "exit" or the game crashes.
     InGame,
 
     /// After the player presses "exit" or the game crashes. We should
@@ -21,7 +21,7 @@ pub enum ProcessState {
 #[derive(States, Debug, Default, Clone, PartialEq, Eq, Hash)]
 pub enum GameState {
     /// The game haven't started yet. Including the menu and other interfaces
-    /// like world generation settings. 
+    /// like world generation settings.
     #[default]
     Initialize,
 
@@ -42,4 +42,21 @@ pub enum AssetState {
 
     /// Loaded all assets.
     Finish,
+}
+
+/// The state that indicates which interface player is at.
+#[derive(States, Debug, Default, Clone, PartialEq, Eq, Hash)]
+pub enum SceneState {
+    /// The menu player see for the first time is main menu.
+    #[default]
+    MainMenu,
+
+    /// During the game, if player paused (pressed ESC), they'll see pause menu.
+    PauseMenu,
+
+    /// When in cosmos state, player will see different celestial bodies.
+    Cosmos,
+
+    /// When player is focusing on one celestial body.
+    Body,
 }
