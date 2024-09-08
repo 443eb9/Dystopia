@@ -67,8 +67,8 @@ impl KeyboardEventCenter {
     }
 
     #[inline]
-    pub fn is_activated(&self, event: usize) -> bool {
-        self.0[event / 8] & (1 << (event % 8)) == 1
+    pub fn is_activating(&self, event: usize) -> bool {
+        self.0[event / 8] & (1 << (event % 8)) != 0
     }
 }
 
@@ -100,6 +100,6 @@ pub mod condition {
     use crate::input::mapping::KeyboardEventCenter;
 
     pub fn keyboard_event_activating(event: usize) -> impl FnMut(Res<KeyboardEventCenter>) -> bool {
-        move |center| center.is_activated(event)
+        move |center| center.is_activating(event)
     }
 }

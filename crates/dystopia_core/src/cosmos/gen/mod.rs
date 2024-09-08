@@ -38,7 +38,7 @@ use crate::{
         physics,
         unit::{Length, Mass, RadiantFlux, Time, Unit},
     },
-    simulation::{GlobalRng, Ticker},
+    sim::{GlobalRng, Ticker},
 };
 
 mod distr;
@@ -402,17 +402,17 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
         star.children.pop();
     });
 
-    dbg!(
-        star.body.radius,
-        cur_planet,
-        closest,
-        chz_near,
-        chz_far,
-        farthest,
-        n_too_close,
-        n_chz,
-        n_too_far
-    );
+    // dbg!(
+    //     star.body.radius,
+    //     cur_planet,
+    //     closest,
+    //     chz_near,
+    //     chz_far,
+    //     farthest,
+    //     n_too_close,
+    //     n_chz,
+    //     n_too_far
+    // );
 }
 
 fn place_moons(rng: &mut impl Rng, planet: &mut PlanetData, planet_index: usize) {

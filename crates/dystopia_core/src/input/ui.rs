@@ -14,7 +14,7 @@ use crate::{
         Dragable, MouseClickCounter, MouseHovering, MouseInput, MouseMultiClickCooldown,
         RayTransparent, SceneCursorPosition, SceneMouseInput,
     },
-    simulation::CursorPosition,
+    sim::CursorPosition,
     ui::sync::UiSyncWithCursor,
 };
 
@@ -42,7 +42,7 @@ pub fn ui_mouse_hover_filterer(
     }
 }
 
-pub fn ui_mouse_input_filterer(
+pub(super) fn ui_mouse_input_filterer(
     mut commands: Commands,
     cursor_pos: Res<CursorPosition>,
     nodes_query: Query<

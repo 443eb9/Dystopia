@@ -10,7 +10,7 @@ use bevy::{
 
 use crate::{
     math::Direction,
-    simulation::{CursorPosition, MainCamera, ViewScale, WindowSize},
+    sim::{CursorPosition, MainCamera, ViewScale, WindowSize},
     ui::UiPos,
 };
 

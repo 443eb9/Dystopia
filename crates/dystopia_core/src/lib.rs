@@ -3,6 +3,7 @@
 use bevy::app::{App, Plugin};
 
 pub mod assets;
+pub mod body;
 pub mod cosmos;
 pub mod input;
 pub mod localization;
@@ -11,7 +12,7 @@ pub mod math;
 pub mod scene;
 pub mod schedule;
 pub mod sci;
-pub mod simulation;
+pub mod sim;
 pub mod ui;
 pub mod util;
 
@@ -32,9 +33,9 @@ impl Plugin for DystopiaCorePlugin {
             input::DystopiaInputPlugin,
             localization::DystopiaLocalizationPlugin,
             map::DystopiaMapPlugin,
-            schedule::DystopiaSchedulePlugin,
-            simulation::DystopiaSimulationPlugin,
             scene::DystopiaScenePlugin,
+            schedule::DystopiaSchedulePlugin,
+            sim::DystopiaSimulationPlugin,
             ui::DystopiaUiPlugin,
             util::DystopiaUtilPlugin,
         ));

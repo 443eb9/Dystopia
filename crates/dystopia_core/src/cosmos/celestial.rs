@@ -17,7 +17,7 @@ pub struct Cosmos {
 /// The index of this body in cosmos.
 ///
 /// You can fetch the detailed data using this index.
-#[derive(Component, Debug, Default, Deref)]
+#[derive(Component, Debug, Default, Clone, Copy, Deref)]
 pub struct BodyIndex(usize);
 
 impl BodyIndex {
@@ -29,7 +29,7 @@ impl BodyIndex {
 /// The index of this orbit in cosmos.
 ///
 /// You can fetch the detailed data using this index.
-#[derive(Component, Debug, Default, Deref)]
+#[derive(Component, Debug, Default, Clone, Copy, Deref)]
 pub struct OrbitIndex(usize);
 
 impl OrbitIndex {
@@ -92,7 +92,7 @@ pub enum BodyType {
 ///
 /// This won't be added to the body when they're spawned, as it will cause too much
 /// performance overhead.
-#[derive(Component, Deref, bevy::reflect::Reflect)]
+#[derive(Component, Deref, Clone, Copy)]
 pub struct BodyTilemap(Entity);
 
 impl BodyTilemap {

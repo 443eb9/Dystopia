@@ -5,17 +5,19 @@ use bevy::{
     input::ButtonState,
     math::Vec2,
     prelude::{
-        Commands, Component, Deref, DerefMut, Entity, Event, IntoSystemConfigs, MouseButton, Query,
-        Resource, With,
+        in_state, Commands, Component, Deref, DerefMut, Entity, Event, IntoSystemConfigs,
+        MouseButton, Query, Resource, With,
     },
 };
 
 use crate::{
     assets::app_ext::DystopiaAssetAppExt,
     input::mapping::{KeyboardEventCenter, RawInputMappingConfig},
+    schedule::state::ProcessState,
 };
 
 pub mod camera;
+pub mod event;
 pub mod ext;
 pub mod mapping;
 pub mod scene;
@@ -47,12 +49,16 @@ impl Plugin for DystopiaInputPlugin {
                     camera::camera_zoom,
                 ),
             )
+            .add_systems(
+                Update,
+                mapping::keyboard_input_handler.run_if(in_state(ProcessState::InGame)),
+            )
             .init_resource::<KeyboardEventCenter>()
             .init_resource::<SceneCursorPosition>();
     }
 }
 
-pub fn mouse_event_reset(
+fn mouse_event_reset(
     mut commands: Commands,
     hovering_query: Query<Entity, With<MouseHovering>>,
     input_query: Query<Entity, With<MouseInput>>,
@@ -66,7 +72,7 @@ pub fn mouse_event_reset(
     });
 }
 
-pub fn mouse_cooldown_counter_handler(
+fn mouse_cooldown_counter_handler(
     mut commands: Commands,
     mut multi_click_query: Query<(
         Entity,
@@ -115,11 +121,13 @@ pub struct MouseInput {
 }
 
 #[derive(Component)]
-pub struct MouseMultiClickCooldown {
+pub(super) struct MouseMultiClickCooldown {
     pub button: MouseButton,
     pub latest_click: Instant,
 }
 
+/// Counts the multi click count. This is valid only if you're detecting pressing
+/// buttons. Releasing button won't affect this.
 #[derive(Component, Default, Deref, DerefMut)]
 pub struct MouseClickCounter(u8);
 

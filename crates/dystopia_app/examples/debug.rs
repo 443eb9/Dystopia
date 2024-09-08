@@ -45,9 +45,9 @@ use dystopia_core::{
             TilemapStorage, TilemapTexture, TilemapTextureDescriptor, TilemapTilesets,
         },
     },
-    schedule::state::{AssetState, GameState},
+    schedule::state::{AssetState, GameState, SceneState},
     sci::unit::Length,
-    simulation::{MainCamera, SaveName, ViewScale},
+    sim::{MainCamera, SaveName, ViewScale},
     ui::{
         panel::body_data::BodyDataPanel, scrollable_list::ScrollableList, UiBuilder, FUSION_PIXEL,
     },
@@ -112,8 +112,8 @@ impl Plugin for DystopiaDebugPlugin {
             // .add_systems(Update, debug_rm_vis)
             .add_systems(Startup, setup_debug)
             .add_systems(Update, toggle_ui_debug)
-            .add_systems(Update, debug_rm_vis)
-            .add_systems(Update, test_multi_click);
+            // .add_systems(Update, test_multi_click)
+            .add_systems(Update, debug_rm_vis);
     }
 }
 
@@ -125,7 +125,11 @@ fn test_multi_click(query: Query<&MouseClickCounter, With<MouseInput>>) {
     }
 }
 
-fn debug_skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<GameState>>) {
+fn debug_skip_menu(
+    mut commands: Commands,
+    mut game_state: ResMut<NextState<GameState>>,
+    mut scene_state: ResMut<NextState<SceneState>>,
+) {
     commands.insert_resource(CosmosGenerationSettings {
         seed: 5,
         galaxy_radius: Length::LightYear(1.),
@@ -133,6 +137,7 @@ fn debug_skip_menu(mut commands: Commands, mut game_state: ResMut<NextState<Game
         num_stars: 1..2,
     });
     game_state.set(GameState::Initialize);
+    scene_state.set(SceneState::CosmosView);
     commands.insert_resource(SaveName::new("debug_save".to_string()));
     info!("Skipped menu");
 }

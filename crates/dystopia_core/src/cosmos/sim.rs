@@ -11,7 +11,7 @@ use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelI
 use crate::{
     cosmos::celestial::{BodyIndex, Cosmos, OrbitIndex, ShowOrbits},
     math,
-    simulation::{Ticker, ViewScale},
+    sim::{Ticker, ViewScale},
 };
 
 pub fn update_cosmos(mut cosmos: ResMut<Cosmos>, ticker: Res<Ticker>) {

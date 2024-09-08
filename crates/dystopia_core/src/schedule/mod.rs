@@ -5,7 +5,7 @@ use bevy::{
 
 use crate::schedule::{
     signal::InitializationSignal,
-    state::{AssetState, GameState, ProcessState},
+    state::{AssetState, GameState, ProcessState, SceneState},
 };
 
 pub mod signal;
@@ -18,6 +18,7 @@ impl Plugin for DystopiaSchedulePlugin {
         app.init_resource::<InitializationSignal>()
             .init_state::<ProcessState>()
             .init_state::<AssetState>()
-            .init_state::<GameState>();
+            .init_state::<GameState>()
+            .init_state::<SceneState>();
     }
 }

@@ -14,7 +14,7 @@ use crate::{
         MouseClickCounter, MouseHovering, MouseInput, MouseMultiClickCooldown, RayTransparent,
         SceneCursorPosition, SceneMouseInput,
     },
-    simulation::MainCamera,
+    sim::MainCamera,
 };
 
 #[derive(Component)]
@@ -46,7 +46,7 @@ pub fn scene_mouse_hover(
         });
 }
 
-pub fn scene_mouse_click(
+pub(super) fn scene_mouse_click(
     mut commands: Commands,
     colliders_query: Query<
         (

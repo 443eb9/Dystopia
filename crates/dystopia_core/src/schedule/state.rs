@@ -54,9 +54,9 @@ pub enum SceneState {
     /// During the game, if player paused (pressed ESC), they'll see pause menu.
     PauseMenu,
 
-    /// When in cosmos state, player will see different celestial bodies.
-    Cosmos,
+    /// When in cosmos view state, player will see different celestial bodies.
+    CosmosView,
 
     /// When player is focusing on one celestial body.
-    Body,
+    FocusingBody,
 }

@@ -41,7 +41,7 @@ use crate::{
             TilemapTilesets, TilemapTint,
         },
     },
-    simulation::MainCamera,
+    sim::MainCamera,
     util::chunking::Chunk,
 };
 

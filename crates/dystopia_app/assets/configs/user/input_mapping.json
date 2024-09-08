@@ -1,4 +1,10 @@
 {
-    "readable_mapping": {},
-    "keyboard_mapping": {}
+    "readable_mapping": {
+        "OPEN_COSMOS_VIEW": 0
+    },
+    "keyboard_mapping": {
+        "KeyM": [
+            "OPEN_COSMOS_VIEW"
+        ]
+    }
 }

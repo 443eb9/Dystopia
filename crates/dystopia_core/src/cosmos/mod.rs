@@ -64,7 +64,6 @@ impl Plugin for DystopiaCosmosPlugin {
                     .after(sim::update_cosmos),
             )
             .add_config::<RawCosmosStarPropertiesConfig>()
-            .add_config::<CosmosStarNamesConfig>()
-            .register_type::<celestial::BodyTilemap>();
+            .add_config::<CosmosStarNamesConfig>();
     }
 }

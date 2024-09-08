@@ -41,7 +41,7 @@ use crate::{
         },
     },
     schedule::state::GameState,
-    simulation::SaveName,
+    sim::SaveName,
     util::chunking::ChunkedStorage,
 };
 
