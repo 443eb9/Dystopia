@@ -4,9 +4,9 @@ use bevy::{
     input::ButtonState,
     log::warn,
     prelude::{
-        in_state, BuildChildren, ChildBuilder, Commands, Component, Deref, DerefMut, Entity,
-        EventReader, EventWriter, IntoSystemConfigs, MouseButton, NodeBundle, Query, Res, ResMut,
-        Resource, TextBundle, Visibility,
+        in_state, resource_exists, BuildChildren, ChildBuilder, Commands, Component, Deref,
+        DerefMut, Entity, EventReader, EventWriter, IntoSystemConfigs, MouseButton, NodeBundle,
+        Observer, Query, Res, ResMut, Resource, TextBundle, Visibility,
     },
     text::{Text, TextStyle},
     ui::{AlignItems, FlexDirection, JustifyContent, Style, Val},
@@ -37,8 +37,8 @@ use crate::{
     },
 };
 
-#[derive(Resource, Default, Deref, DerefMut)]
-pub struct BodyDataPanel(Option<Entity>);
+#[derive(Resource, Deref, DerefMut)]
+pub struct BodyDataPanel(Entity);
 
 gen_localizable_enum!(LBodyType, Star, Planet, Moon);
 gen_localizable_enum!(LDetailedBodyType, O, B, A, F, G, K, M, Rocky, Gas, Ice);
@@ -60,12 +60,11 @@ impl Plugin for BodyDataPanelPlugin {
                 Update,
                 (
                     pack_body_data_panel_data,
-                    update_ui_panel_data,
+                    update_ui_panel_data.run_if(resource_exists::<BodyDataPanel>),
                     potential_body_click_handler,
                 )
                     .run_if(in_state(GameState::Simulate)),
-            )
-            .init_resource::<BodyDataPanel>();
+            );
     }
 }
 
@@ -248,7 +247,7 @@ impl UiAggregate for BodyDataPanelData {
 
 fn pack_body_data_panel_data(
     mut commands: Commands,
-    mut panel: ResMut<BodyDataPanel>,
+    mut panel: Option<ResMut<BodyDataPanel>>,
     body_query: Query<(
         &Name,
         &BodyIndex,
@@ -264,9 +263,9 @@ fn pack_body_data_panel_data(
 ) {
     for target in target_change.read() {
         let Some(target) = **target else {
-            panel.inspect(|entity| {
-                commands.entity(*entity).insert(Visibility::Hidden);
-            });
+            if let Some(panel) = panel.as_deref() {
+                commands.entity(**panel).insert(Visibility::Hidden);
+            }
             continue;
         };
 
@@ -349,8 +348,10 @@ fn pack_body_data_panel_data(
             rotation_period: Time::wrap_with_si(orbit.rotation_period).into(),
         };
 
-        if let Some(panel) = **panel {
-            commands.entity(panel).insert((data, Visibility::Inherited));
+        if let Some(panel) = panel.as_deref() {
+            commands
+                .entity(**panel)
+                .insert((data, Visibility::Inherited));
         } else {
             let mut built = None;
             commands.entity(**global_root).with_children(|root| {
@@ -363,8 +364,12 @@ fn pack_body_data_panel_data(
                 ));
             });
 
-            **panel = built;
-            commands.entity(built.unwrap()).insert(data);
+            let panel = built.unwrap();
+            commands.insert_resource(BodyDataPanel(panel));
+            commands.spawn(
+                Observer::new(crate::ui::selecting::body::on_target_change).with_entity(panel),
+            );
+            commands.entity(panel).insert((data, Visibility::Inherited));
         }
     }
 }
@@ -376,8 +381,7 @@ fn update_ui_panel_data(
     mut panel_query: Query<(Entity, &mut BodyDataPanelData, &BuiltBodyDataPanelData)>,
     mut stack: ResMut<UiStack>,
 ) {
-    let Some((entity, mut data, built)) = (**panel).and_then(|e| panel_query.get_mut(e).ok())
-    else {
+    let Some((entity, mut data, built)) = panel_query.get_mut(**panel).ok() else {
         return;
     };
 

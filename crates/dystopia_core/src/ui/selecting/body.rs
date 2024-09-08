@@ -3,8 +3,8 @@ use bevy::{
     color::{ColorToComponents, LinearRgba},
     math::{Vec2, Vec3},
     prelude::{
-        Commands, Deref, Entity, EventReader, FromWorld, MaterialNodeBundle, OnInsert, Res,
-        Resource, Trigger, Visibility, World,
+        Commands, Deref, Entity, EventReader, FromWorld, MaterialNodeBundle, Observer, OnInsert,
+        Res, Resource, Trigger, Visibility, World,
     },
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
@@ -76,22 +76,11 @@ impl FromWorld for BodySelectingIndicator {
 }
 
 pub fn on_target_change(
-    trigger: Trigger<OnInsert, Visibility>,
+    _trigger: Trigger<OnInsert, Visibility>,
     mut commands: Commands,
     mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
-    indicator: Option<Res<BodySelectingIndicator>>,
-    body_data_panel: Option<Res<BodyDataPanel>>,
+    indicator: Res<BodySelectingIndicator>,
 ) {
-    if !body_data_panel
-        .is_some_and(|maybe_panel| maybe_panel.is_some_and(|panel| trigger.entity() == panel))
-    {
-        return;
-    }
-
-    let Some(indicator) = indicator else {
-        return;
-    };
-
     if target_change.is_empty() {
         commands.entity(**indicator).insert(Visibility::Hidden);
         return;
@@ -99,6 +88,7 @@ pub fn on_target_change(
 
     for change in target_change.read() {
         match **change {
+            // TODO indicator flashes when switching between bodies
             Some(target) => commands.entity(**indicator).insert((
                 UiSyncWithSceneEntity {
                     target,
@@ -113,10 +103,7 @@ pub fn on_target_change(
                     },
                     ..Default::default()
                 },
-                DeferredVisibilityChange {
-                    frames: 1,
-                    vis: Visibility::Visible,
-                },
+                Visibility::Visible,
             )),
             None => commands.entity(**indicator).insert(Visibility::Hidden),
         };

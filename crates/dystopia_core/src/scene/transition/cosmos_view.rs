@@ -1,4 +1,6 @@
-use bevy::prelude::{Commands, MouseButton, NextState, Query, ResMut, Visibility, With};
+use bevy::prelude::{
+    Commands, EventWriter, MouseButton, NextState, Query, Res, ResMut, Visibility, With,
+};
 
 use crate::{
     body::FocusingOn,
@@ -6,24 +8,32 @@ use crate::{
     impl_transition_plugin,
     input::{MouseClickCounter, MouseInput},
     schedule::state::SceneState,
+    ui::panel::{body_data::BodyDataPanel, PanelTargetChange},
 };
 
 impl_transition_plugin!(
     CosmosViewSceneTransitionPlugin,
     SceneState::CosmosView,
-    show_bodies,
+    enter_cosmos_view,
     handle_body_focusing,
-    hide_bodies
+    exit_cosmos_view
 );
 
-fn hide_bodies(mut bodies_query: Query<&mut Visibility, With<BodyIndex>>) {
-    dbg!();
+fn exit_cosmos_view(
+    mut commands: Commands,
+    mut bodies_query: Query<&mut Visibility, With<BodyIndex>>,
+    body_data_panel: Res<BodyDataPanel>,
+) {
     bodies_query
         .par_iter_mut()
         .for_each(|mut vis| *vis = Visibility::Hidden);
+
+    commands
+        .entity(**body_data_panel)
+        .insert(Visibility::Hidden);
 }
 
-fn show_bodies(mut bodies_query: Query<&mut Visibility, With<BodyIndex>>) {
+fn enter_cosmos_view(mut bodies_query: Query<&mut Visibility, With<BodyIndex>>) {
     bodies_query
         .par_iter_mut()
         .for_each(|mut vis| *vis = Visibility::Inherited);

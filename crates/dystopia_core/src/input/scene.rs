@@ -4,8 +4,8 @@ use avian2d::prelude::{Collider, Position, Rotation};
 use bevy::{
     math::Vec2,
     prelude::{
-        Camera, Commands, Component, Entity, EventReader, GlobalTransform, ParallelCommands,
-        Query, Res, With, Without,
+        Camera, Commands, Component, Entity, EventReader, GlobalTransform, ParallelCommands, Query,
+        Res, ViewVisibility, With, Without,
     },
 };
 
@@ -26,7 +26,10 @@ pub struct EntityOnDrag {
 pub fn scene_mouse_hover(
     commands: ParallelCommands,
     cursor_pos: Res<SceneCursorPosition>,
-    colliders_query: Query<(Entity, &Collider, &Position, &Rotation), Without<RayTransparent>>,
+    colliders_query: Query<
+        (Entity, &Collider, &Position, &Rotation, &ViewVisibility),
+        Without<RayTransparent>,
+    >,
     main_camera: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
 ) {
     let (camera, transform) = main_camera.single();
@@ -37,8 +40,8 @@ pub fn scene_mouse_hover(
 
     colliders_query
         .par_iter()
-        .for_each(|(entity, collider, position, rotation)| {
-            if collider.contains_point(*position, *rotation, cursor_pos) {
+        .for_each(|(entity, collider, position, rotation, vis)| {
+            if vis.get() && collider.contains_point(*position, *rotation, cursor_pos) {
                 commands.command_scope(|mut c| {
                     c.entity(entity).insert(MouseHovering);
                 });

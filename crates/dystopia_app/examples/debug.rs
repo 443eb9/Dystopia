@@ -78,7 +78,7 @@ fn main() {
             DystopiaDebugPlugin {
                 inspector: true,
                 ui_debug: true,
-                physics_debug: true,
+                physics_debug: false,
             },
             PhysicsPlugins::default(),
         ))
@@ -150,22 +150,22 @@ fn debug_tilemap(
     const CHUNK_SIZE: u32 = 8;
 
     let mut tilemap = TilemapBundle {
-        tile_render_size: TileRenderSize(Vec2::splat(32.)),
+        tile_render_size: TileRenderSize(Vec2 { x: 32., y: 16. }),
         storgae: TilemapStorage::new(CHUNK_SIZE),
         tilesets: TilemapTilesets::new(
             vec![
                 TilemapTexture {
                     handle: asset_server.load("images/test_tileset_a.png"),
                     desc: TilemapTextureDescriptor {
-                        size: UVec2 { x: 48, y: 32 },
-                        tile_size: UVec2::splat(16),
+                        size: UVec2 { x: 32, y: 32 },
+                        tile_size: UVec2 { x: 32, y: 16 },
                     },
                 },
                 TilemapTexture {
                     handle: asset_server.load("images/test_tileset_b.png"),
                     desc: TilemapTextureDescriptor {
-                        size: UVec2 { x: 48, y: 32 },
-                        tile_size: UVec2::splat(16),
+                        size: UVec2 { x: 32, y: 32 },
+                        tile_size: UVec2 { x: 32, y: 16 },
                     },
                 },
             ],
@@ -195,20 +195,9 @@ fn debug_tilemap(
 
     let mut rng = rand::thread_rng();
     for (i_tile, index) in rectangle(10, 10).into_iter().enumerate() {
-        let texture = if i_tile % 2 == 0 { 0 } else { 1 };
-        let atlas = if index.element_sum() == 1 { 0 } else { 3 };
         tilemap.storgae.set(Tile {
             index: TileIndex::from_direct(index.as_ivec2(), CHUNK_SIZE),
-            atlas_index: TileAtlasIndex::Static((texture, atlas).into()),
-            // atlas_index: TileAtlasIndex::Animated {
-            //     anim: if tri.element_sum() == 1 {
-            //         anim_dn
-            //     } else {
-            //         anim_up
-            //     },
-            //     offset_milisec: rng.gen_range(0..2000),
-            //     // offset_milisec: 0,
-            // },
+            atlas_index: TileAtlasIndex::Static((0, 0).into()),
             ..Default::default()
         });
     }

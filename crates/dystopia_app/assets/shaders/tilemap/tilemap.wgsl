@@ -67,13 +67,20 @@ fn vert_uv(corner: u32) -> vec2f {
     return uvs[corner];
 }
 
+fn get_origin(index: vec2f) -> vec2f {
+    return vec2<f32>(
+        (index.x - index.y - 1.) / 2. * tilemap.tile_render_size.x,
+        (index.x + index.y) / 2. * tilemap.tile_render_size.y
+    );
+}
+
 @vertex
 fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
     var out: TilemapVertexOutput;
 
     let corner = in.v_index % 4u;
     let offset = vert_offset(corner);
-    let position_os = vec4f((vec2f(in.tile_index) + offset) * tilemap.tile_render_size, 0., 1.);
+    let position_os = vec4f(get_origin(vec2f(in.tile_index)) + offset * tilemap.tile_render_size, 0., 1.);
 
     out.position_cs = view.clip_from_view * view.view_from_world * tilemap.world_from_model * position_os;
     out.tint = in.color;
@@ -96,6 +103,7 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
     let tile_uv = vec2f(atlas_index_2d) / vec2f(tile_count);
     
     out.uv = tile_uv + vert_uv / vec2f(tile_count);
+    // out.uv = vert_uv;
     out.texture_index = atlas_indices[0];
 
     return out;
@@ -103,5 +111,6 @@ fn vertex(in: TilemapVertexInput) -> TilemapVertexOutput {
 
 @fragment
 fn fragment(in: TilemapVertexOutput) -> @location(0) vec4f {
+    // return vec4f(in.uv, 0., 1.);
     return textureSample(texture, texture_sampler, in.uv, in.texture_index) * tilemap.tint;
 }
