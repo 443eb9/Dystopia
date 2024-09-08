@@ -2,16 +2,18 @@ use std::f64::consts::TAU;
 
 use bevy::{
     math::Vec3,
-    prelude::{DetectChanges, Query, Res, ResMut},
+    prelude::{DetectChanges, Query, Res, ResMut, With},
     render::view::Visibility,
     transform::components::Transform,
 };
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefMutIterator, ParallelIterator};
 
 use crate::{
+    body::FocusingOn,
     cosmos::celestial::{BodyIndex, Cosmos, OrbitIndex, ShowOrbits},
     math,
-    sim::{Ticker, ViewScale},
+    scene::transition::CameraRecoverTransform,
+    sim::{MainCamera, Ticker, ViewScale},
 };
 
 pub fn update_cosmos(mut cosmos: ResMut<Cosmos>, ticker: Res<Ticker>) {
@@ -85,4 +87,16 @@ pub fn manage_orbit_visibility(view_scale: Res<ViewScale>, mut show_orbits: ResM
     if view_scale.is_changed() {
         **show_orbits = **view_scale < 1.;
     }
+}
+
+pub fn sync_recover_position(
+    fousing_on: Res<FocusingOn>,
+    mut bodies_query: Query<&mut CameraRecoverTransform, With<BodyIndex>>,
+    camera_query: Query<&Transform, With<MainCamera>>,
+    view_scale: Res<ViewScale>,
+) {
+    bodies_query
+        .get_mut(fousing_on.entity)
+        .unwrap()
+        .update(camera_query.single(), &view_scale);
 }

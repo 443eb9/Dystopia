@@ -64,15 +64,15 @@ pub fn setup_camera(mut commands: Commands) {
             zoom_ratio: 0.005,
             zoom_max: 10.,
             zoom_min: 0.02,
-            zoom_smooth: 30.,
+            zoom_smooth: 50.,
         },
     ));
 }
 
 /// The only choice in this game if you want to scale the camera. It is
 /// not allowed to directly change the `scale` in
-/// [`OrthographicProjection`](bevy::render::camera::OrthographicProjection)
-/// or `scale` in [`Transform`](bevy::transform::components::Transform) or
+/// [`OrthographicProjection`](bevy::render::camera::OrthographicProjection),
+/// `scale` in [`Transform`](bevy::transform::components::Transform) or
 /// anything like them.
 #[derive(Resource, Deref, DerefMut)]
 pub struct ViewScale(f32);

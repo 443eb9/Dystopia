@@ -8,9 +8,12 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 
-use crate::cosmos::{
-    celestial::{BodyIndex, BodyType, Star, StarType},
-    mesh::{GiantBodyMaterial, RockyBodyMaterial, StarMaterial},
+use crate::{
+    cosmos::{
+        celestial::{BodyIndex, BodyType, Star, StarType},
+        mesh::{GiantBodyMaterial, RockyBodyMaterial, StarMaterial},
+    },
+    scene::transition::CameraRecoverTransform,
 };
 
 #[derive(Bundle, Default)]
@@ -23,6 +26,7 @@ pub struct StarBundle {
     pub material: Handle<StarMaterial>,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
+    pub recover_position: CameraRecoverTransform,
     pub collider: Collider,
     pub visibility: Visibility,
     pub inherited_visibility: InheritedVisibility,
@@ -38,6 +42,7 @@ pub struct RockyBodyBundle {
     pub material: Handle<RockyBodyMaterial>,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
+    pub recover_position: CameraRecoverTransform,
     pub collider: Collider,
     pub visibility: Visibility,
     pub inherited_visibility: InheritedVisibility,
@@ -53,6 +58,7 @@ pub struct GiantBodyBundle {
     pub material: Handle<GiantBodyMaterial>,
     pub transform: Transform,
     pub global_transform: GlobalTransform,
+    pub recover_position: CameraRecoverTransform,
     pub collider: Collider,
     pub visibility: Visibility,
     pub inherited_visibility: InheritedVisibility,

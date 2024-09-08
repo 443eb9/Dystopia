@@ -1,5 +1,6 @@
 use bevy::prelude::{
-    Commands, EventWriter, MouseButton, NextState, Query, Res, ResMut, Visibility, With,
+    Commands, Entity, MouseButton, NextState, Query, Res, ResMut, Transform, Visibility, With,
+    Without,
 };
 
 use crate::{
@@ -7,8 +8,10 @@ use crate::{
     cosmos::celestial::{BodyIndex, BodyTilemap},
     impl_transition_plugin,
     input::{MouseClickCounter, MouseInput},
+    scene::transition::CameraRecoverTransform,
     schedule::state::SceneState,
-    ui::panel::{body_data::BodyDataPanel, PanelTargetChange},
+    sim::{MainCamera, ViewScale},
+    ui::panel::body_data::BodyDataPanel,
 };
 
 impl_transition_plugin!(
@@ -23,6 +26,8 @@ fn exit_cosmos_view(
     mut commands: Commands,
     mut bodies_query: Query<&mut Visibility, With<BodyIndex>>,
     body_data_panel: Res<BodyDataPanel>,
+    camera_query: Query<&Transform, (With<MainCamera>, Without<BodyIndex>)>,
+    view_scale: Res<ViewScale>,
 ) {
     bodies_query
         .par_iter_mut()
@@ -31,25 +36,44 @@ fn exit_cosmos_view(
     commands
         .entity(**body_data_panel)
         .insert(Visibility::Hidden);
+
+    commands.insert_resource(CameraRecoverTransform::new(
+        &camera_query.single(),
+        &view_scale,
+    ));
 }
 
-fn enter_cosmos_view(mut bodies_query: Query<&mut Visibility, With<BodyIndex>>) {
+fn enter_cosmos_view(
+    mut bodies_query: Query<&mut Visibility, With<BodyIndex>>,
+    mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<BodyIndex>)>,
+    mut view_scale: ResMut<ViewScale>,
+    recover_transl: Res<CameraRecoverTransform>,
+) {
     bodies_query
         .par_iter_mut()
         .for_each(|mut vis| *vis = Visibility::Inherited);
+
+    recover_transl.recover(&mut camera_query.single_mut(), &mut view_scale);
 }
 
 pub fn handle_body_focusing(
     mut commands: Commands,
     mut scene_state: ResMut<NextState<SceneState>>,
-    double_clicked_query: Query<(&BodyIndex, &BodyTilemap, &MouseInput, &MouseClickCounter)>,
+    double_clicked_query: Query<(
+        Entity,
+        &BodyIndex,
+        &BodyTilemap,
+        &MouseInput,
+        &MouseClickCounter,
+    )>,
 ) {
-    for (body, tilemap, input, counter) in &double_clicked_query {
+    for (entity, body, tilemap, input, counter) in &double_clicked_query {
         if input.button != MouseButton::Left || **counter != 2 {
             continue;
         }
 
         commands.insert_resource(FocusingOn {
+            entity,
             body: *body,
             tilemap: *tilemap,
         });

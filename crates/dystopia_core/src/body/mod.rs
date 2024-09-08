@@ -1,6 +1,6 @@
 use bevy::{
     app::{App, Plugin},
-    prelude::Resource,
+    prelude::{Entity, Resource},
 };
 
 use crate::cosmos::celestial::{BodyIndex, BodyTilemap};
@@ -17,6 +17,7 @@ impl Plugin for DystopiaBodyPlugin {
 /// [`handle_body_focusing`](crate::scene::transition::cosmos_view::handle_body_focusing).
 #[derive(Resource)]
 pub struct FocusingOn {
+    pub entity: Entity,
     pub body: BodyIndex,
     pub tilemap: BodyTilemap,
 }

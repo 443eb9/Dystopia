@@ -18,7 +18,7 @@ use crate::{
         config::{CosmosStarNamesConfig, RawCosmosStarPropertiesConfig},
         mesh::{GiantBodyMaterial, OrbitMaterial, RockyBodyMaterial, StarMaterial},
     },
-    schedule::state::{AssetState, GameState},
+    schedule::state::{AssetState, GameState, SceneState},
 };
 
 pub mod bundle;
@@ -51,15 +51,20 @@ impl Plugin for DystopiaCosmosPlugin {
             )
             .add_systems(
                 Update,
-                sim::manage_orbit_visibility.run_if(in_state(GameState::Simulate)),
+                (
+                    sim::manage_orbit_visibility.run_if(in_state(SceneState::CosmosView)),
+                    sim::sync_recover_position.run_if(in_state(SceneState::FocusingBody)),
+                ),
             )
             .add_systems(
                 FixedUpdate,
-                sim::update_cosmos.run_if(in_state(GameState::Simulate)),
+                sim::update_cosmos.run_if(in_state(SceneState::CosmosView)),
             )
             .add_systems(
                 FixedUpdate,
                 (sim::sync_bodies, sim::sync_orbits)
+                    // should run even invisible as camera will use positions of bodies
+                    // when entering CosmosView
                     .run_if(in_state(GameState::Simulate))
                     .after(sim::update_cosmos),
             )

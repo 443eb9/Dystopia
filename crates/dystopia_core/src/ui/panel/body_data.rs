@@ -19,7 +19,7 @@ use crate::{
     input::{MouseInput, SceneMouseInput},
     localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
     merge_list,
-    schedule::state::GameState,
+    schedule::state::SceneState,
     sci::unit::{Length, Time, Unit},
     ui::{
         button::{ButtonClose, ButtonCloseStyle},
@@ -63,7 +63,7 @@ impl Plugin for BodyDataPanelPlugin {
                     update_ui_panel_data.run_if(resource_exists::<BodyDataPanel>),
                     potential_body_click_handler,
                 )
-                    .run_if(in_state(GameState::Simulate)),
+                    .run_if(in_state(SceneState::CosmosView)),
             );
     }
 }
@@ -247,7 +247,7 @@ impl UiAggregate for BodyDataPanelData {
 
 fn pack_body_data_panel_data(
     mut commands: Commands,
-    mut panel: Option<ResMut<BodyDataPanel>>,
+    panel: Option<ResMut<BodyDataPanel>>,
     body_query: Query<(
         &Name,
         &BodyIndex,

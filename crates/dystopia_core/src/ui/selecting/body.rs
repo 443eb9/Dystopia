@@ -3,8 +3,8 @@ use bevy::{
     color::{ColorToComponents, LinearRgba},
     math::{Vec2, Vec3},
     prelude::{
-        Commands, Deref, Entity, EventReader, FromWorld, MaterialNodeBundle, Observer, OnInsert,
-        Res, Resource, Trigger, Visibility, World,
+        Commands, Deref, Entity, EventReader, FromWorld, MaterialNodeBundle, OnInsert, Res,
+        Resource, Trigger, Visibility, World,
     },
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
@@ -17,7 +17,6 @@ use crate::{
         panel::{body_data::BodyDataPanel, PanelTargetChange},
         sync::{ScaleMethod, SyncWhenInvisibleOptions, UiSyncFilter, UiSyncWithSceneEntity},
     },
-    util::DeferredVisibilityChange,
 };
 
 #[derive(AsBindGroup, Asset, TypePath, Clone)]

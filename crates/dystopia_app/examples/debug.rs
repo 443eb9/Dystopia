@@ -11,8 +11,8 @@ use bevy::{
     log::info,
     math::{IVec3, UVec2, Vec2},
     prelude::{
-        BuildChildren, Camera2dBundle, Changed, Commands, Entity, KeyCode, Local, NodeBundle,
-        Query, Res, ResMut, TextBundle, With,
+        BuildChildren, Camera2dBundle, Changed, Commands, DetectChanges, Entity, KeyCode, Local,
+        NodeBundle, Query, Res, ResMut, TextBundle, With,
     },
     render::{
         camera::OrthographicProjection,
@@ -113,7 +113,14 @@ impl Plugin for DystopiaDebugPlugin {
             .add_systems(Startup, setup_debug)
             .add_systems(Update, toggle_ui_debug)
             // .add_systems(Update, test_multi_click)
+            // .add_systems(Update, debug_view_scale)
             .add_systems(Update, debug_rm_vis);
+    }
+}
+
+fn debug_view_scale(view_scale: Res<ViewScale>) {
+    if view_scale.is_changed() {
+        dbg!(**view_scale);
     }
 }
 
