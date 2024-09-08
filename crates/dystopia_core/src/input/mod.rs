@@ -12,14 +12,13 @@ use bevy::{
 
 use crate::{
     assets::app_ext::DystopiaAssetAppExt,
-    input::mapping::{KeyboardEventCenter, RawInputMappingConfig},
+    input::event::{KeyboardEventCenter, RawInputMappingConfig},
     schedule::state::ProcessState,
 };
 
 pub mod camera;
 pub mod event;
 pub mod ext;
-pub mod mapping;
 pub mod scene;
 pub mod ui;
 
@@ -51,7 +50,7 @@ impl Plugin for DystopiaInputPlugin {
             )
             .add_systems(
                 Update,
-                mapping::keyboard_input_handler.run_if(in_state(ProcessState::InGame)),
+                event::keyboard_input_handler.run_if(in_state(ProcessState::InGame)),
             )
             .init_resource::<KeyboardEventCenter>()
             .init_resource::<SceneCursorPosition>();

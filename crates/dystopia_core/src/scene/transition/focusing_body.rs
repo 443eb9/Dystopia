@@ -8,7 +8,7 @@ use crate::{
     body::FocusingOn,
     cosmos::celestial::{BodyIndex, BodyTilemap},
     impl_transition_plugin,
-    input::{event::OPEN_COSMOS_VIEW, mapping::condition::keyboard_event_activating},
+    input::{event::condition::keyboard_event_activating, event::OPEN_COSMOS_VIEW},
     map::tilemap::TilemapStorage,
     schedule::state::SceneState,
 };
