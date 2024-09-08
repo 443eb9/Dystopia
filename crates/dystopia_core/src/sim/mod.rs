@@ -1,6 +1,8 @@
 //! Global and core simulation part. For detailed simulation, check `sim.rs`s
 //! in corresponding modules.
 
+use std::sync::Arc;
+
 use bevy::{
     app::{App, FixedUpdate, Plugin, Startup, Update},
     ecs::query::QuerySingleError,
@@ -156,10 +158,10 @@ fn check_if_initialized(
 ///
 /// This resource only exists in [`GameState::Simulate`].
 #[derive(Resource, Deref, DerefMut)]
-pub struct SaveName(String);
+pub struct SaveName(Arc<str>);
 
 impl SaveName {
-    pub fn new(name: String) -> Self {
+    pub fn new(name: Arc<str>) -> Self {
         Self(name)
     }
 }

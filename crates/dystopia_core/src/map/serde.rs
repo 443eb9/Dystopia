@@ -284,7 +284,7 @@ fn save_tilemap(
                 .join("assets")
                 .join("data")
                 .join("saves")
-                .join(&**save_name)
+                .join(&***save_name)
                 .join("maps")
                 .join(format!("{}.tmb", **body_index));
 
@@ -337,19 +337,14 @@ fn load_tilemap(
     for (body_entity, body_index, _load_options, binary_tilemap_handle) in &to_load_query {
         if binary_tilemap_handle.is_none() {
             let path = construct_tmb_path(&save_name, **body_index);
-            // TODO use standard detecting way
-            if Path::new(&std::env::var("PROGRAM_ROOT").unwrap())
-                .join("assets")
-                .join(&path)
-                .exists()
-            {
+            if is_tilemap_exist_in_disk(&save_name, **body_index) {
                 commands
                     .entity(body_entity)
                     .insert(asset_server.load::<BinaryTilemap>(path));
             } else {
                 commands.entity(body_entity).remove::<ToLoadTilemap>();
                 error!(
-                    "Failed to load tilemap for body {} in save {}.",
+                    "Can't found tilemap for body {} in save {}.",
                     **body_index, **save_name
                 );
             }
@@ -449,4 +444,13 @@ fn construct_tmb_path(save_name: &str, body_index: usize) -> PathBuf {
         .join(save_name)
         .join("maps")
         .join(format!("{}.tmb", body_index))
+}
+
+// TODO use standard detecting way
+pub fn is_tilemap_exist_in_disk(save_name: &str, body_index: usize) -> bool {
+    let path = construct_tmb_path(save_name, body_index);
+    Path::new(&std::env::var("PROGRAM_ROOT").unwrap())
+        .join("assets")
+        .join(&path)
+        .exists()
 }

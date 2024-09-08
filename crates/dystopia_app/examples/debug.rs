@@ -108,13 +108,14 @@ impl Plugin for DystopiaDebugPlugin {
         app.add_plugins((FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin::default()))
             .add_systems(OnEnter(AssetState::Finish), debug_skip_menu)
             // .add_systems(OnEnter(GameState::Simulate), debug_ui)
-            .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
+            // .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
             // .add_systems(Update, debug_rm_vis)
             .add_systems(Startup, setup_debug)
             .add_systems(Update, toggle_ui_debug)
             // .add_systems(Update, test_multi_click)
             // .add_systems(Update, debug_view_scale)
-            .add_systems(Update, debug_rm_vis);
+            // .add_systems(Update, debug_rm_vis)
+            ;
     }
 }
 
@@ -145,7 +146,7 @@ fn debug_skip_menu(
     });
     game_state.set(GameState::Initialize);
     scene_state.set(SceneState::CosmosView);
-    commands.insert_resource(SaveName::new("debug_save".to_string()));
+    commands.insert_resource(SaveName::new("debug_save".into()));
     info!("Skipped menu");
 }
 

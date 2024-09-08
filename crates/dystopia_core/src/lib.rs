@@ -9,6 +9,7 @@ pub mod input;
 pub mod localization;
 pub mod map;
 pub mod math;
+pub mod serde;
 pub mod scene;
 pub mod schedule;
 pub mod sci;
@@ -33,6 +34,7 @@ impl Plugin for DystopiaCorePlugin {
             input::DystopiaInputPlugin,
             localization::DystopiaLocalizationPlugin,
             map::DystopiaMapPlugin,
+            serde::DystopiaSerdePlugin,
             scene::DystopiaScenePlugin,
             schedule::DystopiaSchedulePlugin,
             sim::DystopiaSimulationPlugin,
