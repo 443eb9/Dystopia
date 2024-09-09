@@ -3,8 +3,8 @@ use bevy::{
     color::{ColorToComponents, LinearRgba},
     math::{Vec2, Vec3},
     prelude::{
-        Commands, Deref, Entity, EventReader, FromWorld, MaterialNodeBundle, OnInsert, Res,
-        Resource, Trigger, Visibility, World,
+        Commands, Deref, Entity, EventReader, FromWorld, MaterialNodeBundle, Res, Resource,
+        Visibility, World,
     },
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
@@ -75,16 +75,10 @@ impl FromWorld for BodySelectingIndicator {
 }
 
 pub fn on_target_change(
-    _trigger: Trigger<OnInsert, Visibility>,
     mut commands: Commands,
     mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
     indicator: Res<BodySelectingIndicator>,
 ) {
-    if target_change.is_empty() {
-        commands.entity(**indicator).insert(Visibility::Hidden);
-        return;
-    }
-
     for change in target_change.read() {
         match **change {
             // TODO indicator flashes when switching between bodies

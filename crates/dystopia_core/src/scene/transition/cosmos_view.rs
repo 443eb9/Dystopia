@@ -1,6 +1,6 @@
 use bevy::prelude::{
-    Commands, Entity, MouseButton, NextState, Query, Res, ResMut, Transform, Visibility, With,
-    Without,
+    Commands, Entity, EventWriter, MouseButton, NextState, Query, Res, ResMut, Transform,
+    Visibility, With, Without,
 };
 
 use crate::{
@@ -11,7 +11,7 @@ use crate::{
     scene::transition::CameraRecoverTransform,
     schedule::state::SceneState,
     sim::{MainCamera, ViewScale},
-    ui::panel::body_data::BodyDataPanel,
+    ui::panel::{body_data::BodyDataPanel, PanelTargetChange},
 };
 
 impl_transition_plugin!(
@@ -25,17 +25,15 @@ impl_transition_plugin!(
 fn exit_cosmos_view(
     mut commands: Commands,
     mut bodies_query: Query<&mut Visibility, With<BodyIndex>>,
-    body_data_panel: Res<BodyDataPanel>,
     camera_query: Query<&Transform, (With<MainCamera>, Without<BodyIndex>)>,
     view_scale: Res<ViewScale>,
+    mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
 ) {
     bodies_query
         .par_iter_mut()
         .for_each(|mut vis| *vis = Visibility::Hidden);
 
-    commands
-        .entity(**body_data_panel)
-        .insert(Visibility::Hidden);
+    target_change.send(PanelTargetChange::none());
 
     commands.insert_resource(CameraRecoverTransform::new(
         &camera_query.single(),

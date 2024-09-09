@@ -6,7 +6,7 @@ use bevy::{
     prelude::{
         in_state, resource_exists, BuildChildren, ChildBuilder, Commands, Component, Deref,
         DerefMut, Entity, EventReader, EventWriter, IntoSystemConfigs, MouseButton, NodeBundle,
-        Observer, Query, Res, ResMut, Resource, TextBundle, Visibility,
+        Query, Res, ResMut, Resource, TextBundle, Visibility,
     },
     text::{Text, TextStyle},
     ui::{AlignItems, FlexDirection, JustifyContent, Style, Val},
@@ -19,7 +19,7 @@ use crate::{
     input::{MouseInput, SceneMouseInput},
     localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
     merge_list,
-    schedule::state::SceneState,
+    schedule::state::{GameState, SceneState},
     sci::unit::{Length, Time, Unit},
     ui::{
         button::{ButtonClose, ButtonCloseStyle},
@@ -59,11 +59,17 @@ impl Plugin for BodyDataPanelPlugin {
             .add_systems(
                 Update,
                 (
+                    potential_body_click_handler,
                     pack_body_data_panel_data,
                     update_ui_panel_data.run_if(resource_exists::<BodyDataPanel>),
-                    potential_body_click_handler,
                 )
                     .run_if(in_state(SceneState::CosmosView)),
+            )
+            .add_systems(
+                Update,
+                on_target_change
+                    .run_if(resource_exists::<BodyDataPanel>)
+                    .run_if(in_state(GameState::Simulate)),
             );
     }
 }
@@ -245,6 +251,34 @@ impl UiAggregate for BodyDataPanelData {
     }
 }
 
+fn potential_body_click_handler(
+    clicked_query: Query<(Entity, &MouseInput, Option<&BodyIndex>)>,
+    mut scene_mouse_input: EventReader<SceneMouseInput>,
+    mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
+) {
+    for input in scene_mouse_input.read() {
+        if !(input.button == MouseButton::Left && input.state == ButtonState::Pressed) {
+            continue;
+        }
+
+        let Some((target, input, body)) = clicked_query.iter().nth(0) else {
+            // Clicked on void
+            target_change.send(PanelTargetChange::none());
+            return;
+        };
+
+        if input.button == MouseButton::Left && input.state == ButtonState::Pressed {
+            target_change.send(if body.is_none() {
+                // Clicked on something that is not a body
+                PanelTargetChange::none()
+            } else {
+                // Clicked on body!
+                PanelTargetChange::some(target)
+            });
+        }
+    }
+}
+
 fn pack_body_data_panel_data(
     mut commands: Commands,
     panel: Option<ResMut<BodyDataPanel>>,
@@ -349,9 +383,7 @@ fn pack_body_data_panel_data(
         };
 
         if let Some(panel) = panel.as_deref() {
-            commands
-                .entity(**panel)
-                .insert((data, Visibility::Inherited));
+            commands.entity(**panel).insert(data);
         } else {
             let mut built = None;
             commands.entity(**global_root).with_children(|root| {
@@ -366,10 +398,7 @@ fn pack_body_data_panel_data(
 
             let panel = built.unwrap();
             commands.insert_resource(BodyDataPanel(panel));
-            commands.spawn(
-                Observer::new(crate::ui::selecting::body::on_target_change).with_entity(panel),
-            );
-            commands.entity(panel).insert((data, Visibility::Inherited));
+            commands.entity(panel).insert(data);
         }
     }
 }
@@ -392,30 +421,16 @@ fn update_ui_panel_data(
     commands.entity(entity).remove::<BodyDataPanelData>();
 }
 
-fn potential_body_click_handler(
-    clicked_query: Query<(Entity, &MouseInput, Option<&BodyIndex>)>,
-    mut scene_mouse_input: EventReader<SceneMouseInput>,
-    mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
+fn on_target_change(
+    mut commands: Commands,
+    mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
+    panel: ResMut<BodyDataPanel>,
 ) {
-    for input in scene_mouse_input.read() {
-        if !(input.button == MouseButton::Left && input.state == ButtonState::Pressed) {
-            continue;
-        }
-
-        let Some((target, input, body)) = clicked_query.iter().nth(0) else {
-            // Clicked on void
-            target_change.send(PanelTargetChange::none());
-            return;
-        };
-
-        if input.button == MouseButton::Left && input.state == ButtonState::Pressed {
-            target_change.send(if body.is_none() {
-                // Clicked on something that is not a body
-                PanelTargetChange::none()
-            } else {
-                // Clicked on body!
-                PanelTargetChange::some(target)
-            });
-        }
+    for change in target_change.read() {
+        commands.entity(**panel).insert(if change.is_some() {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        });
     }
 }
