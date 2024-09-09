@@ -47,5 +47,9 @@
     "LBodyDataPanelSectionType": {
         "BodyInfo": "Body",
         "OrbitInfo": "Orbit"
+    },
+    "LSceneTitle": {
+        "CosmosView": "Cosmos",
+        "FocusingBody": "On Body"
     }
 }

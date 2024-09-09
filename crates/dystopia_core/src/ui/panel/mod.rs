@@ -1,28 +1,29 @@
 use std::marker::PhantomData;
 
-use bevy::prelude::{Deref, Entity, Event};
+use bevy::prelude::{Deref, Entity, Event, Resource};
 
 pub mod body_data;
+pub mod scene_title;
 
 #[derive(Event, Deref)]
-pub struct PanelTargetChange<P> {
+pub struct PanelTargetChange<P: Resource, D = Entity> {
     #[deref]
-    target: Option<Entity>,
-    _marker: PhantomData<P>,
+    target: Option<D>,
+    _panel: PhantomData<P>,
 }
 
-impl<P> PanelTargetChange<P> {
-    pub fn some(target: Entity) -> Self {
+impl<P: Resource, D> PanelTargetChange<P, D> {
+    pub fn some(target: D) -> Self {
         Self {
             target: Some(target),
-            _marker: Default::default(),
+            _panel: Default::default(),
         }
     }
 
     pub fn none() -> Self {
         Self {
             target: None,
-            _marker: Default::default(),
+            _panel: Default::default(),
         }
     }
 }

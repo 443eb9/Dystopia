@@ -119,7 +119,6 @@ pub struct TilemapRenderer;
 
 pub fn extract_visible_tilemap_renderers(
     mut commands: Commands,
-    // TODO visibility system
     tilemaps: Extract<Query<(Entity, &Visibility, &InheritedVisibility), With<TilemapStorage>>>,
 ) {
     commands.insert_or_spawn_batch(

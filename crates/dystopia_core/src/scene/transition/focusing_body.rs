@@ -2,8 +2,12 @@
 //! - cosmos view: Interface where you will see bodies rotate around.
 //! - body view: The tilemap of a specific body.
 
-use bevy::prelude::{
-    Commands, NextState, Query, Res, ResMut, Transform, Visibility, With, Without,
+use bevy::{
+    color::LinearRgba,
+    core::Name,
+    prelude::{
+        Commands, EventWriter, NextState, Query, Res, ResMut, Transform, Visibility, With, Without,
+    },
 };
 
 use crate::{
@@ -15,6 +19,10 @@ use crate::{
     scene::transition::CameraRecoverTransform,
     schedule::state::SceneState,
     sim::{MainCamera, ViewScale},
+    ui::panel::{
+        scene_title::{LSceneTitle, SceneTitle, SceneTitleChange},
+        PanelTargetChange,
+    },
 };
 
 impl_transition_plugin!(
@@ -27,16 +35,24 @@ impl_transition_plugin!(
 
 fn focus_body(
     mut commands: Commands,
-    bodies_query: Query<(&CameraRecoverTransform, &BodyTilemap)>,
+    bodies_query: Query<(&CameraRecoverTransform, &BodyTilemap, &Name)>,
     focusing_on: Res<FocusingOn>,
     mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<BodyIndex>)>,
     mut view_scale: ResMut<ViewScale>,
+    mut target_change: EventWriter<PanelTargetChange<SceneTitle, SceneTitleChange>>,
 ) {
-    let (recover_transl, tilemap) = bodies_query.get(focusing_on.entity).unwrap();
+    let (recover_transl, tilemap, name) = bodies_query.get(focusing_on.entity).unwrap();
 
     commands.entity(**tilemap).insert(Visibility::Inherited);
-
+    target_change.send(PanelTargetChange::some(SceneTitleChange {
+        title: LSceneTitle::FocusingBody,
+        name: Some((name.to_string(), LinearRgba::BLUE)),
+    }));
     recover_transl.recover(&mut camera_query.single_mut(), &mut view_scale);
+}
+
+fn handle_cosmos_view_entering(mut scene_state: ResMut<NextState<SceneState>>) {
+    scene_state.set(SceneState::CosmosView);
 }
 
 fn unfocus_body(
@@ -46,8 +62,4 @@ fn unfocus_body(
 ) {
     *tilemaps_query.get_mut(*focusing_on.tilemap).unwrap() = Visibility::Hidden;
     commands.remove_resource::<FocusingOn>();
-}
-
-fn handle_cosmos_view_entering(mut scene_state: ResMut<NextState<SceneState>>) {
-    scene_state.set(SceneState::CosmosView);
 }

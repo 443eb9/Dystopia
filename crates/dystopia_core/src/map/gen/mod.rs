@@ -7,6 +7,7 @@ use bevy::{
     },
     render::render_resource::FilterMode,
 };
+use rand::RngCore;
 
 use crate::{
     cosmos::celestial::{BodyIndex, BodyTilemap},
@@ -77,7 +78,9 @@ pub fn generate_map(
         for index in rectangle(10, 10).into_iter() {
             tilemap.storgae.set(Tile {
                 index: TileIndex::from_direct(index.as_ivec2(), DEFAULT_CHUNK_SIZE),
-                atlas_index: TileAtlasIndex::Static((0, 0).into()),
+                atlas_index: TileAtlasIndex::Static(
+                    (rng.next_u32() % 2, rng.next_u32() % 2).into(),
+                ),
                 ..Default::default()
             });
         }

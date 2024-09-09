@@ -5,7 +5,6 @@ use bevy::{
     color::Alpha,
     math::{FloatExt, Vec3},
     prelude::{DetectChanges, Local, Query, Res, ResMut, With},
-    render::view::Visibility,
     time::{Real, Time},
     transform::components::Transform,
 };

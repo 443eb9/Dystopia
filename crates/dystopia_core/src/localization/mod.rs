@@ -10,7 +10,7 @@ use serde::Deserialize;
 
 use crate::{
     assets::{app_ext::DystopiaAssetAppExt, config::RawConfig},
-    ui::primitive::AsUiComponent,
+    ui::update::{AsOriginalComponent, AsUpdatableData},
 };
 
 pub mod macros;
@@ -52,6 +52,7 @@ pub trait LocalizableData {
     fn localize(&self, lang: &LangFile) -> String;
 }
 
+#[derive(Clone)]
 pub enum LocalizableDataWrapper<E: LocalizableData> {
     Raw(E),
     Localized(String),
@@ -63,20 +64,24 @@ impl<E: LocalizableData> From<E> for LocalizableDataWrapper<E> {
     }
 }
 
-impl<E: LocalizableData> From<&LocalizableDataWrapper<E>> for String {
-    fn from(value: &LocalizableDataWrapper<E>) -> Self {
+impl<E: LocalizableData> From<LocalizableDataWrapper<E>> for String {
+    fn from(value: LocalizableDataWrapper<E>) -> Self {
         value.localized()
     }
+}
+
+impl<E: LocalizableData> AsOriginalComponent for LocalizableDataWrapper<E> {
+    type OriginalComponent = Text;
+}
+
+impl<E: LocalizableData> AsUpdatableData for LocalizableDataWrapper<E> {
+    type UpdatableData = String;
 }
 
 impl<E: LocalizableData + Default> Default for LocalizableDataWrapper<E> {
     fn default() -> Self {
         Self::Raw(E::default())
     }
-}
-
-impl<E: LocalizableData> AsUiComponent for LocalizableDataWrapper<E> {
-    type UiComponent = Text;
 }
 
 impl<E: LocalizableData> LocalizableDataWrapper<E> {
@@ -92,7 +97,7 @@ impl<E: LocalizableData> LocalizableDataWrapper<E> {
     #[inline]
     pub fn localized(&self) -> String {
         match self {
-            LocalizableDataWrapper::Raw(_) => panic!("This data is not localized yet."),
+            LocalizableDataWrapper::Raw(_) => panic!("This data has not localized yet."),
             LocalizableDataWrapper::Localized(l) => l.to_owned(),
         }
     }

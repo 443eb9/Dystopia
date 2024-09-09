@@ -11,7 +11,11 @@ use crate::{
     scene::transition::CameraRecoverTransform,
     schedule::state::SceneState,
     sim::{MainCamera, ViewScale},
-    ui::panel::{body_data::BodyDataPanel, PanelTargetChange},
+    ui::panel::{
+        body_data::BodyDataPanel,
+        scene_title::{LSceneTitle, SceneTitle, SceneTitleChange},
+        PanelTargetChange,
+    },
 };
 
 impl_transition_plugin!(
@@ -22,36 +26,22 @@ impl_transition_plugin!(
     exit_cosmos_view
 );
 
-fn exit_cosmos_view(
-    mut commands: Commands,
-    mut bodies_query: Query<&mut Visibility, With<BodyIndex>>,
-    camera_query: Query<&Transform, (With<MainCamera>, Without<BodyIndex>)>,
-    view_scale: Res<ViewScale>,
-    mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
-) {
-    bodies_query
-        .par_iter_mut()
-        .for_each(|mut vis| *vis = Visibility::Hidden);
-
-    target_change.send(PanelTargetChange::none());
-
-    commands.insert_resource(CameraRecoverTransform::new(
-        &camera_query.single(),
-        &view_scale,
-    ));
-}
-
 fn enter_cosmos_view(
     mut bodies_query: Query<&mut Visibility, With<BodyIndex>>,
     mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<BodyIndex>)>,
     mut view_scale: ResMut<ViewScale>,
     recover_transl: Res<CameraRecoverTransform>,
+    mut target_change: EventWriter<PanelTargetChange<SceneTitle, SceneTitleChange>>,
 ) {
     bodies_query
         .par_iter_mut()
         .for_each(|mut vis| *vis = Visibility::Inherited);
 
     recover_transl.recover(&mut camera_query.single_mut(), &mut view_scale);
+    target_change.send(PanelTargetChange::some(SceneTitleChange {
+        title: LSceneTitle::CosmosView,
+        name: None,
+    }));
 }
 
 pub fn handle_body_focusing(
@@ -77,4 +67,23 @@ pub fn handle_body_focusing(
         });
         scene_state.set(SceneState::FocusingBody);
     }
+}
+
+fn exit_cosmos_view(
+    mut commands: Commands,
+    mut bodies_query: Query<&mut Visibility, With<BodyIndex>>,
+    camera_query: Query<&Transform, (With<MainCamera>, Without<BodyIndex>)>,
+    view_scale: Res<ViewScale>,
+    mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
+) {
+    bodies_query
+        .par_iter_mut()
+        .for_each(|mut vis| *vis = Visibility::Hidden);
+
+    target_change.send(PanelTargetChange::none());
+
+    commands.insert_resource(CameraRecoverTransform::new(
+        &camera_query.single(),
+        &view_scale,
+    ));
 }

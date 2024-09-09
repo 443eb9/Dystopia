@@ -8,8 +8,8 @@ use bevy::{
         in_state, ChildBuilder, Deref, DerefMut, Entity, FromWorld, IntoSystemConfigs, NodeBundle,
         Resource, World,
     },
-    text::{Font, Text},
-    ui::{Style, UiImage, UiMaterialPlugin, Val},
+    text::Font,
+    ui::{Style, UiMaterialPlugin, Val},
 };
 use thiserror::Error;
 
@@ -18,11 +18,13 @@ use crate::{
     math::{Axis, Direction},
     schedule::state::GameState,
     ui::{
-        panel::body_data::BodyDataPanelPlugin,
+        panel::{body_data::BodyDataPanelPlugin, scene_title::SceneTitlePlugin},
         selecting::{
             body::{BodySelectingIconMaterial, BodySelectingIndicator},
             SelectingUiPlugin,
         },
+        transition::MainTransitionablePlugin,
+        update::MainUpdatablePlugin,
     },
 };
 
@@ -31,10 +33,11 @@ pub mod ext;
 pub mod macros;
 pub mod panel;
 pub mod preset;
-pub mod primitive;
 pub mod scrollable_list;
 pub mod selecting;
 pub mod sync;
+pub mod transition;
+pub mod update;
 
 pub const FUSION_PIXEL: Handle<Font> = Handle::weak_from_u128(789641049865321367040365478967874510);
 
@@ -49,23 +52,16 @@ impl Plugin for DystopiaUiPlugin {
             |bytes: &[u8], _path: String| Font::try_from_bytes(bytes.to_vec()).unwrap()
         );
 
-        app.add_plugins(BodyDataPanelPlugin)
+        app.add_plugins((BodyDataPanelPlugin, SceneTitlePlugin))
             .add_plugins(SelectingUiPlugin)
             .add_plugins(UiMaterialPlugin::<BodySelectingIconMaterial>::default())
+            .add_plugins((MainUpdatablePlugin, MainTransitionablePlugin))
             .add_systems(
                 Update,
                 (
                     scrollable_list::init_structure,
                     scrollable_list::handle_scroll,
                     button::handle_button_close_click,
-                )
-                    .run_if(in_state(GameState::Simulate)),
-            )
-            .add_systems(
-                Update,
-                (
-                    primitive::update_primitive_data::<Text>,
-                    primitive::update_primitive_data::<UiImage>,
                 )
                     .run_if(in_state(GameState::Simulate)),
             )

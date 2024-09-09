@@ -1,3 +1,5 @@
+const SHARE_ENTITY: &str = "share_entity";
+
 pub fn expand_as_built_component_derive(input: syn::DeriveInput) -> proc_macro::TokenStream {
     let ty = &input.ident;
     let built_ty = syn::Ident::new(&format!("Built{}", ty), proc_macro2::Span::call_site());
@@ -8,10 +10,18 @@ pub fn expand_as_built_component_derive(input: syn::DeriveInput) -> proc_macro::
     let mut fields = Vec::with_capacity(data.fields.len());
     let mut updates = Vec::with_capacity(data.fields.len());
     let mut from_entities = Vec::with_capacity(data.fields.len());
+    let mut shared = 0usize;
+    let mut cur_entity = 0usize;
 
-    for (i_field, field) in data.fields.iter().enumerate() {
+    for field in &data.fields {
         let name = field.ident.as_ref().unwrap();
         let ty = &field.ty;
+        let share_entity_attr = field
+            .attrs
+            .iter()
+            .find(|attr| attr.path().get_ident().unwrap() == SHARE_ENTITY);
+        let entity_index_override =
+            share_entity_attr.map(|e| crate::helper::unpack_list(&e.meta).tokens.clone());
 
         fields.push(quote::quote! {
             pub #name: bevy::prelude::Entity,
@@ -19,16 +29,25 @@ pub fn expand_as_built_component_derive(input: syn::DeriveInput) -> proc_macro::
 
         updates.push(quote::quote! {
             commands.entity(self.#name).insert(
-                #core_crate::ui::primitive::PrimitiveDataUpdate::<
-                    <#ty as #core_crate::ui::primitive::AsUiComponent>::UiComponent
-                > {
-                    new: (&data.#name).into(),
-                }
+                #core_crate::ui::update::UiDataUpdate::<
+                    <#ty as #core_crate::ui::update::AsOriginalComponent>::OriginalComponent,
+                    <#ty as #core_crate::ui::update::AsUpdatableData>::UpdatableData,
+                >::new(
+                    data.#name.clone().into()
+                )
             );
         });
 
-        from_entities.push(quote::quote! {
-            #name: entities[#i_field],
+        from_entities.push(if let Some(ovrd) = entity_index_override {
+            shared += 1;
+            quote::quote! {
+                #name: entities[#ovrd].clone(),
+            }
+        } else {
+            cur_entity += 1;
+            quote::quote! {
+                #name: entities[#cur_entity - 1],
+            }
         });
     }
 
@@ -41,13 +60,14 @@ pub fn expand_as_built_component_derive(input: syn::DeriveInput) -> proc_macro::
         }
 
         impl #built_ty {
-            pub fn from_entities(entities: Vec<Entity>) -> Self {
+            pub fn from_entities(entities: Vec<bevy::prelude::Entity>) -> Self {
                 assert_eq!(
                     entities.len(),
-                    #fields_len,
-                    "Entities count {} not matching with fields cound {}",
+                    #fields_len - #shared,
+                    "Entities count {} not matching with fields cound {}. (With {} data sharing entities)",
                     entities.len(),
-                    #fields_len
+                    #fields_len,
+                    #shared,
                 );
 
                 Self {
@@ -60,7 +80,7 @@ pub fn expand_as_built_component_derive(input: syn::DeriveInput) -> proc_macro::
             }
         }
 
-        impl #core_crate::ui::primitive::AsBuiltComponent for #ty {
+        impl #core_crate::ui::update::AsBuiltComponent for #ty {
             const NUM_FIELDS: usize = #fields_len;
         }
     }

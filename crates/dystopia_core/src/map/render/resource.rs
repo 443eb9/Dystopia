@@ -9,11 +9,11 @@ use bevy::{
         globals::{GlobalsBuffer, GlobalsUniform},
         render_resource::{
             BindGroup, BindGroupEntries, BindGroupLayout, BindGroupLayoutEntries, BlendState,
-            BufferUsages, BufferVec, ColorTargetState, ColorWrites, FragmentState,
-            MultisampleState, PrimitiveState, RawBufferVec, RenderPipelineDescriptor,
-            SamplerBindingType, Shader, ShaderStages, ShaderType, SpecializedRenderPipeline,
-            TextureFormat, TextureSampleType, VertexBufferLayout, VertexFormat, VertexState,
-            VertexStepMode,
+            BufferUsages, BufferVec, ColorTargetState, ColorWrites, DynamicStorageBuffer,
+            DynamicUniformBuffer, FragmentState, GpuArrayBuffer, MultisampleState, PrimitiveState,
+            RawBufferVec, RenderPipelineDescriptor, SamplerBindingType, Shader, ShaderStages,
+            ShaderType, SpecializedRenderPipeline, TextureFormat, TextureSampleType,
+            VertexBufferLayout, VertexFormat, VertexState, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         texture::BevyDefault,
@@ -139,19 +139,10 @@ impl Default for TilemapIndividualRenderData {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct TilemapBuffers {
-    pub uniform: BufferVec<TilemapUniform>,
+    pub uniform: DynamicUniformBuffer<TilemapUniform>,
     pub individual: EntityHashMap<TilemapIndividualRenderData>,
-}
-
-impl Default for TilemapBuffers {
-    fn default() -> Self {
-        Self {
-            uniform: BufferVec::new(BufferUsages::UNIFORM),
-            individual: Default::default(),
-        }
-    }
 }
 
 #[derive(Resource, Default)]
@@ -168,7 +159,7 @@ pub fn prepare_buffers(
     buffers.uniform.clear();
 
     for (entity, tilemap) in tilemaps.iter() {
-        let offset = buffers.uniform.push(TilemapUniform {
+        let offset = buffers.uniform.push(&TilemapUniform {
             tile_render_size: tilemap.tile_render_size.0,
             world_from_model: tilemap.transform.compute_matrix(),
             tint: tilemap.tint.to_vec4(),
@@ -235,7 +226,7 @@ pub fn prepare_bind_groups(
         };
 
         let bind_group = render_device.create_bind_group(
-            format!("tilemap_bind_group_{:?}", tilemap).as_str(),
+            format!("tilemap_bind_group_{:?}", tilemap.index()).as_str(),
             &pipeline.layout,
             &BindGroupEntries::sequential((
                 view_uniforms.clone(),

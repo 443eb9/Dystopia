@@ -11,12 +11,13 @@ use bevy::{
     text::{Text, TextStyle},
     ui::{AlignItems, FlexDirection, JustifyContent, Style, Val},
 };
-use dystopia_derive::{AsBuiltComponent, LocalizableEnum, LocalizableStruct};
+use dystopia_derive::{AsBuiltComponent, LocalizableStruct};
 
 use crate::{
     cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, Planet, Star, StarType},
-    distributed_list_element, gen_localizable_enum,
+    distributed_list_element,
     input::{MouseInput, SceneMouseInput},
+    localizable_enum,
     localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
     merge_list,
     schedule::state::{GameState, SceneState},
@@ -31,25 +32,22 @@ use crate::{
             PANEL_TITLE_BACKGROUND, PANEL_TITLE_FONT_SIZE, PANEL_TITLE_HEIGHT,
             PANEL_TITLE_TEXT_COLOR, SECTION_MARGIN,
         },
-        primitive::AsBuiltComponent,
+        update::AsBuiltComponent,
         scrollable_list::ScrollableList,
         GlobalUiRoot, UiAggregate, UiBuilder, UiStack, FUSION_PIXEL,
     },
 };
 
-#[derive(Resource, Deref, DerefMut)]
-pub struct BodyDataPanel(Entity);
-
-gen_localizable_enum!(LBodyType, Star, Planet, Moon);
-gen_localizable_enum!(LDetailedBodyType, O, B, A, F, G, K, M, Rocky, Gas, Ice);
-gen_localizable_enum!(
+localizable_enum!(LBodyType, Star, Planet, Moon);
+localizable_enum!(LDetailedBodyType, O, B, A, F, G, K, M, Rocky, Gas, Ice);
+localizable_enum!(
     LBodyOrbitInfoType,
     ParentBody,
     OrbitRadius,
     SiderealPeriod,
     RotationPeriod
 );
-gen_localizable_enum!(LBodyDataPanelSectionType, BodyInfo, OrbitInfo);
+localizable_enum!(LBodyDataPanelSectionType, BodyInfo, OrbitInfo);
 
 pub struct BodyDataPanelPlugin;
 
@@ -61,7 +59,7 @@ impl Plugin for BodyDataPanelPlugin {
                 (
                     potential_body_click_handler,
                     pack_body_data_panel_data,
-                    update_ui_panel_data.run_if(resource_exists::<BodyDataPanel>),
+                    update_ui_panel.run_if(resource_exists::<BodyDataPanel>),
                 )
                     .run_if(in_state(SceneState::CosmosView)),
             )
@@ -73,6 +71,9 @@ impl Plugin for BodyDataPanelPlugin {
             );
     }
 }
+
+#[derive(Resource, Deref, DerefMut)]
+pub struct BodyDataPanel(Entity);
 
 #[derive(Component, AsBuiltComponent, LocalizableStruct)]
 struct BodyDataPanelData {
@@ -403,22 +404,22 @@ fn pack_body_data_panel_data(
     }
 }
 
-fn update_ui_panel_data(
+fn update_ui_panel(
     mut commands: Commands,
     lang: Res<LangFile>,
     panel: ResMut<BodyDataPanel>,
-    mut panel_query: Query<(Entity, &mut BodyDataPanelData, &BuiltBodyDataPanelData)>,
+    mut panel_query: Query<(&mut BodyDataPanelData, &BuiltBodyDataPanelData)>,
     mut stack: ResMut<UiStack>,
 ) {
-    let Some((entity, mut data, built)) = panel_query.get_mut(**panel).ok() else {
+    let panel = **panel;
+    let Some((mut data, built)) = panel_query.get_mut(panel).ok() else {
         return;
     };
 
     data.localize(&lang);
-
     built.update(&data, &mut commands);
-    stack.push(entity);
-    commands.entity(entity).remove::<BodyDataPanelData>();
+    stack.push(panel);
+    commands.entity(panel).remove::<BodyDataPanelData>();
 }
 
 fn on_target_change(
