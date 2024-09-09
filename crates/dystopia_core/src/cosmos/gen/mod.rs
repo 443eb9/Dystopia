@@ -24,8 +24,8 @@ use crate::{
     cosmos::{
         bundle::{GiantBodyBundle, RockyBodyBundle, StarBundle},
         celestial::{
-            BodyIndex, BodyType, CelestialBodyData, Cosmos, Moon, Orbit, OrbitIndex, Planet,
-            StarClass,
+            BodyColor, BodyIndex, BodyType, CelestialBodyData, Cosmos, Moon, Orbit, OrbitIndex,
+            Planet, StarClass,
         },
         config::{CosmosStarNamesConfig, CosmosStarPropertiesConfig},
         gen::distr::*,
@@ -555,6 +555,7 @@ fn spawn_bodies(
                     body_index: BodyIndex::new(bodies.len()),
                     mesh: mesh.clone(),
                     material: star_materials.add(StarMaterial { color: star.color }),
+                    color: BodyColor::new(star.color),
                     transform: Transform::from_scale(Vec3::splat(star.body.radius as f32 * 2.)),
                     collider: Collider::circle(0.5),
                     ..Default::default()
@@ -579,6 +580,7 @@ fn spawn_bodies(
                                 material: rocky_body_materials.add(RockyBodyMaterial {
                                     color: planet.color,
                                 }),
+                                color: BodyColor::new(planet.color),
                                 transform: Transform::from_scale(Vec3::splat(
                                     planet.body.radius as f32 * 2.,
                                 )),
@@ -601,6 +603,7 @@ fn spawn_bodies(
                                 material: giant_body_materials.add(GiantBodyMaterial {
                                     color: planet.color,
                                 }),
+                                color: BodyColor::new(planet.color),
                                 transform: Transform::from_scale(Vec3::splat(
                                     planet.body.radius as f32 * 2.,
                                 )),
@@ -628,6 +631,7 @@ fn spawn_bodies(
                                 mesh: mesh.clone(),
                                 material: rocky_body_materials
                                     .add(RockyBodyMaterial { color: moon.color }),
+                                color: BodyColor::new(moon.color),
                                 transform: Transform::from_scale(Vec3::splat(
                                     moon.body.radius as f32 * 2.,
                                 )),

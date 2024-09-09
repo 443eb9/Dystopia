@@ -1,6 +1,7 @@
 use bevy::{
+    color::LinearRgba,
     math::DVec2,
-    prelude::{Component, Deref, Entity, Resource},
+    prelude::{Component, Deref, DerefMut, Entity, Resource},
 };
 use serde::{Deserialize, Serialize};
 
@@ -143,3 +144,13 @@ pub struct Orbit {
 /// Stars, gas/ice giants and small asteroids are generally not landable.
 #[derive(Component)]
 pub struct Landable;
+
+/// The color of the body. Should keep synced with mesh color and orbit color.
+#[derive(Component, Default, Clone, Deref, DerefMut)]
+pub struct BodyColor(LinearRgba);
+
+impl BodyColor {
+    pub fn new(color: LinearRgba) -> Self {
+        Self(color)
+    }
+}

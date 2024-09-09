@@ -18,9 +18,12 @@ use crate::{
     localization::{LangFile, LocalizableDataWrapper, LocalizableStruct},
     schedule::state::GameState,
     ui::{
-        panel::PanelTargetChange, update::AsBuiltComponent, GlobalUiRoot, UiAggregate, UiBuilder,
-        FUSION_PIXEL,
+        panel::PanelTargetChange,
+        transition::UiTransition,
+        update::{AsBuiltComponent, UiDataUpdate},
+        GlobalUiRoot, UiAggregate, UiBuilder, FUSION_PIXEL,
     },
+    util::alpha::Alpha,
 };
 
 localizable_enum!(LSceneTitle, pub, CosmosView, FocusingBody);
@@ -40,6 +43,10 @@ impl Plugin for SceneTitlePlugin {
             );
     }
 }
+
+pub const TITLE_FADE_DURATION: f32 = 4.;
+pub const TITLE_FADE_DEFER: f32 = 1.5;
+pub const TITLE_FONT_SIZE: f32 = 48.;
 
 #[derive(Resource, Deref, DerefMut)]
 pub struct SceneTitle(Entity);
@@ -168,7 +175,7 @@ fn pack_scene_title_data(
                 built = Some(root.build_ui(
                     &data,
                     SceneTitleStyle {
-                        font_size: 48.,
+                        font_size: TITLE_FONT_SIZE,
                         color: LinearRgba::WHITE,
                     },
                 ));
@@ -194,5 +201,16 @@ fn update_scene_title(
 
     data.localize(&lang);
     built.update(&data, &mut commands);
+
     commands.entity(panel).remove::<SceneTitleData>();
+
+    let trans = UiTransition::<Text, _>::new(Alpha::new(0.), TITLE_FADE_DURATION, TITLE_FADE_DEFER);
+    commands
+        .entity(built.name)
+        .insert(trans.clone())
+        .insert(UiDataUpdate::<Text, _>::new(Alpha::new(1.)));
+    commands
+        .entity(built.title)
+        .insert(trans)
+        .insert(UiDataUpdate::<Text, _>::new(Alpha::new(1.)));
 }

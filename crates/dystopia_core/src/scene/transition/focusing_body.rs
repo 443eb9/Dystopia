@@ -3,7 +3,6 @@
 //! - body view: The tilemap of a specific body.
 
 use bevy::{
-    color::LinearRgba,
     core::Name,
     prelude::{
         Commands, EventWriter, NextState, Query, Res, ResMut, Transform, Visibility, With, Without,
@@ -12,7 +11,7 @@ use bevy::{
 
 use crate::{
     body::FocusingOn,
-    cosmos::celestial::{BodyIndex, BodyTilemap},
+    cosmos::celestial::{BodyColor, BodyIndex, BodyTilemap},
     impl_transition_plugin,
     input::event::{condition::keyboard_event_activating, OPEN_COSMOS_VIEW},
     map::tilemap::TilemapStorage,
@@ -35,18 +34,18 @@ impl_transition_plugin!(
 
 fn focus_body(
     mut commands: Commands,
-    bodies_query: Query<(&CameraRecoverTransform, &BodyTilemap, &Name)>,
+    bodies_query: Query<(&CameraRecoverTransform, &BodyTilemap, &Name, &BodyColor)>,
     focusing_on: Res<FocusingOn>,
     mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<BodyIndex>)>,
     mut view_scale: ResMut<ViewScale>,
     mut target_change: EventWriter<PanelTargetChange<SceneTitle, SceneTitleChange>>,
 ) {
-    let (recover_transl, tilemap, name) = bodies_query.get(focusing_on.entity).unwrap();
+    let (recover_transl, tilemap, name, color) = bodies_query.get(focusing_on.entity).unwrap();
 
     commands.entity(**tilemap).insert(Visibility::Inherited);
     target_change.send(PanelTargetChange::some(SceneTitleChange {
         title: LSceneTitle::FocusingBody,
-        name: Some((name.to_string(), LinearRgba::BLUE)),
+        name: Some((name.to_string(), **color)),
     }));
     recover_transl.recover(&mut camera_query.single_mut(), &mut view_scale);
 }

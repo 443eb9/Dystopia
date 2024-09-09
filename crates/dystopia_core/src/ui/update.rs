@@ -9,6 +9,8 @@ use bevy::{
     ui::UiImage,
 };
 
+use crate::util::alpha::Alpha;
+
 pub struct MainUpdatablePlugin;
 
 impl Plugin for MainUpdatablePlugin {
@@ -18,6 +20,7 @@ impl Plugin for MainUpdatablePlugin {
             UpdatablePlugin::<Text, (usize, String)>::default(),
             UpdatablePlugin::<Text, LinearRgba>::default(),
             UpdatablePlugin::<Text, (usize, LinearRgba)>::default(),
+            UpdatablePlugin::<Text, Alpha>::default(),
             UpdatablePlugin::<UiImage, Handle<Image>>::default(),
         ));
     }
@@ -34,7 +37,7 @@ impl<U, P> Default for UpdatablePlugin<U, P> {
 impl<U, P> Plugin for UpdatablePlugin<U, P>
 where
     U: DataUpdatableUi<P>,
-    P: AsOriginalComponent + Clone + Send + Sync + 'static,
+    P: Clone + Send + Sync + 'static,
 {
     fn build(&self, app: &mut App) {
         app.add_systems(Update, ui_data_updater::<U, P>);
@@ -70,10 +73,7 @@ impl AsUpdatableData for LinearRgba {
     type UpdatableData = Self;
 }
 
-pub trait DataUpdatableUi<P>: Component
-where
-    P: AsOriginalComponent,
-{
+pub trait DataUpdatableUi<P>: Component {
     fn update(&mut self, data: P);
 }
 
@@ -109,7 +109,9 @@ impl AsOriginalComponent for (usize, LinearRgba) {
 
 impl DataUpdatableUi<LinearRgba> for Text {
     fn update(&mut self, data: LinearRgba) {
-        self.sections[0].style.color = data.into();
+        for section in &mut self.sections {
+            section.style.color = data.into();
+        }
     }
 }
 
@@ -127,11 +129,19 @@ impl AsOriginalComponent for Handle<Image> {
     type OriginalComponent = UiImage;
 }
 
+impl DataUpdatableUi<Alpha> for Text {
+    fn update(&mut self, data: Alpha) {
+        for section in &mut self.sections {
+            bevy::prelude::Alpha::set_alpha(&mut section.style.color, *data);
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct UiDataUpdate<U, P>
 where
     U: DataUpdatableUi<P>,
-    P: AsOriginalComponent + Clone + Send + Sync + 'static,
+    P: Clone + Send + Sync + 'static,
 {
     new: P,
     _marker: PhantomData<U>,
@@ -140,7 +150,7 @@ where
 impl<U, P> UiDataUpdate<U, P>
 where
     U: DataUpdatableUi<P>,
-    P: AsOriginalComponent + Clone + Send + Sync + 'static,
+    P: Clone + Send + Sync + 'static,
 {
     pub fn new(new: P) -> Self {
         Self {
@@ -155,7 +165,7 @@ fn ui_data_updater<U, P>(
     mut updates_query: Query<(Entity, &UiDataUpdate<U, P>, &mut U)>,
 ) where
     U: DataUpdatableUi<P>,
-    P: AsOriginalComponent + Clone + Send + Sync + 'static,
+    P: Clone + Send + Sync + 'static,
 {
     updates_query
         .par_iter_mut()

@@ -1,6 +1,9 @@
-use bevy::prelude::{
-    Commands, Entity, EventWriter, MouseButton, NextState, Query, Res, ResMut, Transform,
-    Visibility, With, Without,
+use bevy::{
+    color::LinearRgba,
+    prelude::{
+        Commands, Entity, EventWriter, MouseButton, NextState, Query, Res, ResMut, Transform,
+        Visibility, With, Without,
+    },
 };
 
 use crate::{
@@ -10,7 +13,7 @@ use crate::{
     input::{MouseClickCounter, MouseInput},
     scene::transition::CameraRecoverTransform,
     schedule::state::SceneState,
-    sim::{MainCamera, ViewScale},
+    sim::{MainCamera, SaveName, ViewScale},
     ui::panel::{
         body_data::BodyDataPanel,
         scene_title::{LSceneTitle, SceneTitle, SceneTitleChange},
@@ -32,6 +35,7 @@ fn enter_cosmos_view(
     mut view_scale: ResMut<ViewScale>,
     recover_transl: Res<CameraRecoverTransform>,
     mut target_change: EventWriter<PanelTargetChange<SceneTitle, SceneTitleChange>>,
+    save_name: Res<SaveName>,
 ) {
     bodies_query
         .par_iter_mut()
@@ -40,7 +44,7 @@ fn enter_cosmos_view(
     recover_transl.recover(&mut camera_query.single_mut(), &mut view_scale);
     target_change.send(PanelTargetChange::some(SceneTitleChange {
         title: LSceneTitle::CosmosView,
-        name: None,
+        name: Some((save_name.to_string(), LinearRgba::WHITE)),
     }));
 }
 
