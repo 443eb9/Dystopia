@@ -110,8 +110,8 @@ tuple_struct_new!(BodyColor, LinearRgba);
 
 /// The temperature of the body, in Kelvin.
 #[derive(Component, Default, Clone, Deref, DerefMut)]
-pub struct BodyTemperature(f32);
-tuple_struct_new!(BodyTemperature, f32);
+pub struct BodyTemperature(f64);
+tuple_struct_new!(BodyTemperature, f64);
 
 /// The corresponding tilemap to the body.
 ///

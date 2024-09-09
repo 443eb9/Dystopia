@@ -24,8 +24,8 @@ use crate::{
     cosmos::{
         bundle::{GiantBodyBundle, RockyBodyBundle, StarBundle},
         celestial::{
-            BodyColor, BodyIndex, BodyType, CelestialBodyData, Cosmos, Moon, Orbit, OrbitIndex,
-            Planet, StarClass,
+            BodyColor, BodyIndex, BodyTemperature, BodyType, CelestialBodyData, Cosmos, Moon,
+            Orbit, OrbitIndex, Planet, StarClass,
         },
         config::{CosmosStarNamesConfig, CosmosStarPropertiesConfig},
         gen::distr::*,
@@ -49,6 +49,7 @@ pub struct StarData {
     pub body: CelestialBodyData,
     pub class: StarClass,
     pub luminosity: f64,
+    pub effective_temp: f64,
     pub color: LinearRgba,
     pub children: Vec<PlanetData>,
 }
@@ -58,7 +59,7 @@ pub struct PlanetData {
     pub body: CelestialBodyData,
     pub ty: BodyType,
     pub orbit: Orbit,
-    pub effective_temp: f32,
+    pub effective_temp: f64,
     pub color: LinearRgba,
     pub children: Vec<MoonData>,
 }
@@ -67,7 +68,7 @@ pub struct PlanetData {
 pub struct MoonData {
     pub body: CelestialBodyData,
     pub orbit: Orbit,
-    pub effective_temp: f32,
+    pub effective_temp: f64,
     pub color: LinearRgba,
 }
 
@@ -139,6 +140,10 @@ pub fn generate_cosmos(
 
     let (orbits, orbit_materials) = generate_orbits(&mut rng, &mut stars, &mut orbit_materials);
 
+    info!("Start calculating effective temperature");
+
+    calculate_effective_temp(&mut stars, &mut rng);
+
     info!("Start spawning all bodies and orbits into game...");
 
     // Shapes are implemented in shader, so we only need a square here.
@@ -198,6 +203,9 @@ fn generate_stars(
         let luminosity = floor
             .luminosity
             .lerp(ceil.luminosity, rng.gen_range(0f64..1f64));
+        let effective_temp = floor
+            .effective_temp
+            .lerp(ceil.effective_temp, rng.gen_range(0f64..1f64));
 
         let name = available_names
             .swap_remove_index(rng.gen_range(0..available_names.len()))
@@ -212,6 +220,7 @@ fn generate_stars(
             },
             class: floor.class,
             luminosity,
+            effective_temp,
             color: floor.color.lerp(ceil.color, rng.gen_range(0f32..1f32)),
             children: Vec::new(),
         });
@@ -533,6 +542,23 @@ fn generate_orbits(
     (orbits, orbit_materials)
 }
 
+fn calculate_effective_temp(stars: &mut Vec<StarData>, rng: &mut impl Rng) {
+    for star in stars {
+        for planet in &mut star.children {
+            planet.effective_temp =
+                physics::planet_temp_at_dist(star.luminosity, planet.orbit.radius, 0.5);
+
+            for moon in &mut planet.children {
+                moon.effective_temp = physics::planet_temp_at_dist(
+                    star.luminosity,
+                    planet.orbit.radius * rng.gen_range(0.8..1.2),
+                    0.5,
+                );
+            }
+        }
+    }
+}
+
 fn spawn_bodies(
     commands: &mut Commands,
     stars: Vec<StarData>,
@@ -553,6 +579,7 @@ fn spawn_bodies(
                     star_ty: star.class.ty,
                     name: Name::new(star.name.clone()),
                     body_index: BodyIndex::new(bodies.len()),
+                    temperature: BodyTemperature::new(star.effective_temp),
                     mesh: mesh.clone(),
                     material: star_materials.add(StarMaterial { color: star.color }),
                     color: BodyColor::new(star.color),
@@ -576,6 +603,7 @@ fn spawn_bodies(
                                 name: Name::new(format!("{} {}", &star.name, i_children)),
                                 ty: planet.ty,
                                 body_index: BodyIndex::new(bodies.len()),
+                                temperature: BodyTemperature::new(planet.effective_temp),
                                 mesh: mesh.clone(),
                                 material: rocky_body_materials.add(RockyBodyMaterial {
                                     color: planet.color,
@@ -599,6 +627,7 @@ fn spawn_bodies(
                                 name: Name::new(format!("{} {}", &star.name, i_children)),
                                 ty: planet.ty,
                                 body_index: BodyIndex::new(bodies.len()),
+                                temperature: BodyTemperature::new(planet.effective_temp),
                                 mesh: mesh.clone(),
                                 material: giant_body_materials.add(GiantBodyMaterial {
                                     color: planet.color,
@@ -628,6 +657,7 @@ fn spawn_bodies(
                                 name: Name::new(format!("{} {}", star.name, i_children)),
                                 ty: BodyType::Rocky,
                                 body_index: BodyIndex::new(bodies.len()),
+                                temperature: BodyTemperature::new(moon.effective_temp),
                                 mesh: mesh.clone(),
                                 material: rocky_body_materials
                                     .add(RockyBodyMaterial { color: moon.color }),
