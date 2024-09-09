@@ -14,7 +14,7 @@ use bevy::{
 use crate::{
     assets::app_ext::DystopiaAssetAppExt,
     cosmos::{
-        celestial::ShowOrbits,
+        celestial::OrbitsVisibility,
         config::{CosmosStarNamesConfig, RawCosmosStarPropertiesConfig},
         mesh::{GiantBodyMaterial, OrbitMaterial, RockyBodyMaterial, StarMaterial},
     },
@@ -38,7 +38,7 @@ impl Plugin for DystopiaCosmosPlugin {
         app.init_asset::<StarMaterial>()
             .init_asset::<RockyBodyMaterial>()
             .init_asset::<GiantBodyMaterial>()
-            .init_resource::<ShowOrbits>()
+            .init_resource::<OrbitsVisibility>()
             .add_plugins(Material2dPlugin::<StarMaterial>::default())
             .add_plugins(Material2dPlugin::<RockyBodyMaterial>::default())
             .add_plugins(Material2dPlugin::<GiantBodyMaterial>::default())

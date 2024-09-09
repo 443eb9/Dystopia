@@ -486,48 +486,48 @@ fn generate_orbits(
         orbit_materials.push(None);
         cur_body += 1;
 
-        // for planet in &mut star.children {
-        //     let distance = planet.body.pos.length();
-        //     let i_planet = cur_body;
-        //     orbits.push(Orbit {
-        //         initial_progress: rng.gen_range(0f64..TAU),
-        //         center_id: i_star,
-        //         center: Default::default(),
-        //         radius: distance,
-        //         sidereal_period: Time::Second(
-        //             (TAU / physics::angular_vel_between(star.body.mass, distance)) as u64,
-        //         )
-        //         .to_si(),
-        //         rotation_period: Time::Second(rng.gen_range(100..1800)).to_si(),
-        //     });
-        //     orbit_materials.push(Some(orbit_material_assets.add(OrbitMaterial {
-        //         color: planet.color.with_alpha(0.5),
-        //         width: ORBIT_WIDTH,
-        //         radius: distance as f32,
-        //     })));
-        //     cur_body += 1;
+        for planet in &mut star.children {
+            let distance = planet.body.pos.length();
+            let i_planet = cur_body;
+            orbits.push(Orbit {
+                initial_progress: rng.gen_range(0f64..TAU),
+                center_id: i_star,
+                center: Default::default(),
+                radius: distance,
+                sidereal_period: Time::Second(
+                    (TAU / physics::angular_vel_between(star.body.mass, distance)) as u64,
+                )
+                .to_si(),
+                rotation_period: Time::Second(rng.gen_range(100..1800)).to_si(),
+            });
+            orbit_materials.push(Some(orbit_material_assets.add(OrbitMaterial {
+                color: planet.color.with_alpha(0.5),
+                width: ORBIT_WIDTH,
+                radius: distance as f32,
+            })));
+            cur_body += 1;
 
-        //     for moon in &mut planet.children {
-        //         let distance = moon.body.pos.length();
-        //         orbits.push(Orbit {
-        //             initial_progress: rng.gen_range(0f64..TAU),
-        //             center_id: i_planet,
-        //             center: Default::default(),
-        //             radius: distance,
-        //             sidereal_period: Time::Second(
-        //                 (TAU / physics::angular_vel_between(planet.body.mass, distance)) as u64,
-        //             )
-        //             .to_si(),
-        //             rotation_period: Time::Second(rng.gen_range(100..1800)).to_si(),
-        //         });
-        //         orbit_materials.push(Some(orbit_material_assets.add(OrbitMaterial {
-        //             color: moon.color.with_alpha(0.5),
-        //             width: ORBIT_WIDTH,
-        //             radius: distance as f32,
-        //         })));
-        //         cur_body += 1;
-        //     }
-        // }
+            for moon in &mut planet.children {
+                let distance = moon.body.pos.length();
+                orbits.push(Orbit {
+                    initial_progress: rng.gen_range(0f64..TAU),
+                    center_id: i_planet,
+                    center: Default::default(),
+                    radius: distance,
+                    sidereal_period: Time::Second(
+                        (TAU / physics::angular_vel_between(planet.body.mass, distance)) as u64,
+                    )
+                    .to_si(),
+                    rotation_period: Time::Second(rng.gen_range(100..1800)).to_si(),
+                });
+                orbit_materials.push(Some(orbit_material_assets.add(OrbitMaterial {
+                    color: moon.color.with_alpha(0.5),
+                    width: ORBIT_WIDTH,
+                    radius: distance as f32,
+                })));
+                cur_body += 1;
+            }
+        }
     }
 
     (orbits, orbit_materials)
@@ -566,84 +566,84 @@ fn spawn_bodies(
 
         let mut i_children = 0;
 
-        // for planet in star.children {
-        //     if planet.ty == BodyType::Rocky {
-        //         entities.push(
-        //             commands
-        //                 .spawn((
-        //                     RockyBodyBundle {
-        //                         name: Name::new(format!("{} {}", &star.name, i_children)),
-        //                         ty: planet.ty,
-        //                         body_index: BodyIndex::new(bodies.len()),
-        //                         mesh: mesh.clone(),
-        //                         material: rocky_body_materials.add(RockyBodyMaterial {
-        //                             color: planet.color,
-        //                         }),
-        //                         transform: Transform::from_scale(Vec3::splat(
-        //                             planet.body.radius as f32 * 2.,
-        //                         )),
-        //                         collider: Collider::circle(0.5),
-        //                         ..Default::default()
-        //                     },
-        //                     Planet,
-        //                 ))
-        //                 .id(),
-        //         );
-        //     } else {
-        //         entities.push(
-        //             commands
-        //                 .spawn((
-        //                     GiantBodyBundle {
-        //                         name: Name::new(format!("{} {}", &star.name, i_children)),
-        //                         ty: planet.ty,
-        //                         body_index: BodyIndex::new(bodies.len()),
-        //                         mesh: mesh.clone(),
-        //                         material: giant_body_materials.add(GiantBodyMaterial {
-        //                             color: planet.color,
-        //                         }),
-        //                         transform: Transform::from_scale(Vec3::splat(
-        //                             planet.body.radius as f32 * 2.,
-        //                         )),
-        //                         collider: Collider::circle(0.5),
-        //                         ..Default::default()
-        //                     },
-        //                     Planet,
-        //                 ))
-        //                 .id(),
-        //         );
-        //     }
+        for planet in star.children {
+            if planet.ty == BodyType::Rocky {
+                entities.push(
+                    commands
+                        .spawn((
+                            RockyBodyBundle {
+                                name: Name::new(format!("{} {}", &star.name, i_children)),
+                                ty: planet.ty,
+                                body_index: BodyIndex::new(bodies.len()),
+                                mesh: mesh.clone(),
+                                material: rocky_body_materials.add(RockyBodyMaterial {
+                                    color: planet.color,
+                                }),
+                                transform: Transform::from_scale(Vec3::splat(
+                                    planet.body.radius as f32 * 2.,
+                                )),
+                                collider: Collider::circle(0.5),
+                                ..Default::default()
+                            },
+                            Planet,
+                        ))
+                        .id(),
+                );
+            } else {
+                entities.push(
+                    commands
+                        .spawn((
+                            GiantBodyBundle {
+                                name: Name::new(format!("{} {}", &star.name, i_children)),
+                                ty: planet.ty,
+                                body_index: BodyIndex::new(bodies.len()),
+                                mesh: mesh.clone(),
+                                material: giant_body_materials.add(GiantBodyMaterial {
+                                    color: planet.color,
+                                }),
+                                transform: Transform::from_scale(Vec3::splat(
+                                    planet.body.radius as f32 * 2.,
+                                )),
+                                collider: Collider::circle(0.5),
+                                ..Default::default()
+                            },
+                            Planet,
+                        ))
+                        .id(),
+                );
+            }
 
-        //     statistics.num_planets += 1;
-        //     i_children += 1;
-        //     bodies.push(planet.body);
+            statistics.num_planets += 1;
+            i_children += 1;
+            bodies.push(planet.body);
 
-        //     for moon in planet.children {
-        //         entities.push(
-        //             commands
-        //                 .spawn((
-        //                     RockyBodyBundle {
-        //                         name: Name::new(format!("{} {}", star.name, i_children)),
-        //                         ty: BodyType::Rocky,
-        //                         body_index: BodyIndex::new(bodies.len()),
-        //                         mesh: mesh.clone(),
-        //                         material: rocky_body_materials
-        //                             .add(RockyBodyMaterial { color: moon.color }),
-        //                         transform: Transform::from_scale(Vec3::splat(
-        //                             moon.body.radius as f32 * 2.,
-        //                         )),
-        //                         collider: Collider::circle(0.5),
-        //                         ..Default::default()
-        //                     },
-        //                     Moon,
-        //                 ))
-        //                 .id(),
-        //         );
+            for moon in planet.children {
+                entities.push(
+                    commands
+                        .spawn((
+                            RockyBodyBundle {
+                                name: Name::new(format!("{} {}", star.name, i_children)),
+                                ty: BodyType::Rocky,
+                                body_index: BodyIndex::new(bodies.len()),
+                                mesh: mesh.clone(),
+                                material: rocky_body_materials
+                                    .add(RockyBodyMaterial { color: moon.color }),
+                                transform: Transform::from_scale(Vec3::splat(
+                                    moon.body.radius as f32 * 2.,
+                                )),
+                                collider: Collider::circle(0.5),
+                                ..Default::default()
+                            },
+                            Moon,
+                        ))
+                        .id(),
+                );
 
-        //         statistics.num_moons += 1;
-        //         i_children += 1;
-        //         bodies.push(moon.body);
-        //     }
-        // }
+                statistics.num_moons += 1;
+                i_children += 1;
+                bodies.push(moon.body);
+            }
+        }
     }
 
     (bodies, entities, statistics)

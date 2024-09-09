@@ -1,7 +1,7 @@
 use bevy::{
     asset::Asset,
     color::{ColorToComponents, LinearRgba},
-    math::Vec3,
+    math::{Vec3, Vec4},
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
     sprite::Material2d,
@@ -84,7 +84,7 @@ impl Material2d for GiantBodyMaterial {
 
 #[derive(ShaderType, Debug, Clone, Copy)]
 pub struct OrbitMaterialUniform {
-    pub color: Vec3,
+    pub color: Vec4,
     pub width: f32,
     pub radius: f32,
 }
@@ -100,7 +100,7 @@ pub struct OrbitMaterial {
 impl From<&OrbitMaterial> for OrbitMaterialUniform {
     fn from(value: &OrbitMaterial) -> Self {
         Self {
-            color: value.color.to_vec3(),
+            color: value.color.to_vec4(),
             width: value.width,
             radius: value.radius,
         }

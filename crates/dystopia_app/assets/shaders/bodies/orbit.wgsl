@@ -1,7 +1,7 @@
 #import bevy_sprite::mesh2d_vertex_output::VertexOutput
 
 struct OrbitMaterial {
-    color: vec3f,
+    color: vec4f,
     width: f32,
     radius: f32,
 }
@@ -17,7 +17,7 @@ fn fragment(in: VertexOutput) -> @location(0) vec4f {
     let t = material.width / material.radius * 0.5;
 
     if d2 > 1. - t && d2 < 1. + t {
-        return vec4f(material.color.rgb, 0.7);
+        return material.color;
     } else {
         return vec4f(0.);
     }

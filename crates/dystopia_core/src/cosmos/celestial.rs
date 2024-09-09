@@ -1,11 +1,25 @@
 use bevy::{
     math::DVec2,
-    prelude::{Component, Deref, DerefMut, Entity, Resource},
+    prelude::{Component, Deref, Entity, Resource},
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Resource, Default, Deref, DerefMut)]
-pub struct ShowOrbits(bool);
+#[derive(Resource)]
+pub struct OrbitsVisibility {
+    pub scale_threshold: f32,
+    pub alpha: f32,
+    pub fade_speed: f32,
+}
+
+impl Default for OrbitsVisibility {
+    fn default() -> Self {
+        Self {
+            scale_threshold: 1.,
+            alpha: 0.7,
+            fade_speed: 20.,
+        }
+    }
+}
 
 #[derive(Resource)]
 pub struct Cosmos {
@@ -122,3 +136,10 @@ pub struct Orbit {
     pub sidereal_period: u64,
     pub rotation_period: u64,
 }
+
+/// Mark a body as landable, which means players can land on that body and
+/// build facilities.
+///
+/// Stars, gas/ice giants and small asteroids are generally not landable.
+#[derive(Component)]
+pub struct Landable;
