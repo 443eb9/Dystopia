@@ -5,6 +5,8 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::tuple_struct_new;
+
 #[derive(Resource)]
 pub struct OrbitsVisibility {
     pub scale_threshold: f32,
@@ -34,24 +36,14 @@ pub struct Cosmos {
 /// You can fetch the detailed data using this index.
 #[derive(Component, Debug, Default, Clone, Copy, Deref)]
 pub struct BodyIndex(usize);
-
-impl BodyIndex {
-    pub fn new(index: usize) -> Self {
-        Self(index)
-    }
-}
+tuple_struct_new!(BodyIndex, usize);
 
 /// The index of this orbit in cosmos.
 ///
 /// You can fetch the detailed data using this index.
 #[derive(Component, Debug, Default, Clone, Copy, Deref)]
 pub struct OrbitIndex(usize);
-
-impl OrbitIndex {
-    pub fn new(index: usize) -> Self {
-        Self(index)
-    }
-}
+tuple_struct_new!(OrbitIndex, usize);
 
 /// Marker struct for stars.
 #[derive(Component, Debug, Default)]
@@ -103,18 +95,31 @@ pub enum BodyType {
     IceGiant,
 }
 
+/// Mark a body as landable, which means players can land on that body and
+/// build facilities.
+///
+/// Stars, gas/ice giants and small asteroids are generally not landable.
+// TODO maybe support landing on these bodies after some technologies.
+#[derive(Component)]
+pub struct Landable;
+
+/// The color of the body. Should keep synced with mesh color and orbit color.
+#[derive(Component, Default, Clone, Deref, DerefMut)]
+pub struct BodyColor(LinearRgba);
+tuple_struct_new!(BodyColor, LinearRgba);
+
+/// The temperature of the body, in Kelvin.
+#[derive(Component, Default, Clone, Deref, DerefMut)]
+pub struct BodyTemperature(f32);
+tuple_struct_new!(BodyTemperature, f32);
+
 /// The corresponding tilemap to the body.
 ///
 /// This won't be added to the body when they're spawned, as it will cause too much
 /// performance overhead.
 #[derive(Component, Deref, Clone, Copy)]
 pub struct BodyTilemap(Entity);
-
-impl BodyTilemap {
-    pub fn new(tilemap: Entity) -> Self {
-        Self(tilemap)
-    }
-}
+tuple_struct_new!(BodyTilemap, Entity);
 
 /// Marks a body needs to generate/load tilemap. The generation process will happen
 /// asynchronously.
@@ -136,21 +141,4 @@ pub struct Orbit {
     pub radius: f64,
     pub sidereal_period: u64,
     pub rotation_period: u64,
-}
-
-/// Mark a body as landable, which means players can land on that body and
-/// build facilities.
-///
-/// Stars, gas/ice giants and small asteroids are generally not landable.
-#[derive(Component)]
-pub struct Landable;
-
-/// The color of the body. Should keep synced with mesh color and orbit color.
-#[derive(Component, Default, Clone, Deref, DerefMut)]
-pub struct BodyColor(LinearRgba);
-
-impl BodyColor {
-    pub fn new(color: LinearRgba) -> Self {
-        Self(color)
-    }
 }

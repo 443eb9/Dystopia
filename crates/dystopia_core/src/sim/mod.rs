@@ -27,7 +27,7 @@ use crate::{
     schedule::{
         signal::InitializationSignal,
         state::{AssetState, GameState},
-    },
+    }, tuple_struct_new,
 };
 
 pub struct DystopiaSimulationPlugin;
@@ -102,12 +102,7 @@ fn sync_view_scale(
 /// cosmos, and for those are loaded, this will be loaded from the save.
 #[derive(Resource, Deref, DerefMut)]
 pub struct GlobalRng(StdRng);
-
-impl GlobalRng {
-    pub fn new(rng: StdRng) -> Self {
-        Self(rng)
-    }
-}
+tuple_struct_new!(GlobalRng, StdRng);
 
 #[derive(Resource, Default, Deref)]
 pub struct Ticker(u64);
@@ -159,9 +154,4 @@ fn check_if_initialized(
 /// This resource only exists in [`GameState::Simulate`].
 #[derive(Resource, Deref, DerefMut)]
 pub struct SaveName(Arc<str>);
-
-impl SaveName {
-    pub fn new(name: Arc<str>) -> Self {
-        Self(name)
-    }
-}
+tuple_struct_new!(SaveName, Arc<str>);
