@@ -4,7 +4,7 @@ use bevy::{
     app::{App, Plugin, Update},
     asset::Handle,
     color::LinearRgba,
-    prelude::{Component, Entity, Image, ParallelCommands, Query},
+    prelude::{Commands, Component, Entity, Image, ParallelCommands, Query},
     text::Text,
     ui::UiImage,
 };
@@ -74,12 +74,12 @@ impl AsUpdatableData for LinearRgba {
 }
 
 pub trait DataUpdatableUi<P>: Component {
-    fn update(&mut self, data: P);
+    fn update_data(&mut self, data: &P, commands: &mut Commands);
 }
 
 impl DataUpdatableUi<String> for Text {
-    fn update(&mut self, data: String) {
-        self.sections[0].value = data;
+    fn update_data(&mut self, data: &String, _commands: &mut Commands) {
+        self.sections[0].value = data.to_owned();
     }
 }
 
@@ -88,8 +88,8 @@ impl AsOriginalComponent for String {
 }
 
 impl DataUpdatableUi<(usize, String)> for Text {
-    fn update(&mut self, data: (usize, String)) {
-        self.sections[data.0].value = data.1;
+    fn update_data(&mut self, data: &(usize, String), _commands: &mut Commands) {
+        self.sections[data.0].value = data.1.clone();
     }
 }
 
@@ -98,7 +98,7 @@ impl AsOriginalComponent for (usize, String) {
 }
 
 impl DataUpdatableUi<(usize, LinearRgba)> for Text {
-    fn update(&mut self, data: (usize, LinearRgba)) {
+    fn update_data(&mut self, data: &(usize, LinearRgba), _commands: &mut Commands) {
         self.sections[data.0].style.color = data.1.into();
     }
 }
@@ -108,9 +108,9 @@ impl AsOriginalComponent for (usize, LinearRgba) {
 }
 
 impl DataUpdatableUi<LinearRgba> for Text {
-    fn update(&mut self, data: LinearRgba) {
+    fn update_data(&mut self, data: &LinearRgba, _commands: &mut Commands) {
         for section in &mut self.sections {
-            section.style.color = data.into();
+            section.style.color = (*data).into();
         }
     }
 }
@@ -120,8 +120,8 @@ impl AsOriginalComponent for LinearRgba {
 }
 
 impl DataUpdatableUi<Handle<Image>> for UiImage {
-    fn update(&mut self, data: Handle<Image>) {
-        self.texture = data;
+    fn update_data(&mut self, data: &Handle<Image>, _commands: &mut Commands) {
+        self.texture = data.clone();
     }
 }
 
@@ -130,9 +130,9 @@ impl AsOriginalComponent for Handle<Image> {
 }
 
 impl DataUpdatableUi<Alpha> for Text {
-    fn update(&mut self, data: Alpha) {
+    fn update_data(&mut self, data: &Alpha, _commands: &mut Commands) {
         for section in &mut self.sections {
-            bevy::prelude::Alpha::set_alpha(&mut section.style.color, *data);
+            bevy::prelude::Alpha::set_alpha(&mut section.style.color, **data);
         }
     }
 }
@@ -170,10 +170,10 @@ fn ui_data_updater<U, P>(
     updates_query
         .par_iter_mut()
         .for_each(|(entity, update, mut component)| {
-            component.update(update.new.clone());
             commands.command_scope(|mut c| {
+                component.update_data(&update.new, &mut c);
                 c.entity(entity).remove::<UiDataUpdate<U, P>>();
-            })
+            });
         });
 }
 
@@ -181,4 +181,28 @@ fn ui_data_updater<U, P>(
 /// have components to display corresponding data.
 pub trait AsBuiltComponent {
     const NUM_FIELDS: usize;
+}
+
+pub trait DynamicSizedUpdatableData {
+    type Container;
+    type Element: AsUpdatableData + AsOriginalComponent;
+
+    fn iterate(&self) -> impl Iterator<Item = &Self::Element>;
+    fn len(&self) -> usize;
+}
+
+impl<T: AsUpdatableData + AsOriginalComponent> DynamicSizedUpdatableData for Vec<T> {
+    type Container = Vec<Entity>;
+
+    type Element = T;
+
+    #[inline]
+    fn iterate(&self) -> impl Iterator<Item = &Self::Element> {
+        self.iter()
+    }
+
+    #[inline]
+    fn len(&self) -> usize {
+        self.len()
+    }
 }

@@ -19,7 +19,8 @@
         "Kelvin": "K"
     },
     "LUiPanel": {
-        "BodyData": "Body Information"
+        "BodyData": "Body Information",
+        "SystemStatistics": "System Statistics"
     },
     "LBodyType": {
         "Star": "Star",
@@ -37,6 +38,9 @@
         "Rocky": "Rocky",
         "Gas": "Gas Giant",
         "Ice": "Ice Giant"
+    },
+    "LBodyInfoType": {
+        "Temperature": "Temperature"
     },
     "LBodyOrbitInfoType": {
         "ParentBody": "Parent Body",

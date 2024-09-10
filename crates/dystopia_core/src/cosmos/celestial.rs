@@ -49,6 +49,11 @@ tuple_struct_new!(OrbitIndex, usize);
 #[derive(Component, Debug, Default)]
 pub struct Star;
 
+/// All bodies in this system.
+#[derive(Component, Default, Deref, DerefMut)]
+pub struct System(Vec<BodyIndex>);
+tuple_struct_new!(System, Vec<BodyIndex>);
+
 /// Marker struct for planets.
 #[derive(Component, Debug, Default)]
 pub struct Planet;

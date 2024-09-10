@@ -31,7 +31,7 @@ pub struct ButtonCloseStyle {
 impl UiAggregate for ButtonClose {
     type Style = ButtonCloseStyle;
 
-    fn build(&self, parent: &mut ChildBuilder, style: Self::Style) -> Entity {
+    fn build(parent: &mut ChildBuilder, style: Self::Style) -> Entity {
         parent
             .spawn((
                 NodeBundle {

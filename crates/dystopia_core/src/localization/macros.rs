@@ -1,4 +1,4 @@
-/// Generate a localizable enum for [`LocalizableStruct`](crate::localization::LocalizableStruct)s.
+/// Generate a localizable enum for [`LocalizableData`](crate::localization::LocalizableData)s.
 #[macro_export]
 macro_rules! localizable_enum {
     ($name: ident, $access: vis, $($variant: ident),+) => {

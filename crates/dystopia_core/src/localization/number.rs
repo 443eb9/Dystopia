@@ -1,8 +1,8 @@
-use crate::localization::{LangFile, LocalizableData};
+use crate::localization::{LangFile, LocalizablePrimitive};
 
 macro_rules! impl_localizable_number {
     ($ty:ty, $nan:expr) => {
-        impl LocalizableData for $ty {
+        impl LocalizablePrimitive for $ty {
             fn localize(&self, _lang: &LangFile) -> String {
                 if *self == $nan {
                     "NaN".into()
@@ -26,13 +26,13 @@ impl_localizable_number!(u32, u32::MAX);
 impl_localizable_number!(u64, u64::MAX);
 impl_localizable_number!(u128, u128::MAX);
 
-impl LocalizableData for f32 {
+impl LocalizablePrimitive for f32 {
     fn localize(&self, _lang: &LangFile) -> String {
         format!("{:.2}", self)
     }
 }
 
-impl LocalizableData for f64 {
+impl LocalizablePrimitive for f64 {
     fn localize(&self, _lang: &LangFile) -> String {
         format!("{:.2}", self)
     }

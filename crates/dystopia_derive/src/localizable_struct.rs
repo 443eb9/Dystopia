@@ -24,7 +24,7 @@ pub fn expand_localizable_struct(input: syn::DeriveInput) -> proc_macro::TokenSt
     }
 
     quote::quote! {
-        impl #core_crate::localization::LocalizableStruct for #ty {
+        impl #core_crate::localization::LocalizableData for #ty {
             fn localize(&mut self, lang: &#core_crate::localization::LangFile) {
                 #(#fields)*
             }

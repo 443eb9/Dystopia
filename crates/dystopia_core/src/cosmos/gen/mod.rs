@@ -16,6 +16,7 @@ use bevy::{
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
     transform::components::Transform,
 };
+use hashbrown::HashSet;
 use indexmap::IndexSet;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use rand_distr::{num_traits::Float, Distribution, Normal, StandardNormal};
@@ -25,7 +26,7 @@ use crate::{
         bundle::{GiantBodyBundle, RockyBodyBundle, StarBundle},
         celestial::{
             BodyColor, BodyIndex, BodyTemperature, BodyType, CelestialBodyData, Cosmos, Moon,
-            Orbit, OrbitIndex, Planet, StarClass,
+            Orbit, OrbitIndex, Planet, StarClass, System,
         },
         config::{CosmosStarNamesConfig, CosmosStarPropertiesConfig},
         gen::distr::*,
@@ -58,7 +59,6 @@ pub struct StarData {
 pub struct PlanetData {
     pub body: CelestialBodyData,
     pub ty: BodyType,
-    pub orbit: Orbit,
     pub effective_temp: f64,
     pub color: LinearRgba,
     pub children: Vec<MoonData>,
@@ -67,7 +67,6 @@ pub struct PlanetData {
 #[derive(Debug)]
 pub struct MoonData {
     pub body: CelestialBodyData,
-    pub orbit: Orbit,
     pub effective_temp: f64,
     pub color: LinearRgba,
 }
@@ -142,7 +141,7 @@ pub fn generate_cosmos(
 
     info!("Start calculating effective temperature");
 
-    calculate_effective_temp(&mut stars, &mut rng);
+    calculate_effective_temp(&mut rng, &mut stars, &orbits);
 
     info!("Start spawning all bodies and orbits into game...");
 
@@ -200,9 +199,11 @@ fn generate_stars(
 
         let (floor, ceil) = (&star_props[floor], &star_props[ceil]);
         let radius = map_star_radius(floor.radius.lerp(ceil.radius, rng.gen_range(0f64..1f64)));
-        let luminosity = floor
-            .luminosity
-            .lerp(ceil.luminosity, rng.gen_range(0f64..1f64));
+        let luminosity = map_star_luminosity(
+            floor
+                .luminosity
+                .lerp(ceil.luminosity, rng.gen_range(0f64..1f64)),
+        );
         let effective_temp = floor
             .effective_temp
             .lerp(ceil.effective_temp, rng.gen_range(0f64..1f64));
@@ -269,7 +270,6 @@ fn generate_planets(rng: &mut impl Rng, star: &StarData) -> Vec<PlanetData> {
                 mass,
                 radius,
             },
-            orbit: Default::default(),
             effective_temp: 0.,
             color: random_color(rng),
             ty,
@@ -300,7 +300,6 @@ fn generate_moon(rng: &mut impl Rng, planet: &PlanetData) -> Vec<MoonData> {
                 mass,
                 radius,
             },
-            orbit: Default::default(),
             effective_temp: 0.,
             color: random_color(rng),
         });
@@ -351,10 +350,10 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
 
     // --- Planets inside CHZ ---
     // Circumstellar Habitable Zone
-    let chz_near = physics::planet_dist_when_temp(star.luminosity, 400., 0.5)
-        .clamp(closest * 1.2, farthest * 0.8);
-    let chz_far = physics::planet_dist_when_temp(star.luminosity, 200., 0.5)
-        .clamp(closest * 1.2, farthest * 0.8);
+    let chz_near =
+        physics::planet_dist_when_temp(star.luminosity, 400., 0.5).clamp(closest, farthest);
+    let chz_far =
+        physics::planet_dist_when_temp(star.luminosity, 200., 0.5).clamp(closest, farthest);
 
     let n_chz = rng.sample(Normal::<f64>::new(0., 0.8).unwrap()).round() as usize;
 
@@ -410,6 +409,24 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
         info!("Discarding planet with parent star {}: {}", star_index, i);
         star.children.pop();
     });
+
+    // Cull overlapped bodies
+
+    let mut removed = HashSet::new();
+    for (i_planet, planets) in star.children.windows(2).enumerate() {
+        let (lhs, rhs) = (&planets[0], &planets[1]);
+        if ((lhs.body.pos - star.body.pos).length() - (rhs.body.pos - star.body.pos).length()).abs()
+            < lhs.body.radius + rhs.body.radius
+        {
+            removed.insert(i_planet);
+        }
+    }
+    star.children = star
+        .children
+        .drain(..)
+        .enumerate()
+        .filter_map(|(i, b)| (!removed.contains(&i)).then_some(b))
+        .collect();
 
     // dbg!(
     //     star.body.radius,
@@ -542,18 +559,23 @@ fn generate_orbits(
     (orbits, orbit_materials)
 }
 
-fn calculate_effective_temp(stars: &mut Vec<StarData>, rng: &mut impl Rng) {
+fn calculate_effective_temp(rng: &mut impl Rng, stars: &mut Vec<StarData>, orbits: &Vec<Orbit>) {
+    let mut i_orbit = 0;
     for star in stars {
+        i_orbit += 1;
+
         for planet in &mut star.children {
             planet.effective_temp =
-                physics::planet_temp_at_dist(star.luminosity, planet.orbit.radius, 0.5);
+                physics::planet_temp_at_dist(star.luminosity, orbits[i_orbit].radius, 0.5);
+            i_orbit += 1;
 
             for moon in &mut planet.children {
                 moon.effective_temp = physics::planet_temp_at_dist(
                     star.luminosity,
-                    planet.orbit.radius * rng.gen_range(0.8..1.2),
+                    orbits[i_orbit].radius * rng.gen_range(0.8..1.2),
                     0.5,
                 );
+                i_orbit += 1;
             }
         }
     }
@@ -579,6 +601,17 @@ fn spawn_bodies(
                     star_ty: star.class.ty,
                     name: Name::new(star.name.clone()),
                     body_index: BodyIndex::new(bodies.len()),
+                    system: System::new(
+                        (bodies.len()
+                            ..=bodies.len()
+                                + star
+                                    .children
+                                    .iter()
+                                    .map(|c| 1 + c.children.len())
+                                    .sum::<usize>())
+                            .map(|i| BodyIndex::new(i))
+                            .collect(),
+                    ),
                     temperature: BodyTemperature::new(star.effective_temp),
                     mesh: mesh.clone(),
                     material: star_materials.add(StarMaterial { color: star.color }),
@@ -603,6 +636,11 @@ fn spawn_bodies(
                                 name: Name::new(format!("{} {}", &star.name, i_children)),
                                 ty: planet.ty,
                                 body_index: BodyIndex::new(bodies.len()),
+                                system: System::new(
+                                    (bodies.len()..=bodies.len() + planet.children.len())
+                                        .map(|i| BodyIndex::new(i))
+                                        .collect(),
+                                ),
                                 temperature: BodyTemperature::new(planet.effective_temp),
                                 mesh: mesh.clone(),
                                 material: rocky_body_materials.add(RockyBodyMaterial {
@@ -627,6 +665,11 @@ fn spawn_bodies(
                                 name: Name::new(format!("{} {}", &star.name, i_children)),
                                 ty: planet.ty,
                                 body_index: BodyIndex::new(bodies.len()),
+                                system: System::new(
+                                    (bodies.len()..=bodies.len() + planet.children.len())
+                                        .map(|i| BodyIndex::new(i))
+                                        .collect(),
+                                ),
                                 temperature: BodyTemperature::new(planet.effective_temp),
                                 mesh: mesh.clone(),
                                 material: giant_body_materials.add(GiantBodyMaterial {
@@ -657,6 +700,7 @@ fn spawn_bodies(
                                 name: Name::new(format!("{} {}", star.name, i_children)),
                                 ty: BodyType::Rocky,
                                 body_index: BodyIndex::new(bodies.len()),
+                                system: System::new(vec![BodyIndex::new(bodies.len())]),
                                 temperature: BodyTemperature::new(moon.effective_temp),
                                 mesh: mesh.clone(),
                                 material: rocky_body_materials
@@ -732,6 +776,10 @@ where
 
 fn map_star_radius(x: f64) -> f64 {
     (-x / 500. + 1.).powf(1.6)
+}
+
+fn map_star_luminosity(x: f64) -> f64 {
+    (-x / 150000. + 1.).powf(0.7)
 }
 
 fn map_planet_radius(x: f64) -> f64 {

@@ -41,55 +41,61 @@ impl RawConfig for LangFile {
 
 /// Before data being passed to UI components, it should be localized.
 ///
-/// For each field in [`LocalizableStruct`], you should label all possible values on that,
+/// For each field in [`LocalizableData`], you should label all possible values on that,
 /// unless it has attribute `#[lang_skip]`.
-pub trait LocalizableStruct {
+pub trait LocalizableData {
     fn localize(&mut self, lang: &LangFile);
 }
 
-/// [`LocalizableData`]s can be localized without knowing the struct or field it belongs to.
-pub trait LocalizableData {
+impl<T: LocalizableData> LocalizableData for Vec<T> {
+    fn localize(&mut self, lang: &LangFile) {
+        self.iter_mut().for_each(|e| e.localize(lang));
+    }
+}
+
+/// [`LocalizablePrimitive`]s can be localized without knowing the struct or field it belongs to.
+pub trait LocalizablePrimitive {
     fn localize(&self, lang: &LangFile) -> String;
 }
 
 #[derive(Clone)]
-pub enum LocalizableDataWrapper<E: LocalizableData> {
+pub enum Localizable<E: LocalizablePrimitive> {
     Raw(E),
     Localized(String),
 }
 
-impl<E: LocalizableData> From<E> for LocalizableDataWrapper<E> {
+impl<E: LocalizablePrimitive> From<E> for Localizable<E> {
     fn from(value: E) -> Self {
         Self::Raw(value)
     }
 }
 
-impl<E: LocalizableData> From<LocalizableDataWrapper<E>> for String {
-    fn from(value: LocalizableDataWrapper<E>) -> Self {
+impl<E: LocalizablePrimitive> From<Localizable<E>> for String {
+    fn from(value: Localizable<E>) -> Self {
         value.localized()
     }
 }
 
-impl<E: LocalizableData> AsOriginalComponent for LocalizableDataWrapper<E> {
+impl<E: LocalizablePrimitive> AsOriginalComponent for Localizable<E> {
     type OriginalComponent = Text;
 }
 
-impl<E: LocalizableData> AsUpdatableData for LocalizableDataWrapper<E> {
+impl<E: LocalizablePrimitive> AsUpdatableData for Localizable<E> {
     type UpdatableData = String;
 }
 
-impl<E: LocalizableData + Default> Default for LocalizableDataWrapper<E> {
+impl<E: LocalizablePrimitive + Default> Default for Localizable<E> {
     fn default() -> Self {
         Self::Raw(E::default())
     }
 }
 
-impl<E: LocalizableData> LocalizableDataWrapper<E> {
+impl<E: LocalizablePrimitive> Localizable<E> {
     #[inline]
     pub fn localize(&mut self, lang: &LangFile) {
         let s = match &*self {
-            LocalizableDataWrapper::Raw(r) => &r.localize(lang),
-            LocalizableDataWrapper::Localized(l) => l,
+            Localizable::Raw(r) => &r.localize(lang),
+            Localizable::Localized(l) => l,
         };
         *self = Self::Localized(s.to_owned());
     }
@@ -97,8 +103,8 @@ impl<E: LocalizableData> LocalizableDataWrapper<E> {
     #[inline]
     pub fn localized(&self) -> String {
         match self {
-            LocalizableDataWrapper::Raw(_) => panic!("This data has not localized yet."),
-            LocalizableDataWrapper::Localized(l) => l.to_owned(),
+            Localizable::Raw(_) => panic!("This data has not localized yet."),
+            Localizable::Localized(l) => l.to_owned(),
         }
     }
 }

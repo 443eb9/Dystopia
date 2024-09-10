@@ -4,6 +4,7 @@ use bevy::prelude::{Deref, Entity, Event, Resource};
 
 pub mod body_data;
 pub mod scene_title;
+pub mod system_statistics;
 
 #[derive(Event, Deref)]
 pub struct PanelTargetChange<P: Resource, D = Entity> {

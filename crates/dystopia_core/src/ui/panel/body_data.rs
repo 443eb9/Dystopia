@@ -4,24 +4,26 @@ use bevy::{
     input::ButtonState,
     log::warn,
     prelude::{
-        in_state, resource_exists, BuildChildren, ChildBuilder, Commands, Component, Deref,
-        DerefMut, Entity, EventReader, EventWriter, IntoSystemConfigs, MouseButton, NodeBundle,
-        Query, Res, ResMut, Resource, TextBundle, Visibility,
+        in_state, resource_exists, BuildChildren, ChildBuilder, Commands, Component, Deref, Entity,
+        EventReader, EventWriter, IntoSystemConfigs, MouseButton, NodeBundle, Query, Res, ResMut,
+        Resource, TextBundle, Visibility,
     },
     text::{Text, TextStyle},
-    ui::{AlignItems, FlexDirection, JustifyContent, Style, Val},
+    ui::{AlignItems, FlexDirection, JustifyContent, PositionType, Style, Val},
 };
-use dystopia_derive::{AsBuiltComponent, LocalizableStruct};
+use dystopia_derive::{AsBuiltComponent, LocalizableData};
 
 use crate::{
-    cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, Planet, Star, StarType},
+    cosmos::celestial::{
+        BodyIndex, BodyTemperature, BodyType, Cosmos, Moon, Planet, Star, StarType,
+    },
     distributed_list_element,
     input::{MouseInput, SceneMouseInput},
     localizable_enum,
-    localization::{ui::LUiPanel, LangFile, LocalizableDataWrapper, LocalizableStruct},
+    localization::{ui::LUiPanel, LangFile, Localizable, LocalizableData},
     merge_list,
     schedule::state::{GameState, SceneState},
-    sci::unit::{Length, Time, Unit},
+    sci::unit::{Length, Temperature, Time, Unit},
     ui::{
         button::{ButtonClose, ButtonCloseStyle},
         ext::DefaultWithStyle,
@@ -30,16 +32,17 @@ use crate::{
             default_panel_style, default_section_style, default_title_style, FULLSCREEN_UI_CORNERS,
             PANEL_BACKGROUND, PANEL_BORDER_COLOR, PANEL_ELEM_TEXT_STYLE, PANEL_SUBTITLE_TEXT_STYLE,
             PANEL_TITLE_BACKGROUND, PANEL_TITLE_FONT_SIZE, PANEL_TITLE_HEIGHT,
-            PANEL_TITLE_TEXT_COLOR, SECTION_MARGIN,
+            PANEL_TITLE_TEXT_COLOR,
         },
-        update::AsBuiltComponent,
         scrollable_list::ScrollableList,
+        update::AsBuiltComponent,
         GlobalUiRoot, UiAggregate, UiBuilder, UiStack, FUSION_PIXEL,
     },
 };
 
-localizable_enum!(LBodyType, Star, Planet, Moon);
+localizable_enum!(LBodyType, pub, Star, Planet, Moon);
 localizable_enum!(LDetailedBodyType, O, B, A, F, G, K, M, Rocky, Gas, Ice);
+localizable_enum!(LBodyInfoType, Temperature);
 localizable_enum!(
     LBodyOrbitInfoType,
     ParentBody,
@@ -72,29 +75,31 @@ impl Plugin for BodyDataPanelPlugin {
     }
 }
 
-#[derive(Resource, Deref, DerefMut)]
+#[derive(Resource, Deref)]
 pub struct BodyDataPanel(Entity);
 
-#[derive(Component, AsBuiltComponent, LocalizableStruct)]
+#[derive(Component, AsBuiltComponent, LocalizableData)]
 struct BodyDataPanelData {
-    title: LocalizableDataWrapper<LUiPanel>,
+    title: Localizable<LUiPanel>,
 
-    section_body_info: LocalizableDataWrapper<LBodyDataPanelSectionType>,
+    section_body_info: Localizable<LBodyDataPanelSectionType>,
     #[lang_skip]
     body_name: String,
-    body_ty: LocalizableDataWrapper<LBodyType>,
-    detailed_body_ty: LocalizableDataWrapper<LDetailedBodyType>,
+    body_ty: Localizable<LBodyType>,
+    detailed_body_ty: Localizable<LDetailedBodyType>,
+    title_body_temperature: Localizable<LBodyInfoType>,
+    body_temperature: Localizable<Temperature>,
 
-    section_orbit_info: LocalizableDataWrapper<LBodyDataPanelSectionType>,
-    title_parent_body: LocalizableDataWrapper<LBodyOrbitInfoType>,
+    section_orbit_info: Localizable<LBodyDataPanelSectionType>,
+    title_parent_body: Localizable<LBodyOrbitInfoType>,
     #[lang_skip]
     parent_body: String,
-    title_orbit_radius: LocalizableDataWrapper<LBodyOrbitInfoType>,
-    orbit_radius: LocalizableDataWrapper<Length>,
-    title_sidereal_period: LocalizableDataWrapper<LBodyOrbitInfoType>,
-    sidereal_period: LocalizableDataWrapper<Time>,
-    title_rotation_period: LocalizableDataWrapper<LBodyOrbitInfoType>,
-    rotation_period: LocalizableDataWrapper<Time>,
+    title_orbit_radius: Localizable<LBodyOrbitInfoType>,
+    orbit_radius: Localizable<Length>,
+    title_sidereal_period: Localizable<LBodyOrbitInfoType>,
+    sidereal_period: Localizable<Time>,
+    title_rotation_period: Localizable<LBodyOrbitInfoType>,
+    rotation_period: Localizable<Time>,
 }
 
 pub struct BodyDataPanelStyle {
@@ -105,12 +110,13 @@ pub struct BodyDataPanelStyle {
 impl UiAggregate for BodyDataPanelData {
     type Style = BodyDataPanelStyle;
 
-    fn build(&self, parent: &mut ChildBuilder, style: Self::Style) -> Entity {
+    fn build(parent: &mut ChildBuilder, style: Self::Style) -> Entity {
         let mut entities = Vec::with_capacity(Self::NUM_FIELDS);
 
         let mut root = parent.spawn((
             NodeBundle {
                 style: Style {
+                    position_type: PositionType::Absolute,
                     width: Val::Px(style.width),
                     height: Val::Px(style.height),
                     bottom: FULLSCREEN_UI_CORNERS.bottom,
@@ -152,7 +158,7 @@ impl UiAggregate for BodyDataPanelData {
                         .id(),
                 );
 
-                ButtonClose.build(
+                ButtonClose::build(
                     title_root,
                     ButtonCloseStyle {
                         size: Val::Px(PANEL_TITLE_HEIGHT - 5.),
@@ -166,7 +172,6 @@ impl UiAggregate for BodyDataPanelData {
                 NodeBundle {
                     style: Style {
                         width: Val::Percent(100.),
-                        height: Val::Px(style.height - PANEL_TITLE_HEIGHT - SECTION_MARGIN),
                         flex_direction: FlexDirection::Column,
                         ..Default::default()
                     },
@@ -191,12 +196,18 @@ impl UiAggregate for BodyDataPanelData {
 
                         entities.extend(distributed_list_element!(
                             section_root,
-                            Val::Percent(20.),
                             // body_name
                             TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
                             // body_ty
                             TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
-                            // detailed_body_ty
+                            // // detailed_body_ty
+                            TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                        ));
+
+                        // body_temperature
+                        entities.extend(distributed_list_element!(
+                            section_root,
+                            TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
                             TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
                         ));
                     });
@@ -218,28 +229,24 @@ impl UiAggregate for BodyDataPanelData {
                             // parent_body
                             distributed_list_element!(
                                 section_root,
-                                Val::Px(20.),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
                             ),
                             // orbit_radius
                             distributed_list_element!(
                                 section_root,
-                                Val::Px(20.),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
                             ),
                             // sidereal_period
                             distributed_list_element!(
                                 section_root,
-                                Val::Px(20.),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
                             ),
                             // rotation_period
                             distributed_list_element!(
                                 section_root,
-                                Val::Px(20.),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
                             )
@@ -286,6 +293,7 @@ fn pack_body_data_panel_data(
     body_query: Query<(
         &Name,
         &BodyIndex,
+        &BodyTemperature,
         Option<&Star>,
         Option<&StarType>,
         Option<&Planet>,
@@ -307,6 +315,7 @@ fn pack_body_data_panel_data(
         let Ok((
             body_name,
             body_index,
+            body_temperature,
             maybe_star,
             maybe_star_ty,
             maybe_planet,
@@ -368,10 +377,13 @@ fn pack_body_data_panel_data(
 
         let data = BodyDataPanelData {
             title: LUiPanel::BodyData.into(),
+
             section_body_info: LBodyDataPanelSectionType::BodyInfo.into(),
             body_name: body_name.to_string(),
             body_ty,
             detailed_body_ty,
+            title_body_temperature: LBodyInfoType::Temperature.into(),
+            body_temperature: Temperature::wrap_with_si(**body_temperature).into(),
             section_orbit_info: LBodyDataPanelSectionType::OrbitInfo.into(),
             title_parent_body: LBodyOrbitInfoType::ParentBody.into(),
             parent_body,
@@ -388,13 +400,10 @@ fn pack_body_data_panel_data(
         } else {
             let mut built = None;
             commands.entity(**global_root).with_children(|root| {
-                built = Some(root.build_ui(
-                    &data,
-                    BodyDataPanelStyle {
-                        width: 250.,
-                        height: 250.,
-                    },
-                ));
+                built = Some(root.build_ui::<BodyDataPanelData>(BodyDataPanelStyle {
+                    width: 250.,
+                    height: 250.,
+                }));
             });
 
             let panel = built.unwrap();

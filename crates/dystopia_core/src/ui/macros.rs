@@ -1,12 +1,11 @@
 #[macro_export]
 macro_rules! distributed_list_element {
-    ($parent:expr, $height:expr, $($bundle:expr),+) => {
+    ($parent:expr, $($bundle:expr),+) => {
         {
             let mut entities = Vec::new();
             $parent
                 .spawn(NodeBundle {
                     style: Style {
-                        height: $height,
                         width: bevy::ui::Val::Percent(100.),
                         justify_content: bevy::ui::JustifyContent::SpaceBetween,
                         ..Default::default()

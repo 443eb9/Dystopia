@@ -139,7 +139,7 @@ fn debug_skip_menu(
     mut scene_state: ResMut<NextState<SceneState>>,
 ) {
     commands.insert_resource(CosmosGenerationSettings {
-        seed: 5,
+        seed: 4,
         galaxy_radius: Length::LightYear(1.),
         // num_stars: 60..69,
         num_stars: 1..2,
@@ -338,7 +338,7 @@ fn debug_ui(mut commands: Commands) {
                 for i in 0..30 {
                     distributed_list_element!(
                         list_root,
-                        Default::default(),
+                        // Default::default(),
                         TextBundle::from_section(
                             format!("Test Elem {}", i),
                             TextStyle {

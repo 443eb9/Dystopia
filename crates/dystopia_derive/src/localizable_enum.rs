@@ -19,7 +19,7 @@ pub fn expand_localizable_enum(input: syn::DeriveInput) -> proc_macro::TokenStre
     }
 
     quote::quote! {
-        impl #core_crate::localization::LocalizableData for #ty {
+        impl #core_crate::localization::LocalizablePrimitive for #ty {
             fn localize(&self, lang: &#core_crate::localization::LangFile) -> String {
                 let enum_lang = &(**lang)[stringify!(#ty)];
                 match self {

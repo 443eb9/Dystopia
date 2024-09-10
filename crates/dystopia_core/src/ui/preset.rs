@@ -13,7 +13,7 @@ pub fn default_panel_style() -> Style {
     Style {
         position_type: PositionType::Absolute,
         flex_direction: FlexDirection::Column,
-        border: UiRect::all(Val::Px(2.)),
+        border: PANEL_BORDER,
         ..Default::default()
     }
 }
@@ -29,13 +29,14 @@ pub fn default_title_style() -> Style {
 pub fn default_section_style() -> Style {
     Style {
         flex_direction: FlexDirection::Column,
-        border: UiRect::all(Val::Px(2.)),
-        margin: UiRect::all(Val::Px(SECTION_MARGIN)),
+        border: PANEL_BORDER,
+        margin: SECTION_MARGIN,
+        row_gap: Val::Px(5.),
         ..Default::default()
     }
 }
 
-pub const SECTION_MARGIN: f32 = 7.;
+pub const SECTION_MARGIN: UiRect = UiRect::all(Val::Px(7.));
 
 pub const PANEL_BACKGROUND: BackgroundColor = BackgroundColor(Color::WHITE);
 
@@ -68,4 +69,5 @@ pub const PANEL_ELEM_FONT_SIZE: f32 = 14.;
 pub const PANEL_BORDER_COLOR: Color = Color::Srgba(Srgba::rgb(68. / 255., 62. / 255., 185. / 255.));
 pub const SECTION_BORDER_COLOR: Color = Color::Srgba(Srgba::new(0., 0., 0., 0.2));
 
+pub const PANEL_BORDER: UiRect = UiRect::all(Val::Px(2.));
 pub const FULLSCREEN_UI_CORNERS: UiRect = UiRect::all(Val::Px(10.));

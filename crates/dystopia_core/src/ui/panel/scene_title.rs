@@ -3,19 +3,18 @@ use bevy::{
     color::LinearRgba,
     core::Name,
     prelude::{
-        in_state, resource_exists, BuildChildren, ChildBuilder, Commands, Component, Deref,
-        DerefMut, Entity, EventReader, IntoSystemConfigs, NodeBundle, Query, Res, ResMut, Resource,
-        TextBundle,
+        in_state, resource_exists, BuildChildren, ChildBuilder, Commands, Component, Deref, Entity,
+        EventReader, IntoSystemConfigs, NodeBundle, Query, Res, ResMut, Resource, TextBundle,
     },
     text::{JustifyText, Text, TextSection, TextStyle},
     ui::{FlexDirection, Style, Val},
 };
-use dystopia_derive::{AsBuiltComponent, LocalizableStruct};
+use dystopia_derive::{AsBuiltComponent, LocalizableData};
 
 use crate::{
     input::RayTransparent,
     localizable_enum,
-    localization::{LangFile, LocalizableDataWrapper, LocalizableStruct},
+    localization::{LangFile, Localizable, LocalizableData},
     schedule::state::GameState,
     ui::{
         panel::PanelTargetChange,
@@ -48,12 +47,12 @@ pub const TITLE_FADE_DURATION: f32 = 4.;
 pub const TITLE_FADE_DEFER: f32 = 1.5;
 pub const TITLE_FONT_SIZE: f32 = 48.;
 
-#[derive(Resource, Deref, DerefMut)]
+#[derive(Resource, Deref)]
 pub struct SceneTitle(Entity);
 
-#[derive(Component, AsBuiltComponent, LocalizableStruct)]
+#[derive(Component, AsBuiltComponent, LocalizableData)]
 pub struct SceneTitleData {
-    title: LocalizableDataWrapper<LSceneTitle>,
+    title: Localizable<LSceneTitle>,
     #[lang_skip]
     #[share_entity(1)]
     name_color: LinearRgba,
@@ -69,7 +68,7 @@ pub struct SceneTitleStyle {
 impl UiAggregate for SceneTitleData {
     type Style = SceneTitleStyle;
 
-    fn build(&self, parent: &mut ChildBuilder, style: Self::Style) -> Entity {
+    fn build(parent: &mut ChildBuilder, style: Self::Style) -> Entity {
         let mut entities = Vec::with_capacity(Self::NUM_FIELDS);
 
         let mut root = parent.spawn((
@@ -172,13 +171,10 @@ fn pack_scene_title_data(
         } else {
             let mut built = None;
             commands.entity(**global_root).with_children(|root| {
-                built = Some(root.build_ui(
-                    &data,
-                    SceneTitleStyle {
-                        font_size: TITLE_FONT_SIZE,
-                        color: LinearRgba::WHITE,
-                    },
-                ));
+                built = Some(root.build_ui::<SceneTitleData>(SceneTitleStyle {
+                    font_size: TITLE_FONT_SIZE,
+                    color: LinearRgba::WHITE,
+                }));
             });
 
             let panel = built.unwrap();

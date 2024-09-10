@@ -18,7 +18,10 @@ use crate::{
     math::{Axis, Direction},
     schedule::state::GameState,
     ui::{
-        panel::{body_data::BodyDataPanelPlugin, scene_title::SceneTitlePlugin},
+        panel::{
+            body_data::BodyDataPanelPlugin, scene_title::SceneTitlePlugin,
+            system_statistics::SystemStatisticsPanelPlugin,
+        },
         selecting::{
             body::{BodySelectingIconMaterial, BodySelectingIndicator},
             SelectingUiPlugin,
@@ -52,22 +55,26 @@ impl Plugin for DystopiaUiPlugin {
             |bytes: &[u8], _path: String| Font::try_from_bytes(bytes.to_vec()).unwrap()
         );
 
-        app.add_plugins((BodyDataPanelPlugin, SceneTitlePlugin))
-            .add_plugins(SelectingUiPlugin)
-            .add_plugins(UiMaterialPlugin::<BodySelectingIconMaterial>::default())
-            .add_plugins((MainUpdatablePlugin, MainTransitionablePlugin))
-            .add_systems(
-                Update,
-                (
-                    scrollable_list::init_structure,
-                    scrollable_list::handle_scroll,
-                    button::handle_button_close_click,
-                )
-                    .run_if(in_state(GameState::Simulate)),
+        app.add_plugins((
+            BodyDataPanelPlugin,
+            SceneTitlePlugin,
+            SystemStatisticsPanelPlugin,
+        ))
+        .add_plugins(SelectingUiPlugin)
+        .add_plugins(UiMaterialPlugin::<BodySelectingIconMaterial>::default())
+        .add_plugins((MainUpdatablePlugin, MainTransitionablePlugin))
+        .add_systems(
+            Update,
+            (
+                scrollable_list::init_structure,
+                scrollable_list::handle_scroll,
+                button::handle_button_close_click,
             )
-            .add_systems(Update, (sync::scene_ui_sync, sync::cursor_ui_sync))
-            .init_resource::<GlobalUiRoot>()
-            .init_resource::<UiStack>();
+                .run_if(in_state(GameState::Simulate)),
+        )
+        .add_systems(Update, (sync::scene_ui_sync, sync::cursor_ui_sync))
+        .init_resource::<GlobalUiRoot>()
+        .init_resource::<UiStack>();
     }
 
     fn finish(&self, app: &mut App) {
@@ -105,17 +112,17 @@ pub trait UiAggregate {
     type Style;
 
     /// Build the ui and spawn them into world.
-    fn build(&self, parent: &mut ChildBuilder, style: Self::Style) -> Entity;
+    fn build(parent: &mut ChildBuilder, style: Self::Style) -> Entity;
 }
 
 pub trait UiBuilder {
-    fn build_ui<U: UiAggregate>(&mut self, elem: &U, style: U::Style) -> Entity;
+    fn build_ui<U: UiAggregate>(&mut self, style: U::Style) -> Entity;
 }
 
 impl UiBuilder for ChildBuilder<'_> {
     #[inline]
-    fn build_ui<U: UiAggregate>(&mut self, elem: &U, style: U::Style) -> Entity {
-        elem.build(self, style)
+    fn build_ui<U: UiAggregate>(&mut self, style: U::Style) -> Entity {
+        U::build(self, style)
     }
 }
 
