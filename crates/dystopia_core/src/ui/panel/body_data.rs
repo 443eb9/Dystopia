@@ -27,6 +27,7 @@ use crate::{
     ui::{
         ext::DefaultWithStyle,
         interation::{
+            body_focus_button::BodyFocusButton,
             close_button::{ButtonClose, ButtonCloseStyle},
             scrollable_list::ScrollableList,
         },
@@ -93,6 +94,8 @@ struct BodyDataPanelData {
     body_temperature: Localizable<Temperature>,
 
     section_orbit_info: Localizable<LBodyDataPanelSectionType>,
+    #[lang_skip]
+    parent_body_index: Option<BodyIndex>,
     title_parent_body: Localizable<LBodyOrbitInfoType>,
     #[lang_skip]
     parent_body: String,
@@ -227,13 +230,18 @@ impl UiAggregate for BodyDataPanelData {
                                 .id(),
                         );
 
-                        entities.extend(merge_list!(
-                            // parent_body
-                            distributed_list_element!(
-                                section_root,
+                        let mut focus =
+                            section_root.spawn((NodeBundle::default(), BodyFocusButton::default()));
+                        entities.push(focus.id());
+                        focus.with_children(|focus_root| {
+                            entities.extend(distributed_list_element!(
+                                focus_root,
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
-                            ),
+                            ));
+                        });
+
+                        entities.extend(merge_list!(
                             // orbit_radius
                             distributed_list_element!(
                                 section_root,
@@ -374,8 +382,7 @@ fn pack_body_data_panel_data(
         let parent_body = cosmos
             .entities
             .get(orbit.center_id)
-            .map(|e| body_query.get(*e).unwrap().0.to_string())
-            .unwrap_or_else(|| "None".to_string());
+            .and_then(|e| body_query.get(*e).map(|b| (b.0.to_string(), *b.1)).ok());
 
         let data = BodyDataPanelData {
             title: LUiPanel::BodyData.into(),
@@ -386,9 +393,11 @@ fn pack_body_data_panel_data(
             detailed_body_ty,
             title_body_temperature: LBodyInfoType::Temperature.into(),
             body_temperature: Temperature::wrap_with_si(**body_temperature).into(),
+
             section_orbit_info: LBodyDataPanelSectionType::OrbitInfo.into(),
             title_parent_body: LBodyOrbitInfoType::ParentBody.into(),
-            parent_body,
+            parent_body_index: parent_body.clone().map(|(_, i)| i),
+            parent_body: parent_body.map(|(n, _)| n).unwrap_or("None".to_owned()),
             title_orbit_radius: LBodyOrbitInfoType::OrbitRadius.into(),
             orbit_radius: Length::wrap_with_si(orbit.radius).into(),
             title_sidereal_period: LBodyOrbitInfoType::SiderealPeriod.into(),

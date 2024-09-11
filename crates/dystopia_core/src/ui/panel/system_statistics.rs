@@ -3,8 +3,8 @@ use bevy::{
     core::Name,
     prelude::{
         in_state, resource_exists, BuildChildren, ChildBuilder, Commands, Component, Deref, Entity,
-        EventReader, EventWriter, Has, IntoSystemConfigs, NodeBundle, Query, Res, ResMut, Resource,
-        TextBundle, Transform, Visibility, With, Without,
+        EventReader, Has, IntoSystemConfigs, NodeBundle, Query, Res, ResMut, Resource, TextBundle,
+        Visibility, With,
     },
     text::Text,
     ui::{AlignItems, FlexDirection, JustifyContent, PositionType, Style, Val},
@@ -12,15 +12,19 @@ use bevy::{
 use dystopia_derive::{AsBuiltComponent, LocalizableData};
 
 use crate::{
-    cosmos::celestial::{BodyIndex, Cosmos, Moon, Planet, Star, System},
+    cosmos::{
+        celestial::{BodyIndex, Cosmos, Moon, Planet, Star, System},
+        gen::MAX_BODIES_PER_SYSTEM,
+    },
     distributed_list_element,
-    input::MouseInput,
     localization::{ui::LUiPanel, LangFile, Localizable, LocalizableData},
     schedule::state::{GameState, SceneState},
-    sim::MainCamera,
     ui::{
         ext::DefaultWithStyle,
-        interation::close_button::{ButtonClose, ButtonCloseStyle},
+        interation::{
+            body_focus_button::BodyFocusButton,
+            close_button::{ButtonClose, ButtonCloseStyle},
+        },
         panel::{
             body_data::{BodyDataPanel, LBodyType},
             PanelTargetChange,
@@ -42,13 +46,12 @@ pub struct SystemStatisticsPanelPlugin;
 
 impl Plugin for SystemStatisticsPanelPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(UpdatablePlugin::<BuiltBodyInfo, BodyInfo>::default())
+        app.add_plugins(UpdatablePlugin::<BuiltBodyInfo, Option<BodyInfo>>::default())
             .add_systems(
                 Update,
                 (
                     pack_system_statistics_data,
                     update_system_statistics_data.run_if(resource_exists::<SystemStatisticsPanel>),
-                    handle_body_info_click,
                 )
                     .run_if(in_state(SceneState::CosmosView)),
             )
@@ -64,26 +67,37 @@ impl Plugin for SystemStatisticsPanelPlugin {
 #[derive(Clone, AsBuiltComponent, LocalizableData)]
 struct BodyInfo {
     #[lang_skip]
+    index: Option<BodyIndex>,
+    #[lang_skip]
     name: String,
     ty: Localizable<LBodyType>,
 }
 
-#[derive(Component)]
-struct BodyInfoButton {
-    target: Option<BodyIndex>,
+impl Default for BodyInfo {
+    fn default() -> Self {
+        Self {
+            index: Default::default(),
+            name: Default::default(),
+            ty: Localizable::Localized("".to_string()),
+        }
+    }
 }
 
-impl AsUpdatableData for BodyInfo {
+impl AsUpdatableData for Option<BodyInfo> {
     type UpdatableData = Self;
 }
 
-impl AsOriginalComponent for BodyInfo {
+impl AsOriginalComponent for Option<BodyInfo> {
     type OriginalComponent = BuiltBodyInfo;
 }
 
-impl DataUpdatableUi<BodyInfo> for BuiltBodyInfo {
-    fn update_data(&mut self, data: &BodyInfo, commands: &mut Commands) {
-        self.update(data, commands);
+impl DataUpdatableUi<Option<BodyInfo>> for BuiltBodyInfo {
+    fn update_data(&mut self, data: &Option<BodyInfo>, commands: &mut Commands) {
+        if let Some(data) = data {
+            self.update(data, commands);
+        } else {
+            self.update(&BodyInfo::default(), commands);
+        }
     }
 }
 
@@ -93,17 +107,22 @@ impl UiAggregate for BodyInfo {
     fn build(parent: &mut ChildBuilder, _style: Self::Style) -> Entity {
         let mut entities = Vec::with_capacity(Self::NUM_FIELDS);
 
-        parent
-            .spawn((
-                NodeBundle {
-                    style: Style {
-                        width: Val::Percent(100.),
-                        ..Default::default()
-                    },
+        let mut panel = parent.spawn((
+            NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.),
                     ..Default::default()
                 },
-                BodyInfoButton { target: None },
-            ))
+                ..Default::default()
+            },
+            BodyFocusButton {
+                target: None,
+                forced_scene_switch: false,
+            },
+        ));
+
+        entities.push(panel.id());
+        panel
             .with_children(|root| {
                 entities.extend(distributed_list_element!(
                     root,
@@ -124,8 +143,9 @@ pub struct SystemStatisticsPanelData {
     title: Localizable<LUiPanel>,
     #[lang_skip]
     name: String,
+    // Equals to MAX_BODIES_PER_SYSTEM
     #[dynamic_sized(10)]
-    bodies: Vec<BodyInfo>,
+    bodies: Vec<Option<BodyInfo>>,
 }
 
 pub struct SystemStatisticsPanelStyle {
@@ -213,7 +233,7 @@ impl UiAggregate for SystemStatisticsPanelData {
                         );
 
                         // Bodies
-                        entities.extend((0..10).flat_map(|_| {
+                        entities.extend((0..MAX_BODIES_PER_SYSTEM).flat_map(|_| {
                             let mut e = Vec::new();
                             data.spawn(NodeBundle {
                                 style: Style {
@@ -239,12 +259,20 @@ fn pack_system_statistics_data(
     mut commands: Commands,
     cosmos: Res<Cosmos>,
     mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
-    bodies_query: Query<(Entity, &Name, &System, Has<Star>, Has<Planet>, Has<Moon>)>,
+    bodies_query: Query<(
+        Entity,
+        &Name,
+        &System,
+        &BodyIndex,
+        Has<Star>,
+        Has<Planet>,
+        Has<Moon>,
+    )>,
     panel: Option<Res<SystemStatisticsPanel>>,
     global_root: Res<GlobalUiRoot>,
 ) {
     for target in target_change.read() {
-        let Some((_, name, system, is_star, ..)) = target.and_then(|t| bodies_query.get(t).ok())
+        let Some((_, name, system, _, is_star, ..)) = target.and_then(|t| bodies_query.get(t).ok())
         else {
             continue;
         };
@@ -253,29 +281,33 @@ fn pack_system_statistics_data(
             continue;
         }
 
+        let mut bodies = system
+            .iter()
+            .enumerate()
+            .map(|(index, body)| {
+                let (_, name, _, body, is_star, is_planet, is_moon) =
+                    bodies_query.get(cosmos.entities[**body]).unwrap();
+                Some(BodyInfo {
+                    index: Some(*body),
+                    name: format!("#{} {}", index, name),
+                    ty: if is_star {
+                        LBodyType::Star.into()
+                    } else if is_planet {
+                        LBodyType::Planet.into()
+                    } else if is_moon {
+                        LBodyType::Moon.into()
+                    } else {
+                        unreachable!()
+                    },
+                })
+            })
+            .collect::<Vec<_>>();
+        bodies.extend(vec![None; MAX_BODIES_PER_SYSTEM as usize - bodies.len()]);
+
         let data = SystemStatisticsPanelData {
             title: LUiPanel::SystemStatistics.into(),
             name: name.to_string(),
-            bodies: system
-                .iter()
-                .enumerate()
-                .map(|(index, body)| {
-                    let (_, name, _, is_star, is_planet, is_moon) =
-                        bodies_query.get(cosmos.entities[**body]).unwrap();
-                    BodyInfo {
-                        name: format!("#{} {}", index, name),
-                        ty: if is_star {
-                            LBodyType::Star.into()
-                        } else if is_planet {
-                            LBodyType::Planet.into()
-                        } else if is_moon {
-                            LBodyType::Moon.into()
-                        } else {
-                            unreachable!()
-                        },
-                    }
-                })
-                .collect(),
+            bodies,
         };
 
         if let Some(built) = panel.as_deref() {
@@ -319,25 +351,13 @@ fn on_target_change(
     mut commands: Commands,
     mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
     panel: ResMut<SystemStatisticsPanel>,
-    bodies_query: Query<(Has<Star>, &System), With<BodyIndex>>,
-    panel_query: Query<&BuiltSystemStatisticsPanelData>,
+    bodies_query: Query<Has<Star>, With<BodyIndex>>,
 ) {
     for change in target_change.read() {
         let vis = {
             if let Some(change) = **change {
-                if let Ok((is_star, system)) = bodies_query.get(change) {
+                if let Ok(is_star) = bodies_query.get(change) {
                     if is_star {
-                        let panel = panel_query.get(**panel).unwrap();
-                        panel
-                            .bodies
-                            .iter()
-                            .take(system.len())
-                            .zip(system.iter())
-                            .for_each(|(btn, body)| {
-                                commands.entity(*btn).insert(BodyInfoButton {
-                                    target: Some(*body),
-                                });
-                            });
                         Visibility::Inherited
                     } else {
                         Visibility::Hidden
@@ -351,26 +371,5 @@ fn on_target_change(
         };
 
         commands.entity(**panel).insert(vis);
-    }
-}
-
-fn handle_body_info_click(
-    mut main_camera_query: Query<&mut Transform, (With<MainCamera>, Without<BodyIndex>)>,
-    bodies_query: Query<&Transform, With<BodyIndex>>,
-    btn_query: Query<(&BodyInfoButton, &MouseInput)>,
-    mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
-    cosmos: Res<Cosmos>,
-) {
-    for (btn, input) in &btn_query {
-        if !input.is_left_click() {
-            continue;
-        }
-
-        if let Some(target) = btn.target {
-            let entity = cosmos.entities[*target];
-            target_change.send(PanelTargetChange::some(entity));
-            main_camera_query.single_mut().translation =
-                bodies_query.get(entity).unwrap().translation;
-        }
     }
 }

@@ -29,6 +29,14 @@ pub fn expand_localizable_struct(input: syn::DeriveInput) -> proc_macro::TokenSt
                 #(#fields)*
             }
         }
+
+        impl #core_crate::localization::LocalizableData for Option<#ty> {
+            fn localize(&mut self, lang: &#core_crate::localization::LangFile) {
+                if let Some(data) = self {
+                    data.localize(lang);
+                }
+            }
+        }
     }
     .into()
 }
