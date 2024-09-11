@@ -4,10 +4,7 @@ use bevy::{
     app::{App, Plugin, Update},
     asset::{load_internal_binary_asset, Handle},
     math::Vec2,
-    prelude::{
-        in_state, ChildBuilder, Deref, DerefMut, Entity, FromWorld, IntoSystemConfigs, NodeBundle,
-        Resource, World,
-    },
+    prelude::{ChildBuilder, Deref, DerefMut, Entity, FromWorld, NodeBundle, Resource, World},
     text::Font,
     ui::{Style, UiMaterialPlugin, Val},
 };
@@ -16,8 +13,8 @@ use thiserror::Error;
 use crate::{
     input::RayTransparent,
     math::{Axis, Direction},
-    schedule::state::GameState,
     ui::{
+        interation::UiInterationPlugin,
         panel::{
             body_data::BodyDataPanelPlugin, scene_title::SceneTitlePlugin,
             system_statistics::SystemStatisticsPanelPlugin,
@@ -31,12 +28,11 @@ use crate::{
     },
 };
 
-pub mod button;
 pub mod ext;
+pub mod interation;
 pub mod macros;
 pub mod panel;
 pub mod preset;
-pub mod scrollable_list;
 pub mod selecting;
 pub mod sync;
 pub mod transition;
@@ -61,17 +57,9 @@ impl Plugin for DystopiaUiPlugin {
             SystemStatisticsPanelPlugin,
         ))
         .add_plugins(SelectingUiPlugin)
+        .add_plugins(UiInterationPlugin)
         .add_plugins(UiMaterialPlugin::<BodySelectingIconMaterial>::default())
         .add_plugins((MainUpdatablePlugin, MainTransitionablePlugin))
-        .add_systems(
-            Update,
-            (
-                scrollable_list::init_structure,
-                scrollable_list::handle_scroll,
-                button::handle_button_close_click,
-            )
-                .run_if(in_state(GameState::Simulate)),
-        )
         .add_systems(Update, (sync::scene_ui_sync, sync::cursor_ui_sync))
         .init_resource::<GlobalUiRoot>()
         .init_resource::<UiStack>();

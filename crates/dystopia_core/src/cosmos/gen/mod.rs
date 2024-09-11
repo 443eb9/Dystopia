@@ -346,14 +346,24 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
 
     // Calculate boundaries
     let farthest = physics::dist_when_cycle(star.body.mass, 10800.);
-    let closest = physics::dist_when_cycle(star.body.mass, 300.).max(star.body.radius * 5.);
+    let closest = physics::dist_when_cycle(star.body.mass, 300.).max(star.body.radius * 2.);
 
     // --- Planets inside CHZ ---
     // Circumstellar Habitable Zone
-    let chz_near =
-        physics::planet_dist_when_temp(star.luminosity, 400., 0.5).clamp(closest, farthest);
-    let chz_far =
-        physics::planet_dist_when_temp(star.luminosity, 200., 0.5).clamp(closest, farthest);
+    let (clamp_closest, clamp_farthest) = {
+        let c = closest * 1.2;
+        let f = farthest * 0.8;
+        if c > f {
+            (closest, farthest)
+        } else {
+            (c, f)
+        }
+    };
+
+    let chz_near = physics::planet_dist_when_temp(star.luminosity, 400., 0.5)
+        .clamp(clamp_closest, clamp_farthest);
+    let chz_far = physics::planet_dist_when_temp(star.luminosity, 200., 0.5)
+        .clamp(clamp_closest, clamp_farthest);
 
     let n_chz = rng.sample(Normal::<f64>::new(0., 0.8).unwrap()).round() as usize;
 
@@ -416,7 +426,7 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
     for (i_planet, planets) in star.children.windows(2).enumerate() {
         let (lhs, rhs) = (&planets[0], &planets[1]);
         if ((lhs.body.pos - star.body.pos).length() - (rhs.body.pos - star.body.pos).length()).abs()
-            < lhs.body.radius + rhs.body.radius
+            < (lhs.body.radius + rhs.body.radius) * 5.
         {
             removed.insert(i_planet);
         }
@@ -428,17 +438,17 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
         .filter_map(|(i, b)| (!removed.contains(&i)).then_some(b))
         .collect();
 
-    // dbg!(
-    //     star.body.radius,
-    //     cur_planet,
-    //     closest,
-    //     chz_near,
-    //     chz_far,
-    //     farthest,
-    //     n_too_close,
-    //     n_chz,
-    //     n_too_far
-    // );
+    dbg!(
+        star.body.radius,
+        cur_planet,
+        closest,
+        chz_near,
+        chz_far,
+        farthest,
+        n_too_close,
+        n_chz,
+        n_too_far
+    );
 }
 
 fn place_moons(rng: &mut impl Rng, planet: &mut PlanetData, planet_index: usize) {
@@ -779,11 +789,11 @@ fn map_star_radius(x: f64) -> f64 {
 }
 
 fn map_star_luminosity(x: f64) -> f64 {
-    (-x / 150000. + 1.).powf(0.7)
+    (-x / 1500000. + 1.).powf(0.7)
 }
 
 fn map_planet_radius(x: f64) -> f64 {
-    x * 0.02
+    x * 0.005
 }
 
 fn map_moon_radius(x: f64) -> f64 {

@@ -3,10 +3,10 @@ use bevy::{
     core::Name,
     prelude::{
         in_state, resource_exists, BuildChildren, ChildBuilder, Commands, Component, Deref, Entity,
-        EventReader, Has, IntoSystemConfigs, NodeBundle, Query, Res, ResMut, Resource, TextBundle,
-        Visibility, With,
+        EventReader, EventWriter, Has, IntoSystemConfigs, NodeBundle, Query, Res, ResMut, Resource,
+        TextBundle, Transform, Visibility, With, Without,
     },
-    text::{Text, TextStyle},
+    text::Text,
     ui::{AlignItems, FlexDirection, JustifyContent, PositionType, Style, Val},
 };
 use dystopia_derive::{AsBuiltComponent, LocalizableData};
@@ -14,11 +14,13 @@ use dystopia_derive::{AsBuiltComponent, LocalizableData};
 use crate::{
     cosmos::celestial::{BodyIndex, Cosmos, Moon, Planet, Star, System},
     distributed_list_element,
+    input::MouseInput,
     localization::{ui::LUiPanel, LangFile, Localizable, LocalizableData},
     schedule::state::{GameState, SceneState},
+    sim::MainCamera,
     ui::{
-        button::{ButtonClose, ButtonCloseStyle},
         ext::DefaultWithStyle,
+        interation::close_button::{ButtonClose, ButtonCloseStyle},
         panel::{
             body_data::{BodyDataPanel, LBodyType},
             PanelTargetChange,
@@ -26,14 +28,13 @@ use crate::{
         preset::{
             default_section_style, default_title_style, FULLSCREEN_UI_CORNERS, PANEL_BACKGROUND,
             PANEL_BORDER, PANEL_BORDER_COLOR, PANEL_ELEM_TEXT_STYLE, PANEL_SUBTITLE_TEXT_STYLE,
-            PANEL_TITLE_BACKGROUND, PANEL_TITLE_FONT_SIZE, PANEL_TITLE_HEIGHT,
-            PANEL_TITLE_TEXT_COLOR,
+            PANEL_TITLE_BACKGROUND, PANEL_TITLE_HEIGHT, PANEL_TITLE_TEXT_STYLE,
         },
         update::{
             AsBuiltComponent, AsOriginalComponent, AsUpdatableData, DataUpdatableUi,
             UpdatablePlugin,
         },
-        GlobalUiRoot, UiAggregate, UiBuilder, FUSION_PIXEL,
+        GlobalUiRoot, UiAggregate, UiBuilder,
     },
 };
 
@@ -47,6 +48,7 @@ impl Plugin for SystemStatisticsPanelPlugin {
                 (
                     pack_system_statistics_data,
                     update_system_statistics_data.run_if(resource_exists::<SystemStatisticsPanel>),
+                    handle_body_info_click,
                 )
                     .run_if(in_state(SceneState::CosmosView)),
             )
@@ -64,6 +66,11 @@ struct BodyInfo {
     #[lang_skip]
     name: String,
     ty: Localizable<LBodyType>,
+}
+
+#[derive(Component)]
+struct BodyInfoButton {
+    target: Option<BodyIndex>,
 }
 
 impl AsUpdatableData for BodyInfo {
@@ -87,13 +94,16 @@ impl UiAggregate for BodyInfo {
         let mut entities = Vec::with_capacity(Self::NUM_FIELDS);
 
         parent
-            .spawn(NodeBundle {
-                style: Style {
-                    width: Val::Percent(100.),
+            .spawn((
+                NodeBundle {
+                    style: Style {
+                        width: Val::Percent(100.),
+                        ..Default::default()
+                    },
                     ..Default::default()
                 },
-                ..Default::default()
-            })
+                BodyInfoButton { target: None },
+            ))
             .with_children(|root| {
                 entities.extend(distributed_list_element!(
                     root,
@@ -133,9 +143,9 @@ impl UiAggregate for SystemStatisticsPanelData {
                 position_type: PositionType::Absolute,
                 width: Val::Px(style.width),
                 height: Val::Percent(100.),
+                left: FULLSCREEN_UI_CORNERS.left,
                 flex_direction: FlexDirection::Column,
                 justify_content: JustifyContent::Center,
-                left: FULLSCREEN_UI_CORNERS.left,
                 ..Default::default()
             },
             ..Default::default()
@@ -173,11 +183,7 @@ impl UiAggregate for SystemStatisticsPanelData {
                         entities.push(
                             title_root
                                 .spawn(TextBundle {
-                                    text: Text::default_with_style(TextStyle {
-                                        font: FUSION_PIXEL,
-                                        font_size: PANEL_TITLE_FONT_SIZE,
-                                        color: PANEL_TITLE_TEXT_COLOR,
-                                    }),
+                                    text: Text::default_with_style(PANEL_TITLE_TEXT_STYLE),
                                     ..Default::default()
                                 })
                                 .id(),
@@ -313,19 +319,58 @@ fn on_target_change(
     mut commands: Commands,
     mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
     panel: ResMut<SystemStatisticsPanel>,
-    bodies_query: Query<Has<Star>, With<BodyIndex>>,
+    bodies_query: Query<(Has<Star>, &System), With<BodyIndex>>,
+    panel_query: Query<&BuiltSystemStatisticsPanelData>,
 ) {
     for change in target_change.read() {
-        commands
-            .entity(**panel)
-            .insert(if let Some(change) = **change {
-                if bodies_query.get(change).is_ok_and(|b| b) {
-                    Visibility::Inherited
+        let vis = {
+            if let Some(change) = **change {
+                if let Ok((is_star, system)) = bodies_query.get(change) {
+                    if is_star {
+                        let panel = panel_query.get(**panel).unwrap();
+                        panel
+                            .bodies
+                            .iter()
+                            .take(system.len())
+                            .zip(system.iter())
+                            .for_each(|(btn, body)| {
+                                commands.entity(*btn).insert(BodyInfoButton {
+                                    target: Some(*body),
+                                });
+                            });
+                        Visibility::Inherited
+                    } else {
+                        Visibility::Hidden
+                    }
                 } else {
                     Visibility::Hidden
                 }
             } else {
                 Visibility::Hidden
-            });
+            }
+        };
+
+        commands.entity(**panel).insert(vis);
+    }
+}
+
+fn handle_body_info_click(
+    mut main_camera_query: Query<&mut Transform, (With<MainCamera>, Without<BodyIndex>)>,
+    bodies_query: Query<&Transform, With<BodyIndex>>,
+    btn_query: Query<(&BodyInfoButton, &MouseInput)>,
+    mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
+    cosmos: Res<Cosmos>,
+) {
+    for (btn, input) in &btn_query {
+        if !input.is_left_click() {
+            continue;
+        }
+
+        if let Some(target) = btn.target {
+            let entity = cosmos.entities[*target];
+            target_change.send(PanelTargetChange::some(entity));
+            main_camera_query.single_mut().translation =
+                bodies_query.get(entity).unwrap().translation;
+        }
     }
 }

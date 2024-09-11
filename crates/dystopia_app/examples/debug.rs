@@ -49,7 +49,8 @@ use dystopia_core::{
     sci::unit::Length,
     sim::{MainCamera, SaveName, ViewScale},
     ui::{
-        panel::body_data::BodyDataPanel, scrollable_list::ScrollableList, UiBuilder, FUSION_PIXEL,
+        interation::scrollable_list::ScrollableList, panel::body_data::BodyDataPanel, UiBuilder,
+        FUSION_PIXEL,
     },
     DystopiaCorePlugin,
 };
@@ -139,7 +140,7 @@ fn debug_skip_menu(
     mut scene_state: ResMut<NextState<SceneState>>,
 ) {
     commands.insert_resource(CosmosGenerationSettings {
-        seed: 4,
+        seed: 5,
         galaxy_radius: Length::LightYear(1.),
         // num_stars: 60..69,
         num_stars: 1..2,

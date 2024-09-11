@@ -25,8 +25,11 @@ use crate::{
     schedule::state::{GameState, SceneState},
     sci::unit::{Length, Temperature, Time, Unit},
     ui::{
-        button::{ButtonClose, ButtonCloseStyle},
         ext::DefaultWithStyle,
+        interation::{
+            close_button::{ButtonClose, ButtonCloseStyle},
+            scrollable_list::ScrollableList,
+        },
         panel::PanelTargetChange,
         preset::{
             default_panel_style, default_section_style, default_title_style, FULLSCREEN_UI_CORNERS,
@@ -34,7 +37,6 @@ use crate::{
             PANEL_TITLE_BACKGROUND, PANEL_TITLE_FONT_SIZE, PANEL_TITLE_HEIGHT,
             PANEL_TITLE_TEXT_COLOR,
         },
-        scrollable_list::ScrollableList,
         update::AsBuiltComponent,
         GlobalUiRoot, UiAggregate, UiBuilder, UiStack, FUSION_PIXEL,
     },

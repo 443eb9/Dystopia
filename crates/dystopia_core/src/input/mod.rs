@@ -119,6 +119,13 @@ pub struct MouseInput {
     pub state: ButtonState,
 }
 
+impl MouseInput {
+    #[inline]
+    pub fn is_left_click(&self) -> bool {
+        self.button == MouseButton::Left && self.state.is_pressed()
+    }
+}
+
 #[derive(Component)]
 pub(super) struct MouseMultiClickCooldown {
     pub button: MouseButton,
