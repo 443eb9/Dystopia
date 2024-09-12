@@ -27,7 +27,6 @@ impl AsUpdatableData for Option<BodyIndex> {
 
 impl DataUpdatableUi<Option<BodyIndex>> for BodyFocusButton {
     fn update_data(&mut self, data: &Option<BodyIndex>, _commands: &mut Commands) {
-        dbg!(data);
         self.target = *data;
     }
 }

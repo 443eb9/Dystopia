@@ -144,7 +144,7 @@ pub fn generate_cosmos(
 
     info!("Start calculating effective temperature");
 
-    calculate_effective_temp(&mut rng, &mut stars, &orbits);
+    calculate_effective_temp(&mut rng, &mut stars);
 
     info!("Start spawning all bodies and orbits into game...");
 
@@ -202,11 +202,9 @@ fn generate_stars(
 
         let (floor, ceil) = (&star_props[floor], &star_props[ceil]);
         let radius = map_star_radius(floor.radius.lerp(ceil.radius, rng.gen_range(0f64..1f64)));
-        let luminosity = map_star_luminosity(
-            floor
-                .luminosity
-                .lerp(ceil.luminosity, rng.gen_range(0f64..1f64)),
-        );
+        let luminosity = floor
+            .luminosity
+            .lerp(ceil.luminosity, rng.gen_range(0f64..1f64));
         let effective_temp = floor
             .effective_temp
             .lerp(ceil.effective_temp, rng.gen_range(0f64..1f64));
@@ -349,7 +347,7 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
 
     // Calculate boundaries
     let farthest = physics::dist_when_cycle(star.body.mass, 10800.);
-    let closest = physics::dist_when_cycle(star.body.mass, 300.).max(star.body.radius * 2.);
+    let closest = physics::dist_when_cycle(star.body.mass, 300.).max(star.body.radius * 1.5);
 
     // --- Planets inside CHZ ---
     // Circumstellar Habitable Zone
@@ -367,6 +365,9 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
         .clamp(clamp_closest, clamp_farthest);
     let chz_far = physics::planet_dist_when_temp(star.luminosity, 200., 0.5)
         .clamp(clamp_closest, clamp_farthest);
+
+    dbg!(physics::planet_temp_at_dist(star.luminosity, chz_far, 0.5));
+    dbg!(star.luminosity);
 
     let n_chz = rng.sample(Normal::<f64>::new(0., 0.8).unwrap()).round() as usize;
 
@@ -572,23 +573,18 @@ fn generate_orbits(
     (orbits, orbit_materials)
 }
 
-fn calculate_effective_temp(rng: &mut impl Rng, stars: &mut Vec<StarData>, orbits: &Vec<Orbit>) {
-    let mut i_orbit = 0;
+fn calculate_effective_temp(rng: &mut impl Rng, stars: &mut Vec<StarData>) {
     for star in stars {
-        i_orbit += 1;
-
         for planet in &mut star.children {
-            planet.effective_temp =
-                physics::planet_temp_at_dist(star.luminosity, orbits[i_orbit].radius, 0.5);
-            i_orbit += 1;
+            let radius = (star.body.pos - planet.body.pos).length();
+            planet.effective_temp = physics::planet_temp_at_dist(star.luminosity, radius, 0.5);
 
             for moon in &mut planet.children {
                 moon.effective_temp = physics::planet_temp_at_dist(
                     star.luminosity,
-                    orbits[i_orbit].radius * rng.gen_range(0.8..1.2),
+                    radius * rng.gen_range(0.8..1.2),
                     0.5,
                 );
-                i_orbit += 1;
             }
         }
     }
@@ -789,10 +785,6 @@ where
 
 fn map_star_radius(x: f64) -> f64 {
     (-x / 500. + 1.).powf(1.6)
-}
-
-fn map_star_luminosity(x: f64) -> f64 {
-    (-x / 1500000. + 1.).powf(0.7)
 }
 
 fn map_planet_radius(x: f64) -> f64 {

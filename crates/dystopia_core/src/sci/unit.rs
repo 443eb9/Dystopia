@@ -48,7 +48,7 @@ pub enum Mass {
 
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
 pub enum RadiantFlux {
-    #[conversion = 3.846e13]
+    #[conversion = 1.846e13]
     SolarLuminosity(f64),
     #[si]
     Watt(f64),
