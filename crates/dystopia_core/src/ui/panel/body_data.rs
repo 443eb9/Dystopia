@@ -5,8 +5,8 @@ use bevy::{
     log::warn,
     prelude::{
         in_state, resource_exists, BuildChildren, ChildBuilder, Commands, Component, Deref, Entity,
-        EventReader, EventWriter, IntoSystemConfigs, MouseButton, NodeBundle, Query, Res, ResMut,
-        Resource, TextBundle, Visibility,
+        EventReader, EventWriter, Has, IntoSystemConfigs, MouseButton, NodeBundle, Query, Res,
+        ResMut, Resource, TextBundle, Visibility,
     },
     text::{Text, TextStyle},
     ui::{AlignItems, FlexDirection, JustifyContent, PositionType, Style, Val},
@@ -15,15 +15,15 @@ use dystopia_derive::{AsBuiltComponent, LocalizableData};
 
 use crate::{
     cosmos::celestial::{
-        BodyIndex, BodyTemperature, BodyType, Cosmos, Moon, Planet, Star, StarType,
+        BodyIlluminance, BodyIndex, BodyTemperature, BodyType, Cosmos, Moon, Planet, Star, StarType,
     },
     distributed_list_element,
     input::{MouseInput, SceneMouseInput},
     localizable_enum,
-    localization::{ui::LUiPanel, LangFile, Localizable, LocalizableData},
+    localization::{ui::LUiPanel, LangFile, Localizable, LocalizableData, LocalizablePrimitive},
     merge_list,
     schedule::state::{GameState, SceneState},
-    sci::unit::{Length, Temperature, Time, Unit},
+    sci::unit::{Illuminance, Length, Temperature, Time, Unit},
     ui::{
         ext::DefaultWithStyle,
         interation::{
@@ -45,7 +45,7 @@ use crate::{
 
 localizable_enum!(LBodyType, pub, Star, Planet, Moon);
 localizable_enum!(LDetailedBodyType, O, B, A, F, G, K, M, Rocky, Gas, Ice);
-localizable_enum!(LBodyInfoType, Temperature);
+localizable_enum!(LBodyInfoType, Temperature, Illuminance);
 localizable_enum!(
     LBodyOrbitInfoType,
     ParentBody,
@@ -92,6 +92,8 @@ struct BodyDataPanelData {
     detailed_body_ty: Localizable<LDetailedBodyType>,
     title_body_temperature: Localizable<LBodyInfoType>,
     body_temperature: Localizable<Temperature>,
+    title_illuminance: Localizable<LBodyInfoType>,
+    illuminance: Localizable<Illuminance>,
 
     section_orbit_info: Localizable<LBodyDataPanelSectionType>,
     #[lang_skip]
@@ -205,15 +207,23 @@ impl UiAggregate for BodyDataPanelData {
                             TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
                             // body_ty
                             TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
-                            // // detailed_body_ty
+                            // detailed_body_ty
                             TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
                         ));
 
-                        // body_temperature
-                        entities.extend(distributed_list_element!(
-                            section_root,
-                            TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
-                            TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                        entities.extend(merge_list!(
+                            // body_temperature
+                            distributed_list_element!(
+                                section_root,
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                            ),
+                            // luminous_intensity
+                            distributed_list_element!(
+                                section_root,
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                            )
                         ));
                     });
 
@@ -304,11 +314,12 @@ fn pack_body_data_panel_data(
         &Name,
         &BodyIndex,
         &BodyTemperature,
-        Option<&Star>,
+        Has<Star>,
         Option<&StarType>,
-        Option<&Planet>,
-        Option<&Moon>,
+        Has<Planet>,
+        Has<Moon>,
         Option<&BodyType>,
+        Option<&BodyIlluminance>,
     )>,
     cosmos: Res<Cosmos>,
     mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
@@ -326,11 +337,12 @@ fn pack_body_data_panel_data(
             body_name,
             body_index,
             body_temperature,
-            maybe_star,
+            is_star,
             maybe_star_ty,
-            maybe_planet,
-            maybe_moon,
+            is_planet,
+            is_moon,
             maybe_body_ty,
+            maybe_illuminance,
         )) = body_query.get(target)
         else {
             warn!("Failed to find the target body.");
@@ -347,11 +359,11 @@ fn pack_body_data_panel_data(
             continue;
         };
 
-        let body_ty = if maybe_star.is_some() {
+        let body_ty = if is_star {
             LBodyType::Star
-        } else if maybe_planet.is_some() {
+        } else if is_planet {
             LBodyType::Planet
-        } else if maybe_moon.is_some() {
+        } else if is_moon {
             LBodyType::Moon
         } else {
             unreachable!()
@@ -393,6 +405,11 @@ fn pack_body_data_panel_data(
             detailed_body_ty,
             title_body_temperature: LBodyInfoType::Temperature.into(),
             body_temperature: Temperature::wrap_with_si(**body_temperature).into(),
+            title_illuminance: LBodyInfoType::Illuminance.into(),
+            illuminance: Illuminance::wrap_with_si(
+                maybe_illuminance.map(|l| **l).unwrap_or(f64::NAN),
+            )
+            .into(),
 
             section_orbit_info: LBodyDataPanelSectionType::OrbitInfo.into(),
             title_parent_body: LBodyOrbitInfoType::ParentBody.into(),

@@ -25,8 +25,8 @@ use crate::{
     cosmos::{
         bundle::{GiantBodyBundle, RockyBodyBundle, StarBundle},
         celestial::{
-            BodyColor, BodyIndex, BodyTemperature, BodyType, CelestialBodyData, Cosmos, Moon,
-            Orbit, OrbitIndex, Planet, StarClass, System,
+            BodyColor, BodyIndex, BodyIlluminance, BodyTemperature, BodyType,
+            CelestialBodyData, Cosmos, Moon, Orbit, OrbitIndex, Planet, StarClass, System,
         },
         config::{CosmosStarNamesConfig, CosmosStarPropertiesConfig},
         gen::distr::*,
@@ -63,6 +63,7 @@ pub struct PlanetData {
     pub body: CelestialBodyData,
     pub ty: BodyType,
     pub effective_temp: f64,
+    pub luminous_intensity: f64,
     pub color: LinearRgba,
     pub children: Vec<MoonData>,
 }
@@ -71,6 +72,7 @@ pub struct PlanetData {
 pub struct MoonData {
     pub body: CelestialBodyData,
     pub effective_temp: f64,
+    pub luminous_intensity: f64,
     pub color: LinearRgba,
 }
 
@@ -142,9 +144,9 @@ pub fn generate_cosmos(
 
     let (orbits, orbit_materials) = generate_orbits(&mut rng, &mut stars, &mut orbit_materials);
 
-    info!("Start calculating effective temperature");
+    info!("Start calculating extra parameters...");
 
-    calculate_effective_temp(&mut rng, &mut stars);
+    calculate_extra_parameters(&mut rng, &mut stars);
 
     info!("Start spawning all bodies and orbits into game...");
 
@@ -272,6 +274,7 @@ fn generate_planets(rng: &mut impl Rng, star: &StarData) -> Vec<PlanetData> {
                 radius,
             },
             effective_temp: 0.,
+            luminous_intensity: 0.,
             color: random_color(rng),
             ty,
             children: Vec::new(),
@@ -302,6 +305,7 @@ fn generate_moon(rng: &mut impl Rng, planet: &PlanetData) -> Vec<MoonData> {
                 radius,
             },
             effective_temp: 0.,
+            luminous_intensity: 0.,
             color: random_color(rng),
         });
     }
@@ -573,11 +577,13 @@ fn generate_orbits(
     (orbits, orbit_materials)
 }
 
-fn calculate_effective_temp(rng: &mut impl Rng, stars: &mut Vec<StarData>) {
+fn calculate_extra_parameters(rng: &mut impl Rng, stars: &mut Vec<StarData>) {
     for star in stars {
         for planet in &mut star.children {
             let radius = (star.body.pos - planet.body.pos).length();
             planet.effective_temp = physics::planet_temp_at_dist(star.luminosity, radius, 0.5);
+            planet.luminous_intensity =
+                physics::luminous_intensity_at_dist(star.luminosity, radius, planet.body.radius);
 
             for moon in &mut planet.children {
                 moon.effective_temp = physics::planet_temp_at_dist(
@@ -585,6 +591,8 @@ fn calculate_effective_temp(rng: &mut impl Rng, stars: &mut Vec<StarData>) {
                     radius * rng.gen_range(0.8..1.2),
                     0.5,
                 );
+                planet.luminous_intensity =
+                    physics::luminous_intensity_at_dist(star.luminosity, radius, moon.body.radius);
             }
         }
     }
@@ -651,6 +659,9 @@ fn spawn_bodies(
                                         .collect(),
                                 ),
                                 temperature: BodyTemperature::new(planet.effective_temp),
+                                luminous_intensity: BodyIlluminance::new(
+                                    planet.luminous_intensity,
+                                ),
                                 mesh: mesh.clone(),
                                 material: rocky_body_materials.add(RockyBodyMaterial {
                                     color: planet.color,
@@ -680,6 +691,9 @@ fn spawn_bodies(
                                         .collect(),
                                 ),
                                 temperature: BodyTemperature::new(planet.effective_temp),
+                                luminous_intensity: BodyIlluminance::new(
+                                    planet.luminous_intensity,
+                                ),
                                 mesh: mesh.clone(),
                                 material: giant_body_materials.add(GiantBodyMaterial {
                                     color: planet.color,
@@ -711,6 +725,9 @@ fn spawn_bodies(
                                 body_index: BodyIndex::new(bodies.len()),
                                 system: System::new(vec![BodyIndex::new(bodies.len())]),
                                 temperature: BodyTemperature::new(moon.effective_temp),
+                                luminous_intensity: BodyIlluminance::new(
+                                    planet.luminous_intensity,
+                                ),
                                 mesh: mesh.clone(),
                                 material: rocky_body_materials
                                     .add(RockyBodyMaterial { color: moon.color }),

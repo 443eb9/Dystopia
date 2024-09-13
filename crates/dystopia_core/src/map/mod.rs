@@ -2,6 +2,7 @@ use bevy::app::{App, Plugin};
 
 pub mod bundle;
 pub mod gen;
+pub mod quantify;
 pub mod render;
 pub mod serde;
 pub mod shape;

@@ -10,7 +10,10 @@ use bevy::{
 
 use crate::{
     cosmos::{
-        celestial::{BodyColor, BodyIndex, BodyTemperature, BodyType, Star, StarType, System},
+        celestial::{
+            BodyColor, BodyIndex, BodyIlluminance, BodyTemperature, BodyType, Star, StarType,
+            System,
+        },
         mesh::{GiantBodyMaterial, RockyBodyMaterial, StarMaterial},
     },
     scene::transition::CameraRecoverTransform,
@@ -43,6 +46,7 @@ pub struct RockyBodyBundle {
     pub body_index: BodyIndex,
     pub system: System,
     pub temperature: BodyTemperature,
+    pub luminous_intensity: BodyIlluminance,
     pub mesh: Mesh2dHandle,
     pub material: Handle<RockyBodyMaterial>,
     pub color: BodyColor,
@@ -61,6 +65,7 @@ pub struct GiantBodyBundle {
     pub ty: BodyType,
     pub body_index: BodyIndex,
     pub temperature: BodyTemperature,
+    pub luminous_intensity: BodyIlluminance,
     pub system: System,
     pub mesh: Mesh2dHandle,
     pub material: Handle<GiantBodyMaterial>,

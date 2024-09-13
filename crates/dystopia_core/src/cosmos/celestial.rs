@@ -118,6 +118,11 @@ tuple_struct_new!(BodyColor, LinearRgba);
 pub struct BodyTemperature(f64);
 tuple_struct_new!(BodyTemperature, f64);
 
+/// The luminous intensity of the body received from its parent star.
+#[derive(Component, Default, Clone, Deref, DerefMut)]
+pub struct BodyIlluminance(f64);
+tuple_struct_new!(BodyIlluminance, f64);
+
 /// The corresponding tilemap to the body.
 ///
 /// This won't be added to the body when they're spawned, as it will cause too much

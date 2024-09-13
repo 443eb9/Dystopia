@@ -7,7 +7,7 @@
         },
         "mass": 120.00,
         "radius": 15.00,
-        "luminosity": 1400000,
+        "luminosity": 52,
         "effective_temp": 44900,
         "color": "#93b6ff"
     },
@@ -19,7 +19,7 @@
         },
         "mass": 85.31,
         "radius": 13.43,
-        "luminosity": 1073019,
+        "luminosity": 50,
         "effective_temp": 42900,
         "color": "#94b6ff"
     },
@@ -31,7 +31,7 @@
         },
         "mass": 60.00,
         "radius": 12.00,
-        "luminosity": 790000,
+        "luminosity": 48,
         "effective_temp": 41400,
         "color": "#94b6ff"
     },
@@ -43,7 +43,7 @@
         },
         "mass": 43.71,
         "radius": 10.71,
-        "luminosity": 540422,
+        "luminosity": 46,
         "effective_temp": 39500,
         "color": "#95b7ff"
     },
@@ -55,7 +55,7 @@
         },
         "mass": 30.85,
         "radius": 9.52,
-        "luminosity": 317322,
+        "luminosity": 43,
         "effective_temp": 37100,
         "color": "#96b7ff"
     },
@@ -67,7 +67,7 @@
         },
         "mass": 23.00,
         "radius": 8.50,
-        "luminosity": 170000,
+        "luminosity": 41,
         "effective_temp": 35100,
         "color": "#96b8ff"
     },
@@ -79,7 +79,7 @@
         },
         "mass": 19.63,
         "radius": 7.51,
-        "luminosity": 92762,
+        "luminosity": 40,
         "effective_temp": 33300,
         "color": "#97b8ff"
     },
@@ -91,7 +91,7 @@
         },
         "mass": 17.70,
         "radius": 7.16,
-        "luminosity": 44668,
+        "luminosity": 38,
         "effective_temp": 31400,
         "color": "#98b9ff"
     },
@@ -103,7 +103,7 @@
         },
         "mass": 11.00,
         "radius": 5.71,
-        "luminosity": 13490,
+        "luminosity": 37,
         "effective_temp": 26000,
         "color": "#9cbbff"
     },
@@ -115,7 +115,7 @@
         },
         "mass": 7.30,
         "radius": 4.06,
-        "luminosity": 2692,
+        "luminosity": 35,
         "effective_temp": 20600,
         "color": "#a1bfff"
     },
@@ -127,7 +127,7 @@
         },
         "mass": 5.40,
         "radius": 3.61,
-        "luminosity": 977,
+        "luminosity": 34,
         "effective_temp": 17000,
         "color": "#a8c4ff"
     },
@@ -139,7 +139,7 @@
         },
         "mass": 5.10,
         "radius": 3.46,
-        "luminosity": 776,
+        "luminosity": 32,
         "effective_temp": 16400,
         "color": "#a9c5ff"
     },
@@ -151,7 +151,7 @@
         },
         "mass": 4.70,
         "radius": 3.36,
-        "luminosity": 589,
+        "luminosity": 31,
         "effective_temp": 15700,
         "color": "#abc6ff"
     },
@@ -163,7 +163,7 @@
         },
         "mass": 4.30,
         "radius": 3.27,
-        "luminosity": 372,
+        "luminosity": 30,
         "effective_temp": 14500,
         "color": "#afc8ff"
     },
@@ -175,7 +175,7 @@
         },
         "mass": 3.92,
         "radius": 2.94,
-        "luminosity": 302,
+        "luminosity": 29,
         "effective_temp": 14000,
         "color": "#b1c9ff"
     },
@@ -187,7 +187,7 @@
         },
         "mass": 3.38,
         "radius": 2.86,
-        "luminosity": 155,
+        "luminosity": 26,
         "effective_temp": 12300,
         "color": "#b8ceff"
     },
@@ -199,7 +199,7 @@
         },
         "mass": 2.75,
         "radius": 2.49,
-        "luminosity": 72,
+        "luminosity": 23,
         "effective_temp": 10700,
         "color": "#c2d4ff"
     },
@@ -211,7 +211,7 @@
         },
         "mass": 2.18,
         "radius": 2.193,
-        "luminosity": 38.02,
+        "luminosity": 21.02,
         "effective_temp": 9700,
         "color": "#cadaff"
     },
@@ -223,7 +223,7 @@
         },
         "mass": 2.05,
         "radius": 2.136,
-        "luminosity": 30.90,
+        "luminosity": 20.90,
         "effective_temp": 9300,
         "color": "#cedcff"
     },
@@ -235,7 +235,7 @@
         },
         "mass": 1.98,
         "radius": 2.117,
-        "luminosity": 23.99,
+        "luminosity": 16.99,
         "effective_temp": 8800,
         "color": "#d4e0ff"
     },
@@ -247,7 +247,7 @@
         },
         "mass": 1.93,
         "radius": 1.861,
-        "luminosity": 16.98,
+        "luminosity": 14.98,
         "effective_temp": 8600,
         "color": "#d7e1ff"
     },

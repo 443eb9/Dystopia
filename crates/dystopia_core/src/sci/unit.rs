@@ -55,6 +55,12 @@ pub enum RadiantFlux {
 }
 
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
+pub enum Illuminance {
+    #[si]
+    Lux(f64),
+}
+
+#[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
 pub enum Temperature {
     #[conversion = 273.15]
     #[conv_method = "sub"]

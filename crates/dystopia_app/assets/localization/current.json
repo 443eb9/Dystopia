@@ -18,6 +18,9 @@
         "Celsius": "°C",
         "Kelvin": "K"
     },
+    "Illuminance": {
+        "Lux": "Lux"
+    },
     "LUiPanel": {
         "BodyData": "Body Information",
         "SystemStatistics": "System Statistics"
@@ -40,7 +43,8 @@
         "Ice": "Ice Giant"
     },
     "LBodyInfoType": {
-        "Temperature": "Temperature"
+        "Temperature": "Temperature",
+        "Illuminance": "Illuminance"
     },
     "LBodyOrbitInfoType": {
         "ParentBody": "Parent Body",
