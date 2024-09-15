@@ -14,16 +14,14 @@ use bevy::{
 use dystopia_derive::{AsBuiltComponent, LocalizableData};
 
 use crate::{
-    cosmos::celestial::{
-        BodyIlluminance, BodyIndex, BodyTemperature, BodyType, Cosmos, Moon, Planet, Star, StarType,
-    },
+    cosmos::celestial::{BodyIndex, BodyType, Cosmos, Moon, Planet, Star, StarType},
     distributed_list_element,
     input::{MouseInput, SceneMouseInput},
     localizable_enum,
-    localization::{ui::LUiPanel, LangFile, Localizable, LocalizableData, LocalizablePrimitive},
+    localization::{ui::LUiPanel, LangFile, Localizable, LocalizableData},
     merge_list,
     schedule::state::{GameState, SceneState},
-    sci::unit::{Illuminance, Length, Temperature, Time, Unit},
+    sci::unit::{Density, Illuminance, Length, Temperature, Time, Unit},
     ui::{
         ext::DefaultWithStyle,
         interation::{
@@ -45,7 +43,7 @@ use crate::{
 
 localizable_enum!(LBodyType, pub, Star, Planet, Moon);
 localizable_enum!(LDetailedBodyType, O, B, A, F, G, K, M, Rocky, Gas, Ice);
-localizable_enum!(LBodyInfoType, Temperature, Illuminance);
+localizable_enum!(LBodyInfoType, Temperature, Density, Illuminance);
 localizable_enum!(
     LBodyOrbitInfoType,
     ParentBody,
@@ -90,8 +88,10 @@ struct BodyDataPanelData {
     body_name: String,
     body_ty: Localizable<LBodyType>,
     detailed_body_ty: Localizable<LDetailedBodyType>,
-    title_body_temperature: Localizable<LBodyInfoType>,
-    body_temperature: Localizable<Temperature>,
+    title_temperature: Localizable<LBodyInfoType>,
+    temperature: Localizable<Temperature>,
+    title_density: Localizable<LBodyInfoType>,
+    density: Localizable<Density>,
     title_illuminance: Localizable<LBodyInfoType>,
     illuminance: Localizable<Illuminance>,
 
@@ -212,13 +212,19 @@ impl UiAggregate for BodyDataPanelData {
                         ));
 
                         entities.extend(merge_list!(
-                            // body_temperature
+                            // temperature
                             distributed_list_element!(
                                 section_root,
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
                             ),
-                            // luminous_intensity
+                            // density
+                            distributed_list_element!(
+                                section_root,
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
+                                TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE)
+                            ),
+                            // illuminance
                             distributed_list_element!(
                                 section_root,
                                 TextBundle::default_with_style(PANEL_ELEM_TEXT_STYLE),
@@ -313,13 +319,11 @@ fn pack_body_data_panel_data(
     body_query: Query<(
         &Name,
         &BodyIndex,
-        &BodyTemperature,
         Has<Star>,
         Option<&StarType>,
         Has<Planet>,
         Has<Moon>,
         Option<&BodyType>,
-        Option<&BodyIlluminance>,
     )>,
     cosmos: Res<Cosmos>,
     mut target_change: EventReader<PanelTargetChange<BodyDataPanel>>,
@@ -333,17 +337,8 @@ fn pack_body_data_panel_data(
             continue;
         };
 
-        let Ok((
-            body_name,
-            body_index,
-            body_temperature,
-            is_star,
-            maybe_star_ty,
-            is_planet,
-            is_moon,
-            maybe_body_ty,
-            maybe_illuminance,
-        )) = body_query.get(target)
+        let Ok((body_name, body_index, is_star, maybe_star_ty, is_planet, is_moon, maybe_body_ty)) =
+            body_query.get(target)
         else {
             warn!("Failed to find the target body.");
             continue;
@@ -396,6 +391,8 @@ fn pack_body_data_panel_data(
             .get(orbit.center_id)
             .and_then(|e| body_query.get(*e).map(|b| (b.0.to_string(), *b.1)).ok());
 
+        let parameterized = &cosmos.parameterized[**body_index];
+
         let data = BodyDataPanelData {
             title: LUiPanel::BodyData.into(),
 
@@ -403,13 +400,12 @@ fn pack_body_data_panel_data(
             body_name: body_name.to_string(),
             body_ty,
             detailed_body_ty,
-            title_body_temperature: LBodyInfoType::Temperature.into(),
-            body_temperature: Temperature::wrap_with_si(**body_temperature).into(),
+            title_temperature: LBodyInfoType::Temperature.into(),
+            temperature: Temperature::wrap_with_si(parameterized.temperature).into(),
+            title_density: LBodyInfoType::Density.into(),
+            density: Density::wrap_with_si(parameterized.density).into(),
             title_illuminance: LBodyInfoType::Illuminance.into(),
-            illuminance: Illuminance::wrap_with_si(
-                maybe_illuminance.map(|l| **l).unwrap_or(f64::NAN),
-            )
-            .into(),
+            illuminance: Illuminance::wrap_with_si(parameterized.illuminance).into(),
 
             section_orbit_info: LBodyDataPanelSectionType::OrbitInfo.into(),
             title_parent_body: LBodyOrbitInfoType::ParentBody.into(),

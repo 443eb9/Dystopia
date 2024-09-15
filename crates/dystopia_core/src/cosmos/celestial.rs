@@ -5,7 +5,10 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::tuple_struct_new;
+use crate::{
+    body::{ParameterizedBody, QuantifiedBody},
+    tuple_struct_new,
+};
 
 #[derive(Resource)]
 pub struct OrbitsVisibility {
@@ -27,6 +30,8 @@ impl Default for OrbitsVisibility {
 #[derive(Resource)]
 pub struct Cosmos {
     pub bodies: Vec<CelestialBodyData>,
+    pub parameterized: Vec<ParameterizedBody>,
+    pub quantified: Vec<QuantifiedBody>,
     pub entities: Vec<Entity>,
     pub orbits: Vec<Orbit>,
 }
@@ -91,7 +96,7 @@ pub struct StarClass {
     pub index: u32,
 }
 
-/// The type of a main sequence star.
+/// The type of a planet.
 #[derive(Component, Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BodyType {
     #[default]
@@ -112,16 +117,6 @@ pub struct Landable;
 #[derive(Component, Default, Clone, Deref, DerefMut)]
 pub struct BodyColor(LinearRgba);
 tuple_struct_new!(BodyColor, LinearRgba);
-
-/// The temperature of the body, in Kelvin.
-#[derive(Component, Default, Clone, Deref, DerefMut)]
-pub struct BodyTemperature(f64);
-tuple_struct_new!(BodyTemperature, f64);
-
-/// The luminous intensity of the body received from its parent star.
-#[derive(Component, Default, Clone, Deref, DerefMut)]
-pub struct BodyIlluminance(f64);
-tuple_struct_new!(BodyIlluminance, f64);
 
 /// The corresponding tilemap to the body.
 ///

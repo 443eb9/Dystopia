@@ -21,6 +21,9 @@
     "Illuminance": {
         "Lux": "Lux"
     },
+    "Density": {
+        "GPerCm3": "g/cm^3"
+    },
     "LUiPanel": {
         "BodyData": "Body Information",
         "SystemStatistics": "System Statistics"
@@ -44,6 +47,7 @@
     },
     "LBodyInfoType": {
         "Temperature": "Temperature",
+        "Density": "Density",
         "Illuminance": "Illuminance"
     },
     "LBodyOrbitInfoType": {

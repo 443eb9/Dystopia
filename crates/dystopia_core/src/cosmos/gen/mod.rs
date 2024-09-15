@@ -18,26 +18,32 @@ use bevy::{
 };
 use hashbrown::HashSet;
 use indexmap::IndexSet;
+use num_enum::TryFromPrimitive;
 use rand::{rngs::StdRng, Rng, SeedableRng};
-use rand_distr::{num_traits::Float, Distribution, Normal, StandardNormal};
+use rand_distr::{num_traits::Float, Distribution, Normal, StandardNormal, WeightedAliasIndex};
 
 use crate::{
+    body::{
+        quantify::{AtmosphericDensity, Density, Illuminance, Metallicity, Moisture, Temperature},
+        ParameterizedBody, QuantifiedBody,
+    },
     cosmos::{
         bundle::{GiantBodyBundle, RockyBodyBundle, StarBundle},
         celestial::{
-            BodyColor, BodyIndex, BodyIlluminance, BodyTemperature, BodyType,
-            CelestialBodyData, Cosmos, Moon, Orbit, OrbitIndex, Planet, StarClass, System,
+            BodyColor, BodyIndex, BodyType, CelestialBodyData, Cosmos, Moon, Orbit, OrbitIndex,
+            Planet, StarClass, System,
         },
         config::{CosmosStarNamesConfig, CosmosStarPropertiesConfig},
         gen::distr::*,
         mesh::{GiantBodyMaterial, OrbitMaterial, RockyBodyMaterial, StarMaterial},
         ORBIT_MESH_SCALE, ORBIT_WIDTH,
     },
-    math::reject_sampling,
+    math::{reject_sampling, sample_normal_bounded},
     schedule::signal::InitializationSignal,
     sci::{
         physics,
         unit::{Length, Mass, RadiantFlux, Time, Unit},
+        Quantified,
     },
     sim::{GlobalRng, Ticker},
 };
@@ -47,8 +53,13 @@ mod distr;
 // TODO restrict bodies count in generation
 pub const MAX_BODIES_PER_SYSTEM: u32 = 10;
 
-#[derive(Debug)]
-pub struct StarData {
+struct SimpleBody {
+    pub temperature: f64,
+    pub density: f64,
+    pub illuminance: f64,
+}
+
+struct StarData {
     pub name: String,
     pub body: CelestialBodyData,
     pub class: StarClass,
@@ -58,21 +69,17 @@ pub struct StarData {
     pub children: Vec<PlanetData>,
 }
 
-#[derive(Debug)]
-pub struct PlanetData {
+struct PlanetData {
     pub body: CelestialBodyData,
     pub ty: BodyType,
-    pub effective_temp: f64,
-    pub luminous_intensity: f64,
+    pub simple: SimpleBody,
     pub color: LinearRgba,
     pub children: Vec<MoonData>,
 }
 
-#[derive(Debug)]
-pub struct MoonData {
+struct MoonData {
     pub body: CelestialBodyData,
-    pub effective_temp: f64,
-    pub luminous_intensity: f64,
+    pub simple: SimpleBody,
     pub color: LinearRgba,
 }
 
@@ -146,7 +153,13 @@ pub fn generate_cosmos(
 
     info!("Start calculating extra parameters...");
 
-    calculate_extra_parameters(&mut rng, &mut stars);
+    finalize_simple_body(&mut rng, &mut stars);
+
+    info!("Start generating parameterized and quantified bodies...");
+
+    // only planets and moons need to be quantified for map generation.
+    let (parameterized, quantified) =
+        generate_parameterized_and_quantified_bodies(&mut rng, &stars);
 
     info!("Start spawning all bodies and orbits into game...");
 
@@ -168,6 +181,8 @@ pub fn generate_cosmos(
         bodies,
         entities,
         orbits,
+        parameterized,
+        quantified,
     });
     commands.insert_resource(GlobalRng::new(rng));
     commands.insert_resource(Ticker::default());
@@ -247,7 +262,7 @@ fn generate_planets(rng: &mut impl Rng, star: &StarData) -> Vec<PlanetData> {
     for mass in masses {
         let (density, ty) = {
             if mass > 100. {
-                let density = sample_normal(rng, giant_density_distr, [0.4, 1.8]);
+                let density = sample_normal_bounded(rng, giant_density_distr, [0.4, 1.8]);
                 (
                     density,
                     if density > 1.35 {
@@ -258,7 +273,7 @@ fn generate_planets(rng: &mut impl Rng, star: &StarData) -> Vec<PlanetData> {
                 )
             } else {
                 (
-                    sample_normal(rng, rocky_density_distr, [2.5, 5.]),
+                    sample_normal_bounded(rng, rocky_density_distr, [2.5, 5.]),
                     BodyType::Rocky,
                 )
             }
@@ -273,8 +288,11 @@ fn generate_planets(rng: &mut impl Rng, star: &StarData) -> Vec<PlanetData> {
                 mass,
                 radius,
             },
-            effective_temp: 0.,
-            luminous_intensity: 0.,
+            simple: SimpleBody {
+                temperature: 0.,
+                density,
+                illuminance: 0.,
+            },
             color: random_color(rng),
             ty,
             children: Vec::new(),
@@ -289,7 +307,7 @@ fn generate_moon(rng: &mut impl Rng, planet: &PlanetData) -> Vec<MoonData> {
 
     let masses = reject_sampling(rng, moon_mass_pdf, 0f64..1f64, 0f64..1f64, n, n * 2);
     let density = (0..n)
-        .map(|_| sample_normal(rng, Normal::<f64>::new(2.5, 0.6).unwrap(), [1.2, 5.]))
+        .map(|_| sample_normal_bounded(rng, Normal::<f64>::new(2.5, 0.6).unwrap(), [1.2, 5.]))
         .collect::<Vec<_>>();
 
     let mut moons = Vec::with_capacity(n as usize);
@@ -304,8 +322,11 @@ fn generate_moon(rng: &mut impl Rng, planet: &PlanetData) -> Vec<MoonData> {
                 mass,
                 radius,
             },
-            effective_temp: 0.,
-            luminous_intensity: 0.,
+            simple: SimpleBody {
+                temperature: 0.,
+                density,
+                illuminance: 0.,
+            },
             color: random_color(rng),
         });
     }
@@ -369,9 +390,6 @@ fn place_planets(rng: &mut impl Rng, star: &mut StarData, star_index: usize) {
         .clamp(clamp_closest, clamp_farthest);
     let chz_far = physics::planet_dist_when_temp(star.luminosity, 200., 0.5)
         .clamp(clamp_closest, clamp_farthest);
-
-    dbg!(physics::planet_temp_at_dist(star.luminosity, chz_far, 0.5));
-    dbg!(star.luminosity);
 
     let n_chz = rng.sample(Normal::<f64>::new(0., 0.8).unwrap()).round() as usize;
 
@@ -577,25 +595,116 @@ fn generate_orbits(
     (orbits, orbit_materials)
 }
 
-fn calculate_extra_parameters(rng: &mut impl Rng, stars: &mut Vec<StarData>) {
+fn finalize_simple_body(rng: &mut impl Rng, stars: &mut Vec<StarData>) {
     for star in stars {
         for planet in &mut star.children {
             let radius = (star.body.pos - planet.body.pos).length();
-            planet.effective_temp = physics::planet_temp_at_dist(star.luminosity, radius, 0.5);
-            planet.luminous_intensity =
+            planet.simple.temperature = physics::planet_temp_at_dist(star.luminosity, radius, 0.5);
+            planet.simple.illuminance =
                 physics::luminous_intensity_at_dist(star.luminosity, radius, planet.body.radius);
 
             for moon in &mut planet.children {
-                moon.effective_temp = physics::planet_temp_at_dist(
+                moon.simple.temperature = physics::planet_temp_at_dist(
                     star.luminosity,
                     radius * rng.gen_range(0.8..1.2),
                     0.5,
                 );
-                planet.luminous_intensity =
+                planet.simple.illuminance =
                     physics::luminous_intensity_at_dist(star.luminosity, radius, moon.body.radius);
             }
         }
     }
+}
+
+fn generate_parameterized_and_quantified_bodies(
+    rng: &mut impl Rng,
+    stars: &Vec<StarData>,
+) -> (Vec<ParameterizedBody>, Vec<QuantifiedBody>) {
+    let mut parameterized = Vec::new();
+    let mut quantified = Vec::new();
+
+    for star in stars {
+        let (p, q) = generate_parameterized_and_quantified_body(
+            rng,
+            &SimpleBody {
+                temperature: star.effective_temp,
+                density: f64::NAN,
+                illuminance: f64::NAN,
+            },
+            true,
+        );
+        parameterized.push(p);
+        quantified.push(q);
+
+        for planet in &star.children {
+            let (p, q) = generate_parameterized_and_quantified_body(rng, &planet.simple, false);
+            parameterized.push(p);
+            quantified.push(q);
+
+            for moon in &planet.children {
+                let (p, q) = generate_parameterized_and_quantified_body(rng, &moon.simple, false);
+                parameterized.push(p);
+                quantified.push(q);
+            }
+        }
+    }
+
+    (parameterized, quantified)
+}
+
+fn generate_parameterized_and_quantified_body(
+    rng: &mut impl Rng,
+    simple: &SimpleBody,
+    is_star: bool,
+) -> (ParameterizedBody, QuantifiedBody) {
+    let temperature = Temperature::quantify(simple.temperature);
+
+    if is_star {
+        return (
+            ParameterizedBody {
+                temperature: simple.temperature,
+                ..Default::default()
+            },
+            QuantifiedBody {
+                temperature,
+                ..Default::default()
+            },
+        );
+    }
+
+    let density = Density::quantify(simple.density);
+    let illuminance = Illuminance::quantify(simple.illuminance);
+
+    let moisture: Moisture = sample_enum_weighted(rng, vec![50, 25, 15, 10], 0);
+
+    let metallicity: Metallicity = match density {
+        Density::Diffuse | Density::LowDensity | Density::Rocky => {
+            sample_enum_weighted(rng, vec![70, 20, 10], 0)
+        }
+        Density::Dense => sample_enum_weighted(rng, vec![10, 40, 30, 20], 1),
+        Density::Degenerate => sample_enum_weighted(rng, vec![60, 40], 3),
+    };
+
+    let atmospheric_density: AtmosphericDensity = sample_enum_weighted(rng, vec![60, 20, 10], 0);
+
+    (
+        ParameterizedBody {
+            temperature: simple.temperature,
+            moisture: moisture.sample(rng),
+            metallicity: metallicity.sample(rng),
+            density: simple.density,
+            illuminance: simple.illuminance,
+            atmospheric_density: atmospheric_density.sample(rng),
+        },
+        QuantifiedBody {
+            temperature,
+            moisture,
+            metallicity,
+            density,
+            illuminance,
+            atmospheric_density,
+        },
+    )
 }
 
 fn spawn_bodies(
@@ -629,7 +738,6 @@ fn spawn_bodies(
                             .map(|i| BodyIndex::new(i))
                             .collect(),
                     ),
-                    temperature: BodyTemperature::new(star.effective_temp),
                     mesh: mesh.clone(),
                     material: star_materials.add(StarMaterial { color: star.color }),
                     color: BodyColor::new(star.color),
@@ -658,10 +766,6 @@ fn spawn_bodies(
                                         .map(|i| BodyIndex::new(i))
                                         .collect(),
                                 ),
-                                temperature: BodyTemperature::new(planet.effective_temp),
-                                luminous_intensity: BodyIlluminance::new(
-                                    planet.luminous_intensity,
-                                ),
                                 mesh: mesh.clone(),
                                 material: rocky_body_materials.add(RockyBodyMaterial {
                                     color: planet.color,
@@ -689,10 +793,6 @@ fn spawn_bodies(
                                     (bodies.len()..=bodies.len() + planet.children.len())
                                         .map(|i| BodyIndex::new(i))
                                         .collect(),
-                                ),
-                                temperature: BodyTemperature::new(planet.effective_temp),
-                                luminous_intensity: BodyIlluminance::new(
-                                    planet.luminous_intensity,
                                 ),
                                 mesh: mesh.clone(),
                                 material: giant_body_materials.add(GiantBodyMaterial {
@@ -724,10 +824,6 @@ fn spawn_bodies(
                                 ty: BodyType::Rocky,
                                 body_index: BodyIndex::new(bodies.len()),
                                 system: System::new(vec![BodyIndex::new(bodies.len())]),
-                                temperature: BodyTemperature::new(moon.effective_temp),
-                                luminous_intensity: BodyIlluminance::new(
-                                    planet.luminous_intensity,
-                                ),
                                 mesh: mesh.clone(),
                                 material: rocky_body_materials
                                     .add(RockyBodyMaterial { color: moon.color }),
@@ -787,19 +883,6 @@ fn random_color(rng: &mut impl Rng) -> LinearRgba {
     }
 }
 
-fn sample_normal<T>(rng: &mut impl Rng, distr: Normal<T>, min_max: [T; 2]) -> T
-where
-    T: Float,
-    StandardNormal: Distribution<T>,
-{
-    loop {
-        let t = rng.sample(distr);
-        if t > min_max[0] && t < min_max[1] {
-            return t;
-        }
-    }
-}
-
 fn map_star_radius(x: f64) -> f64 {
     (-x / 500. + 1.).powf(1.6)
 }
@@ -810,4 +893,12 @@ fn map_planet_radius(x: f64) -> f64 {
 
 fn map_moon_radius(x: f64) -> f64 {
     x * 0.02
+}
+
+fn sample_enum_weighted<E>(rng: &mut impl Rng, choices: Vec<usize>, offset: usize) -> E
+where
+    E: TryFromPrimitive<Primitive = usize>,
+    E::Error: std::fmt::Debug,
+{
+    E::try_from_primitive(rng.sample(WeightedAliasIndex::new(choices).unwrap()) + offset).unwrap()
 }

@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use bevy::math::DVec2;
 use rand::Rng;
+use rand_distr::{num_traits::Float, Distribution, Normal, StandardNormal};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Axis {
@@ -28,6 +29,19 @@ pub enum TriangularDirection {
 pub fn polar_to_cartesian(theta: f64, r: f64) -> DVec2 {
     let (s, c) = theta.sin_cos();
     DVec2::new(c * r, s * r)
+}
+
+pub fn sample_normal_bounded<T>(rng: &mut impl Rng, distr: Normal<T>, min_max: [T; 2]) -> T
+where
+    T: Float,
+    StandardNormal: Distribution<T>,
+{
+    loop {
+        let t = rng.sample(distr);
+        if t > min_max[0] && t < min_max[1] {
+            return t;
+        }
+    }
 }
 
 pub fn reject_sampling(

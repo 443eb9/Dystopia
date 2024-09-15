@@ -61,6 +61,12 @@ pub enum Illuminance {
 }
 
 #[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
+pub enum Density {
+    #[si]
+    GPerCm3(f64),
+}
+
+#[derive(Unit, LocalizableEnum, Debug, Clone, Copy)]
 pub enum Temperature {
     #[conversion = 273.15]
     #[conv_method = "sub"]

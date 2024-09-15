@@ -27,7 +27,8 @@ use crate::{
     schedule::{
         signal::InitializationSignal,
         state::{AssetState, GameState},
-    }, tuple_struct_new,
+    },
+    tuple_struct_new,
 };
 
 pub struct DystopiaSimulationPlugin;

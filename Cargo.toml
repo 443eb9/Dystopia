@@ -26,6 +26,7 @@ dotenvy = "0.15"
 enum-map = "2.7"
 hashbrown = { version = "0.14", features = ["rayon"] }
 indexmap = "2.5"
+num_enum = "0.7"
 rand = "0.8"
 rand_distr = "0.4"
 rayon = "1.10"

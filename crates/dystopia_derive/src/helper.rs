@@ -28,6 +28,7 @@ impl_meta_unpack!(unpack_path, Path, NameValue, List, "path", syn::Path);
 
 macro_rules! impl_data_unpack {
     ($fn_name: ident, $target: ident, $non_target_a: ident, $non_target_b: ident, $hint: literal, $returns: ty) => {
+        #[inline]
         pub fn $fn_name(data: &syn::Data) -> &$returns {
             match data {
                 syn::Data::$target(d) => d,
@@ -58,6 +59,28 @@ impl_data_unpack!(
     "union",
     syn::DataUnion
 );
+
+#[inline]
+pub fn try_find_attr_get_meta<'a, M>(
+    attrs: &'a Vec<syn::Attribute>,
+    attr_name: &str,
+    unpacker: impl Fn(&syn::Meta) -> &M,
+) -> Option<&'a M> {
+    attrs
+        .iter()
+        .find(|attr| attr.path().get_ident().unwrap() == attr_name)
+        .map(|attr| unpacker(&attr.meta))
+}
+
+#[inline]
+pub fn find_attr_get_meta<'a, M>(
+    attrs: &'a Vec<syn::Attribute>,
+    attr_name: &str,
+    unpacker: impl Fn(&syn::Meta) -> &M,
+) -> &'a M {
+    try_find_attr_get_meta(attrs, attr_name, unpacker)
+        .expect(&format!("Expected attribute {}.", attr_name))
+}
 
 pub fn core_crate() -> syn::Ident {
     match proc_macro_crate::crate_name("dystopia_core").unwrap() {

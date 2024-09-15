@@ -25,6 +25,8 @@ pub fn update_cosmos(mut cosmos: ResMut<Cosmos>, ticker: Res<Ticker>) {
     let Cosmos {
         bodies,
         entities: _,
+        parameterized: _,
+        quantified: _,
         orbits,
     } = cosmos.as_mut();
 
