@@ -11,6 +11,7 @@ use bevy::{
 
 use crate::{
     body::FocusingOn,
+    character::player::PlayerAction,
     cosmos::celestial::{BodyColor, BodyIndex, BodyTilemap},
     impl_transition_plugin,
     input::event::{condition::keyboard_event_activating, OPEN_COSMOS_VIEW},
@@ -39,6 +40,7 @@ fn focus_body(
     mut camera_query: Query<&mut Transform, (With<MainCamera>, Without<BodyIndex>)>,
     mut view_scale: ResMut<ViewScale>,
     mut target_change: EventWriter<PanelTargetChange<SceneTitle, SceneTitleChange>>,
+    mut player_action: EventWriter<PlayerAction>,
 ) {
     let (recover_transl, tilemap, name, color) = bodies_query.get(focusing_on.entity).unwrap();
 
@@ -48,6 +50,7 @@ fn focus_body(
         name: Some((name.to_string(), **color)),
     }));
     recover_transl.recover(&mut camera_query.single_mut(), &mut view_scale);
+    player_action.send(PlayerAction::ChangeVisibility(Visibility::Inherited));
 }
 
 fn handle_cosmos_view_entering(mut scene_state: ResMut<NextState<SceneState>>) {
@@ -58,7 +61,9 @@ fn unfocus_body(
     mut commands: Commands,
     mut tilemaps_query: Query<&mut Visibility, With<TilemapStorage>>,
     focusing_on: Res<FocusingOn>,
+    mut player_action: EventWriter<PlayerAction>,
 ) {
     *tilemaps_query.get_mut(*focusing_on.tilemap).unwrap() = Visibility::Hidden;
     commands.remove_resource::<FocusingOn>();
+    player_action.send(PlayerAction::ChangeVisibility(Visibility::Hidden));
 }

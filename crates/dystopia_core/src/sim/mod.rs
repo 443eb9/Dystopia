@@ -23,7 +23,7 @@ use bevy::{
 use rand::rngs::StdRng;
 
 use crate::{
-    input::camera::CameraBehavior,
+    character::camera::CameraBehavior,
     schedule::{
         signal::InitializationSignal,
         state::{AssetState, GameState},

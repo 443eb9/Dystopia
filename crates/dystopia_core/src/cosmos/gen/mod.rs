@@ -51,7 +51,7 @@ use crate::{
 mod distr;
 
 // TODO restrict bodies count in generation
-pub const MAX_BODIES_PER_SYSTEM: u32 = 10;
+pub const MAX_BODIES_PER_SYSTEM: u32 = 20;
 
 struct SimpleBody {
     pub temperature: f64,

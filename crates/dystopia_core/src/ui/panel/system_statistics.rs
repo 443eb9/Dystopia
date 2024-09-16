@@ -144,7 +144,7 @@ pub struct SystemStatisticsPanelData {
     #[lang_skip]
     name: String,
     // Equals to MAX_BODIES_PER_SYSTEM
-    #[dynamic_sized(10)]
+    #[dynamic_sized(20)]
     bodies: Vec<Option<BodyInfo>>,
 }
 

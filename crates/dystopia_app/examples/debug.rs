@@ -9,10 +9,10 @@ use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     input::ButtonInput,
     log::info,
-    math::{IVec3, UVec2, Vec2},
+    math::{IVec3, UVec2, Vec2, Vec3},
     prelude::{
-        BuildChildren, Camera2dBundle, Changed, Commands, DetectChanges, Entity, KeyCode, Local,
-        NodeBundle, Query, Res, ResMut, TextBundle, With,
+        BuildChildren, Camera2dBundle, Changed, Commands, DetectChanges, Entity, EventWriter,
+        ImagePlugin, KeyCode, Local, NodeBundle, Query, Res, ResMut, TextBundle, With,
     },
     render::{
         camera::OrthographicProjection,
@@ -31,12 +31,13 @@ use bevy::{
 };
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use dystopia_core::{
+    character::player::PlayerAction,
     cosmos::{
         celestial::{BodyIndex, BodyTilemap, ToLoadTilemap, ToSaveTilemap},
         gen::CosmosGenerationSettings,
     },
     distributed_list_element,
-    input::{camera::CameraBehavior, MouseClickCounter, MouseInput},
+    input::{MouseClickCounter, MouseInput},
     map::{
         bundle::TilemapBundle,
         shape::rectangle,
@@ -74,7 +75,8 @@ fn main() {
                         ..Default::default()
                     }),
                     ..Default::default()
-                }),
+                })
+                .set(ImagePlugin::default_nearest()),
             DystopiaCorePlugin,
             DystopiaDebugPlugin {
                 inspector: true,
@@ -111,7 +113,7 @@ impl Plugin for DystopiaDebugPlugin {
             // .add_systems(OnEnter(GameState::Simulate), debug_ui)
             // .add_systems(OnEnter(GameState::Simulate), debug_tilemap)
             // .add_systems(Update, debug_rm_vis)
-            .add_systems(Startup, setup_debug)
+            .add_systems(OnEnter(GameState::Simulate), setup_debug)
             .add_systems(Update, toggle_ui_debug)
             // .add_systems(Update, test_multi_click)
             // .add_systems(Update, debug_view_scale)
@@ -126,7 +128,9 @@ fn debug_view_scale(view_scale: Res<ViewScale>) {
     }
 }
 
-fn setup_debug(mut commands: Commands) {}
+fn setup_debug(mut commands: Commands, mut player_action: EventWriter<PlayerAction>) {
+    player_action.send(PlayerAction::Teleport(Vec2::ZERO));
+}
 
 fn test_multi_click(query: Query<&MouseClickCounter, With<MouseInput>>) {
     for click in &query {
@@ -140,7 +144,7 @@ fn debug_skip_menu(
     mut scene_state: ResMut<NextState<SceneState>>,
 ) {
     commands.insert_resource(CosmosGenerationSettings {
-        seed: 12,
+        seed: 16,
         galaxy_radius: Length::LightYear(1.),
         // num_stars: 60..69,
         num_stars: 1..2,

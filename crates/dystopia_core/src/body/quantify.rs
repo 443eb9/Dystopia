@@ -93,6 +93,7 @@ pub enum Illuminance {
 #[repr(usize)]
 #[quantify(f64)]
 #[min(0.)]
+#[max(10.)]
 pub enum AtmosphericDensity {
     Sparse,
     #[boundary(0.5)]

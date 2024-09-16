@@ -1,10 +1,26 @@
 {
     "readable_mapping": {
-        "OPEN_COSMOS_VIEW": 0
+        "OPEN_COSMOS_VIEW": 0,
+        "PLAYER_MOVE_UP": 100,
+        "PLAYER_MOVE_DOWN": 101,
+        "PLAYER_MOVE_LEFT": 102,
+        "PLAYER_MOVE_RIGHT": 103
     },
     "keyboard_mapping": {
         "KeyM": [
             "OPEN_COSMOS_VIEW"
+        ],
+        "KeyW": [
+            "PLAYER_MOVE_UP"
+        ],
+        "KeyS": [
+            "PLAYER_MOVE_DOWN"
+        ],
+        "KeyA": [
+            "PLAYER_MOVE_LEFT"
+        ],
+        "KeyD": [
+            "PLAYER_MOVE_RIGHT"
         ]
     }
 }

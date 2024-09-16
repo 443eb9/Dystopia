@@ -108,4 +108,9 @@ pub mod condition {
 
 mod code {
     pub const OPEN_COSMOS_VIEW: usize = 0;
+
+    pub const PLAYER_MOVE_UP: usize = 100;
+    pub const PLAYER_MOVE_DOWN: usize = 101;
+    pub const PLAYER_MOVE_LEFT: usize = 102;
+    pub const PLAYER_MOVE_RIGHT: usize = 103;
 }

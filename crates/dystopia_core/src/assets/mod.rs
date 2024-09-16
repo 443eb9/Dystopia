@@ -11,17 +11,18 @@ use bevy::{
 use serde::de::DeserializeOwned;
 use thiserror::Error;
 
-use crate::schedule::state::AssetState;
+use crate::{assets::texture::TextureAtlasLayouts, schedule::state::AssetState};
 
 pub mod app_ext;
 pub mod config;
 pub mod manifest;
+pub mod texture;
 
 pub struct DystopiaAssetsPlugin;
 
 impl Plugin for DystopiaAssetsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
+        app.init_resource::<TextureAtlasLayouts>().add_systems(
             Update,
             manifest::check_if_manifest_finished.run_if(in_state(AssetState::Load)),
         );

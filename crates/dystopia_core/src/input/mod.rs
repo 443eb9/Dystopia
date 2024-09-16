@@ -16,7 +16,6 @@ use crate::{
     schedule::state::ProcessState,
 };
 
-pub mod camera;
 pub mod event;
 pub mod ext;
 pub mod scene;
@@ -40,14 +39,6 @@ impl Plugin for DystopiaInputPlugin {
                     .chain(),
             )
             .add_systems(Update, (ui::ui_drag_marker, ui::ui_drag_canceller).chain())
-            .add_systems(
-                Update,
-                (
-                    camera::toggle_camera_move,
-                    camera::camera_move,
-                    camera::camera_zoom,
-                ),
-            )
             .add_systems(
                 Update,
                 event::keyboard_input_handler.run_if(in_state(ProcessState::InGame)),

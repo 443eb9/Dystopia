@@ -1,4 +1,5 @@
 use bevy::{
+    app::{App, Plugin, Update},
     input::{
         mouse::{MouseScrollUnit, MouseWheel},
         ButtonState,
@@ -16,6 +17,14 @@ use crate::{
     sim::{MainCamera, ViewScale},
 };
 
+pub struct CameraPlugin;
+
+impl Plugin for CameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (toggle_camera_move, camera_move, camera_zoom));
+    }
+}
+
 #[derive(Component)]
 pub struct CameraBehavior {
     pub zoom_ratio: f32,
@@ -24,7 +33,7 @@ pub struct CameraBehavior {
     pub zoom_smooth: f32,
 }
 
-pub fn toggle_camera_move(
+fn toggle_camera_move(
     mut commands: Commands,
     main_camera: Query<Entity, With<MainCamera>>,
     mut mouse_click: EventReader<SceneMouseInput>,
@@ -46,7 +55,7 @@ pub fn toggle_camera_move(
     }
 }
 
-pub fn camera_move(
+fn camera_move(
     mut main_camera: Query<&mut Transform, (With<MainCamera>, With<EntityOnDrag>)>,
     cursor_pos: Res<SceneCursorPosition>,
     mut last_pos: Local<Option<Vec2>>,
@@ -63,7 +72,7 @@ pub fn camera_move(
     *last_pos = Some(cursor_pos);
 }
 
-pub fn camera_zoom(
+fn camera_zoom(
     mut main_camera: Query<&CameraBehavior, With<MainCamera>>,
     mut scroll: EventReader<MouseWheel>,
     mut current_zoom: ResMut<ViewScale>,
