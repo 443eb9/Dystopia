@@ -13,7 +13,7 @@ use bevy::{
 
 use crate::{
     assets::texture::TextureAtlasLayouts,
-    character::{MoveSpeed, MoveSpeedFactor},
+    character::{MoveSpeed, MoveSpeedFactor, ISOMETRIC_VEL_FACTOR},
     input::event::{
         KeyboardEventCenter, PLAYER_MOVE_DOWN, PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT, PLAYER_MOVE_UP,
         TOGGLE_CAMERA_CONTROL_OVERRIDE,
@@ -130,5 +130,6 @@ fn handle_player_move(
         vel.x += 1.;
     }
 
-    transform.translation += (vel * **speed * **factor * time.delta_seconds()).extend(0.);
+    transform.translation +=
+        (**speed * **factor * time.delta_seconds() * vel * ISOMETRIC_VEL_FACTOR).extend(0.);
 }

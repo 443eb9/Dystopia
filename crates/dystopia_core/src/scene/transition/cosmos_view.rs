@@ -10,7 +10,7 @@ use bevy::{
 use crate::{
     body::FocusingOn,
     cosmos::{
-        celestial::{BodyIndex, BodyTilemap, OrbitsVisibility},
+        celestial::{BodyIndex, BodyTilemap},
         mesh::OrbitMaterial,
     },
     impl_transition_plugin,

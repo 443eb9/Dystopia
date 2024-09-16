@@ -1,5 +1,6 @@
 use bevy::{
     app::{App, Plugin},
+    math::Vec2,
     prelude::{Component, Deref, DerefMut},
 };
 
@@ -7,6 +8,8 @@ use crate::tuple_struct_new;
 
 pub mod camera;
 pub mod player;
+
+pub const ISOMETRIC_VEL_FACTOR: Vec2 = Vec2 { x: 1., y: 0.5 };
 
 pub struct DystopiaCharacterPlugin;
 
