@@ -1,5 +1,6 @@
 use bevy::{
-    color::LinearRgba,
+    asset::Assets,
+    color::{Alpha, LinearRgba},
     prelude::{
         Commands, Entity, EventWriter, MouseButton, NextState, Query, Res, ResMut, Transform,
         Visibility, With, Without,
@@ -8,7 +9,10 @@ use bevy::{
 
 use crate::{
     body::FocusingOn,
-    cosmos::celestial::{BodyIndex, BodyTilemap},
+    cosmos::{
+        celestial::{BodyIndex, BodyTilemap, OrbitsVisibility},
+        mesh::OrbitMaterial,
+    },
     impl_transition_plugin,
     input::{MouseClickCounter, MouseInput},
     scene::transition::CameraRecoverTransform,
@@ -79,6 +83,7 @@ fn exit_cosmos_view(
     camera_query: Query<&Transform, (With<MainCamera>, Without<BodyIndex>)>,
     view_scale: Res<ViewScale>,
     mut target_change: EventWriter<PanelTargetChange<BodyDataPanel>>,
+    mut orbit_materials: ResMut<Assets<OrbitMaterial>>,
 ) {
     bodies_query
         .par_iter_mut()
@@ -90,4 +95,9 @@ fn exit_cosmos_view(
         &camera_query.single(),
         &view_scale,
     ));
+
+    // TODO use a uniform buffer to sync alpha. This is tooooo slow.
+    orbit_materials
+        .iter_mut()
+        .for_each(|(_, mat)| mat.color = mat.color.with_alpha(0.));
 }
