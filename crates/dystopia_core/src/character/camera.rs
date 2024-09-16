@@ -6,14 +6,23 @@ use bevy::{
     },
     math::{FloatExt, Vec2},
     prelude::{
-        Commands, Component, Entity, EventReader, Local, MouseButton, Query, Res, ResMut,
-        Transform, With,
+        Commands, Component, Entity, EventReader, Has, Local, MouseButton, Query, Res, ResMut,
+        State, Transform, With,
     },
     time::{Real, Time},
 };
 
 use crate::{
-    input::{scene::EntityOnDrag, SceneCursorPosition, SceneMouseInput},
+    character::{MoveSpeed, MoveSpeedFactor},
+    input::{
+        event::{
+            KeyboardEventCenter, PLAYER_MOVE_DOWN, PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT,
+            PLAYER_MOVE_UP, TOGGLE_CAMERA_CONTROL_OVERRIDE,
+        },
+        scene::EntityOnDrag,
+        SceneCursorPosition, SceneMouseInput,
+    },
+    schedule::state::SceneState,
     sim::{MainCamera, ViewScale},
 };
 
@@ -56,20 +65,57 @@ fn toggle_camera_move(
 }
 
 fn camera_move(
-    mut main_camera: Query<&mut Transform, (With<MainCamera>, With<EntityOnDrag>)>,
+    mut main_camera: Query<
+        (
+            &mut Transform,
+            &MoveSpeed,
+            &MoveSpeedFactor,
+            Has<EntityOnDrag>,
+        ),
+        With<MainCamera>,
+    >,
     cursor_pos: Res<SceneCursorPosition>,
     mut last_pos: Local<Option<Vec2>>,
     current_zoom: Res<ViewScale>,
+    event_center: Res<KeyboardEventCenter>,
+    time: Res<Time<Real>>,
+    scene_state: Res<State<SceneState>>,
 ) {
-    let (Some(cursor_pos), Ok(mut transform)) = (**cursor_pos, main_camera.get_single_mut()) else {
+    let (mut transform, speed, factor, is_dragging) = main_camera.single_mut();
+
+    let mut vel = Vec2::ZERO;
+    if event_center.is_activating(PLAYER_MOVE_UP) {
+        vel.y += 1.;
+    }
+    if event_center.is_activating(PLAYER_MOVE_DOWN) {
+        vel.y -= 1.;
+    }
+    if event_center.is_activating(PLAYER_MOVE_LEFT) {
+        vel.x -= 1.;
+    }
+    if event_center.is_activating(PLAYER_MOVE_RIGHT) {
+        vel.x += 1.;
+    }
+
+    if (matches!(scene_state.get(), SceneState::CosmosView) && vel != Vec2::ZERO)
+        || event_center.is_activating(TOGGLE_CAMERA_CONTROL_OVERRIDE)
+    {
+        transform.translation +=
+            (time.delta_seconds() * **speed * **factor * **current_zoom * vel).extend(0.);
+    } else if let Some(cursor_pos) = **cursor_pos {
+        if !is_dragging {
+            *last_pos = None;
+            return;
+        }
+
+        let mut delta = (cursor_pos - last_pos.unwrap_or(cursor_pos)) * **current_zoom;
+        delta.x *= -1.;
+        transform.translation += delta.extend(0.);
+        *last_pos = Some(cursor_pos);
+    } else {
         *last_pos = None;
         return;
-    };
-
-    let mut delta = (cursor_pos - last_pos.unwrap_or(cursor_pos)) * **current_zoom;
-    delta.x *= -1.;
-    transform.translation += delta.extend(0.);
-    *last_pos = Some(cursor_pos);
+    }
 }
 
 fn camera_zoom(

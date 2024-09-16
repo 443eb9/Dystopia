@@ -23,7 +23,7 @@ use bevy::{
 use rand::rngs::StdRng;
 
 use crate::{
-    character::camera::CameraBehavior,
+    character::{camera::CameraBehavior, MoveSpeed, MoveSpeedFactor},
     schedule::{
         signal::InitializationSignal,
         state::{AssetState, GameState},
@@ -69,6 +69,8 @@ pub fn setup_camera(mut commands: Commands) {
             zoom_min: 0.02,
             zoom_smooth: 50.,
         },
+        MoveSpeed::new(240.),
+        MoveSpeedFactor::default(),
     ));
 }
 

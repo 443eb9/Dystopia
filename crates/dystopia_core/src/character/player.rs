@@ -16,6 +16,7 @@ use crate::{
     character::{MoveSpeed, MoveSpeedFactor},
     input::event::{
         KeyboardEventCenter, PLAYER_MOVE_DOWN, PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT, PLAYER_MOVE_UP,
+        TOGGLE_CAMERA_CONTROL_OVERRIDE,
     },
     schedule::state::GameState,
 };
@@ -57,7 +58,6 @@ pub fn handle_player_action(
                 Ok((_, mut transform, _)) => transform.translation = pos.extend(1.),
                 Err(err) => match err {
                     QuerySingleError::NoEntities(_) => {
-                        dbg!();
                         commands.spawn((
                             SpriteBundle {
                                 sprite: Sprite {
@@ -112,7 +112,7 @@ fn handle_player_move(
         return;
     };
 
-    if !vis.get() {
+    if !vis.get() || event_center.is_activating(TOGGLE_CAMERA_CONTROL_OVERRIDE) {
         return;
     }
 

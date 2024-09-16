@@ -113,4 +113,5 @@ mod code {
     pub const PLAYER_MOVE_DOWN: usize = 101;
     pub const PLAYER_MOVE_LEFT: usize = 102;
     pub const PLAYER_MOVE_RIGHT: usize = 103;
+    pub const TOGGLE_CAMERA_CONTROL_OVERRIDE: usize = 104;
 }

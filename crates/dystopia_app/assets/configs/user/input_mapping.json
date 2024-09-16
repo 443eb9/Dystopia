@@ -4,7 +4,8 @@
         "PLAYER_MOVE_UP": 100,
         "PLAYER_MOVE_DOWN": 101,
         "PLAYER_MOVE_LEFT": 102,
-        "PLAYER_MOVE_RIGHT": 103
+        "PLAYER_MOVE_RIGHT": 103,
+        "TOGGLE_CAMERA_CONTROL_OVERRIDE": 104
     },
     "keyboard_mapping": {
         "KeyM": [
@@ -21,6 +22,9 @@
         ],
         "KeyD": [
             "PLAYER_MOVE_RIGHT"
+        ],
+        "ControlLeft": [
+            "TOGGLE_CAMERA_CONTROL_OVERRIDE"
         ]
     }
 }
